@@ -1,8 +1,7 @@
 <script setup lang="ts">
 /**
  * 主框架布局
- * 基于 Claude Design 03-layout.html 实现
- * 顶部栏 + 可折叠侧边栏 + 主内容区
+ * 2026 UI Redesign：升级视觉（毛玻璃顶栏 + 侧边栏柔光），保持原有逻辑不变
  */
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
@@ -19,27 +18,21 @@ const authStore = useAuthStore()
 const collapsed = ref(false)
 const showChangePwd = ref(false)
 
-// 面包屑：取当前路由 meta.title
 const pageTitle = computed(() => (route.meta.title as string) || '')
 
-// 用户头像首字母
 const avatarText = computed(() => {
   const name = authStore.userInfo?.full_name || authStore.userInfo?.username || ''
   return name.slice(0, 2).toUpperCase()
 })
 
-// 首次登录或密码过期时强制弹出改密对话框
 onMounted(() => {
   if (authStore.mustChangePassword) {
     showChangePwd.value = true
   }
 })
 
-// 如果用户关闭改密对话框但仍需改密，强制登出
-// 但如果是改密成功后关闭的（mustChangePassword 已被重置），则不登出
 watch(showChangePwd, (newVal) => {
   if (!newVal && authStore.mustChangePassword) {
-    // 用户未改密就关闭了对话框 → 强制登出
     authStore.clearAuth()
     router.push('/login')
   }
@@ -60,19 +53,33 @@ function handleCommand(cmd: string) {
   if (cmd === 'logout') handleLogout()
   if (cmd === 'change-pwd') showChangePwd.value = true
 }
+
+const roleLabel = computed(() => {
+  const map: Record<string, string> = {
+    super_admin: '超级管理员',
+    admin: '管理员',
+    auditor: '审计员',
+  }
+  return map[authStore.role || ''] || authStore.role || ''
+})
 </script>
 
 <template>
   <div class="app" :class="{ collapsed }">
+    <!-- 背景装饰：极弱的网格 + 顶部光晕 -->
+    <div class="app-bg" aria-hidden="true" />
+
     <!-- ── 顶部栏 ─────────────────────────────────────────── -->
     <header class="topbar">
       <!-- 品牌区 -->
       <div class="brand-zone">
-        <span class="brand-logo" aria-hidden="true" />
+        <span class="brand-logo" aria-hidden="true">
+          <span class="brand-logo-inner" />
+        </span>
         <span v-if="!collapsed" class="brand-word">CMDB <em>Lite</em></span>
       </div>
 
-      <!-- 左侧：折叠按钮 + 面包屑 -->
+      <!-- 左：折叠按钮 + 面包屑 -->
       <div class="topbar-left">
         <button
           class="icon-btn"
@@ -83,22 +90,29 @@ function handleCommand(cmd: string) {
         </button>
 
         <nav class="crumb" aria-label="面包屑">
+          <span class="crumb-prefix">CMDB</span>
+          <span class="crumb-sep">/</span>
           <span class="crumb-here">{{ pageTitle }}</span>
         </nav>
       </div>
 
       <div class="topbar-spacer" />
 
-      <!-- 右侧：用户菜单 -->
+      <!-- 右：环境标签 + 用户菜单 -->
       <div class="topbar-right">
+        <span class="env-chip">
+          <span class="env-dot" />
+          v0.1
+        </span>
+
         <el-dropdown @command="handleCommand">
           <div class="user-chip">
             <div class="user-avatar">{{ avatarText }}</div>
             <div class="user-info">
-              <span class="user-name">{{ authStore.userInfo?.username || '用户' }}</span>
+              <span class="user-name">{{ authStore.userInfo?.full_name || authStore.userInfo?.username || '用户' }}</span>
               <span class="role-badge" :class="authStore.role">
                 <span class="role-dot" />
-                {{ authStore.role }}
+                {{ roleLabel }}
               </span>
             </div>
             <el-icon size="12" color="var(--neutral-400)"><ArrowDown /></el-icon>
@@ -128,7 +142,6 @@ function handleCommand(cmd: string) {
       </main>
     </div>
 
-    <!-- 修改密码弹窗 -->
     <ChangePasswordDialog v-model="showChangePwd" />
   </div>
 </template>
@@ -136,21 +149,46 @@ function handleCommand(cmd: string) {
 <style scoped>
 .app {
   --sidebar-w: var(--sidebar-w, 220px);
+  position: relative;
   min-height: 100vh;
-  background: var(--neutral-50);
+  background: var(--surface-canvas);
+  isolation: isolate;
 }
 .app.collapsed {
   --sidebar-w: 60px;
 }
 
-/* ── 顶部栏 ── */
+/* 背景装饰：在最底层放一层柔光网格 */
+.app-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(1200px 600px at 18% -10%, rgba(37, 99, 235, 0.06) 0%, transparent 60%),
+    radial-gradient(900px 500px at 95% 0%, rgba(99, 102, 241, 0.05) 0%, transparent 55%),
+    var(--surface-canvas);
+}
+.app-bg::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(circle at 1px 1px, rgba(15, 23, 42, 0.035) 1px, transparent 0);
+  background-size: 28px 28px;
+  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.55) 0%, rgba(0, 0, 0, 0) 70%);
+  -webkit-mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.55) 0%, rgba(0, 0, 0, 0) 70%);
+}
+
+/* ── 顶部栏：半透明 + 模糊背景 ── */
 .topbar {
   position: sticky;
   top: 0;
   z-index: 30;
   height: var(--topbar-h);
-  background: var(--neutral-0);
-  border-bottom: 1px solid var(--neutral-200);
+  background: var(--surface-overlay);
+  -webkit-backdrop-filter: saturate(140%) blur(14px);
+  backdrop-filter: saturate(140%) blur(14px);
+  border-bottom: 1px solid rgba(15, 23, 42, 0.06);
   display: flex;
   align-items: stretch;
   padding: 0 var(--space-6) 0 0;
@@ -160,34 +198,43 @@ function handleCommand(cmd: string) {
   width: 220px;
   display: flex;
   align-items: center;
-  gap: var(--space-2);
+  gap: 10px;
   padding: 0 var(--space-4);
-  border-right: 1px solid var(--neutral-200);
-  transition: width 0.18s ease;
+  border-right: 1px solid rgba(15, 23, 42, 0.06);
+  transition: width var(--dur-base) var(--ease-out);
   overflow: hidden;
   flex-shrink: 0;
 }
-.app.collapsed .brand-zone {
-  width: 60px;
-}
+.app.collapsed .brand-zone { width: 60px; }
 
 .brand-logo {
-  width: 28px;
-  height: 28px;
-  background: var(--color-primary-500);
-  border-radius: var(--radius-md);
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  background: var(--accent-gradient);
   position: relative;
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow:
+    0 4px 12px -2px rgba(37, 99, 235, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25);
 }
-.brand-logo::before,
-.brand-logo::after {
+.brand-logo-inner {
+  width: 14px;
+  height: 14px;
+  position: relative;
+}
+.brand-logo-inner::before,
+.brand-logo-inner::after {
   content: '';
   position: absolute;
-  background: rgba(255, 255, 255, 0.92);
+  background: rgba(255, 255, 255, 0.95);
   border-radius: 1.5px;
 }
-.brand-logo::before { left: 6px; top: 8px; width: 16px; height: 3px; }
-.brand-logo::after  { left: 6px; top: 16px; width: 10px; height: 3px; }
+.brand-logo-inner::before { left: 0; top: 1px; width: 14px; height: 3px; }
+.brand-logo-inner::after  { left: 0; top: 9px; width: 10px; height: 3px; }
 
 .brand-word {
   font-weight: 600;
@@ -198,7 +245,11 @@ function handleCommand(cmd: string) {
 }
 .brand-word em {
   font-style: normal;
-  color: var(--color-primary-500);
+  background: var(--accent-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  font-weight: 700;
 }
 
 .topbar-left {
@@ -219,7 +270,8 @@ function handleCommand(cmd: string) {
   background: transparent;
   border: 0;
   cursor: pointer;
-  transition: background-color 0.12s ease, color 0.12s ease;
+  transition: background-color var(--dur-fast) var(--ease-out),
+              color var(--dur-fast) var(--ease-out);
 }
 .icon-btn:hover {
   background: var(--neutral-100);
@@ -229,10 +281,16 @@ function handleCommand(cmd: string) {
 .crumb {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   font-size: var(--fs-body);
   color: var(--neutral-500);
 }
+.crumb-prefix {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  color: var(--neutral-400);
+}
+.crumb-sep { color: var(--neutral-300); }
 .crumb-here {
   color: var(--neutral-900);
   font-weight: 500;
@@ -243,7 +301,29 @@ function handleCommand(cmd: string) {
 .topbar-right {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
+  gap: var(--space-3);
+}
+
+/* 环境徽标 */
+.env-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--surface-sunken);
+  border: 1px solid var(--neutral-200);
+  color: var(--neutral-500);
+  font-size: 12px;
+  font-family: var(--font-mono);
+  font-weight: 500;
+}
+.env-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-success);
+  box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.18);
 }
 
 /* 用户区 */
@@ -251,11 +331,11 @@ function handleCommand(cmd: string) {
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
-  padding: 4px 8px 4px 4px;
-  border-radius: var(--radius-md);
+  padding: 4px 10px 4px 4px;
+  border-radius: 999px;
   cursor: pointer;
   height: 40px;
-  transition: background-color 0.12s ease;
+  transition: background-color var(--dur-fast) var(--ease-out);
 }
 .user-chip:hover {
   background: var(--neutral-100);
@@ -265,14 +345,17 @@ function handleCommand(cmd: string) {
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  background: var(--color-primary-100);
-  color: var(--color-primary-700);
+  background: var(--accent-gradient);
+  color: #FFFFFF;
   font-weight: 600;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   font-size: 12px;
-  border: 2px solid var(--color-primary-200);
+  letter-spacing: 0.02em;
+  box-shadow:
+    0 2px 6px -1px rgba(37, 99, 235, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 
 .user-info {
@@ -284,6 +367,7 @@ function handleCommand(cmd: string) {
   color: var(--neutral-900);
   font-size: 13px;
   font-weight: 500;
+  letter-spacing: -0.005em;
 }
 
 .role-badge {
@@ -318,6 +402,8 @@ function handleCommand(cmd: string) {
 
 /* ── 主体 ── */
 .body-grid {
+  position: relative;
+  z-index: 1;
   display: grid;
   grid-template-columns: auto 1fr;
   min-height: calc(100vh - var(--topbar-h));
@@ -326,5 +412,6 @@ function handleCommand(cmd: string) {
 .main-content {
   padding: var(--space-6);
   min-width: 0;
+  position: relative;
 }
 </style>

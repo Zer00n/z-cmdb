@@ -1,9 +1,9 @@
 ﻿<script setup lang="ts">
 /**
  * 用户管理页
- * 复用列表模板结构
+ * 2026 UI Redesign：升级用户头像与角色徽标，逻辑保持不变
  */
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { fetchUsers, createUser, updateUser, disableUser } from '@/api/user'
 import type { UserInfo } from '@/types/auth'
@@ -94,40 +94,89 @@ function roleLabel(role: string): string {
   return map[role] || role
 }
 
+function roleBadgeClass(role: string): string {
+  const map: Record<string, string> = {
+    super_admin: 'is-danger',
+    admin: 'is-info',
+    auditor: 'is-neutral',
+  }
+  return map[role] || 'is-neutral'
+}
+
+function getInitials(user: UserInfo): string {
+  const name = user.full_name || user.username
+  return (name || '?').slice(0, 2).toUpperCase()
+}
+
+const activeCount = computed(() => tableData.value.filter((u) => u.status === 'active').length)
+const auditorCount = computed(() => tableData.value.filter((u) => u.role === 'auditor').length)
+
 onMounted(loadData)
 </script>
 
 <template>
-  <div class="user-list-page">
-    <div class="page-head">
-      <h1>用户管理</h1>
-      <el-button type="primary" @click="showCreateDialog = true">
-        <el-icon><Plus /></el-icon>
-        新增用户
-      </el-button>
+  <div class="ui-page">
+    <div class="ui-page-head">
+      <div>
+        <h1 class="ui-page-title">
+          用户管理
+          <span class="ui-page-count">共 <b>{{ tableData.length }}</b> 项</span>
+        </h1>
+        <p class="ui-page-subtitle">
+          活跃 {{ activeCount }} 人 · 审计员 {{ auditorCount }} 人
+          <span v-if="auditorCount === 0" style="color: var(--color-warning); margin-left: 8px">
+            ⚠ 必须创建至少一个审计员才能解锁完整功能
+          </span>
+        </p>
+      </div>
+      <div class="ui-page-actions">
+        <el-button type="primary" @click="showCreateDialog = true">
+          <el-icon><Plus /></el-icon>
+          新增用户
+        </el-button>
+      </div>
     </div>
 
-    <div class="table-card">
+    <div class="ui-table-card">
       <el-table v-loading="loading" :data="tableData" stripe style="width: 100%">
-        <el-table-column prop="id" label="ID" width="60" />
-        <el-table-column prop="username" label="用户名" width="140" />
-        <el-table-column prop="full_name" label="姓名" width="120" />
-        <el-table-column prop="email" label="邮箱" width="200" />
-        <el-table-column prop="role" label="角色" width="120">
+        <el-table-column prop="id" label="ID" width="80">
           <template #default="{ row }">
-            <el-tag size="small" :type="row.role === 'super_admin' ? 'danger' : row.role === 'auditor' ? 'info' : ''">
+            <span class="ui-mono ui-mono-muted">#{{ row.id }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="用户" min-width="220">
+          <template #default="{ row }">
+            <div class="user-cell">
+              <div class="user-avatar" :class="row.role">{{ getInitials(row) }}</div>
+              <div class="user-meta">
+                <span class="user-name">{{ row.full_name || row.username }}</span>
+                <span class="user-username">@{{ row.username }}</span>
+              </div>
+            </div>
+          </template>
+        </el-table-column>
+        <el-table-column prop="email" label="邮箱" min-width="200">
+          <template #default="{ row }">
+            <span class="ui-mono ui-mono-muted">{{ row.email || '-' }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column prop="role" label="角色" width="140">
+          <template #default="{ row }">
+            <span class="ui-badge" :class="roleBadgeClass(row.role)">
+              <span class="ui-badge-dot" />
               {{ roleLabel(row.role) }}
-            </el-tag>
+            </span>
           </template>
         </el-table-column>
-        <el-table-column prop="status" label="状态" width="80">
+        <el-table-column prop="status" label="状态" width="100">
           <template #default="{ row }">
-            <el-tag :type="row.status === 'active' ? 'success' : 'info'" size="small">
+            <span class="ui-badge" :class="row.status === 'active' ? 'is-success' : 'is-neutral'">
+              <span class="ui-badge-dot" />
               {{ row.status === 'active' ? '正常' : '已禁用' }}
-            </el-tag>
+            </span>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="140">
+        <el-table-column label="操作" width="160">
           <template #default="{ row }">
             <el-button link type="primary" size="small" @click="openEdit(row)">
               编辑
@@ -153,7 +202,7 @@ onMounted(loadData)
           <el-input v-model="newUser.username" placeholder="登录用户名" />
         </el-form-item>
         <el-form-item label="密码" required>
-          <el-input v-model="newUser.password" type="password" show-password placeholder="至少12位，含大小写数字符号" />
+          <el-input v-model="newUser.password" type="password" show-password placeholder="至少 12 位，含大小写数字符号" />
         </el-form-item>
         <el-form-item label="角色" required>
           <el-select v-model="newUser.role" style="width: 100%">
@@ -207,8 +256,47 @@ onMounted(loadData)
 </template>
 
 <style scoped>
-.user-list-page { display: flex; flex-direction: column; gap: var(--space-4); }
-.page-head { display: flex; align-items: flex-end; justify-content: space-between; }
-.page-head h1 { margin: 0; font-size: var(--fs-h2); color: var(--neutral-900); font-weight: 600; }
-.table-card { background: var(--neutral-0); border: 1px solid var(--neutral-200); border-radius: var(--radius-lg); overflow: hidden; }
+.user-cell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.user-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #FFFFFF;
+  font-weight: 600;
+  font-size: 11.5px;
+  letter-spacing: 0.02em;
+  flex-shrink: 0;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+.user-avatar.super_admin {
+  background: linear-gradient(135deg, #BE123C, #DC2626);
+}
+.user-avatar.admin {
+  background: linear-gradient(135deg, #1E40AF, #3B82F6);
+}
+.user-avatar.auditor {
+  background: linear-gradient(135deg, #475569, #64748B);
+}
+.user-meta {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.3;
+}
+.user-name {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--neutral-900);
+}
+.user-username {
+  font-size: 11.5px;
+  color: var(--neutral-500);
+  font-family: var(--font-mono);
+}
 </style>

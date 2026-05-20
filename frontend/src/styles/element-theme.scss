@@ -1,8 +1,14 @@
 /**
  * Element Plus 主题覆盖
- * 与 tokens.css 对齐，仅覆盖必要变量
+ * 与 tokens.css 对齐
+ *
+ * 2026-05-20 UI Redesign：
+ *   - 仅在 v1 基础上微调（不改变主色，仅强化细节）
+ *   - 新增按钮 hover 抬升、输入框 focus glow、表格头部柔色等细节
  */
+
 :root {
+  /* ────── 主色系（与 v1 一致） ────── */
   --el-color-primary:         var(--color-primary-500);
   --el-color-primary-light-3: var(--color-primary-200);
   --el-color-primary-light-5: var(--color-primary-100);
@@ -15,6 +21,7 @@
   --el-color-danger:          var(--color-danger);
   --el-color-info:            var(--color-info);
 
+  /* ────── 圆角与字体 ────── */
   --el-border-radius-base:    var(--radius-md);
   --el-border-radius-small:   var(--radius-sm);
   --el-border-radius-large:   var(--radius-lg);
@@ -22,24 +29,217 @@
   --el-font-size-base:        var(--fs-body);
   --el-font-family:           var(--font-sans);
 
+  /* ────── 边框 ────── */
   --el-border-color:          var(--neutral-300);
   --el-border-color-light:    var(--neutral-200);
   --el-border-color-lighter:  var(--neutral-200);
 
+  /* ────── 文字 ────── */
   --el-text-color-primary:    var(--neutral-900);
   --el-text-color-regular:    var(--neutral-700);
   --el-text-color-secondary:  var(--neutral-500);
   --el-text-color-placeholder:var(--neutral-400);
   --el-text-color-disabled:   var(--neutral-400);
 
+  /* ────── 背景 ────── */
   --el-bg-color:              var(--neutral-0);
-  --el-bg-color-page:         var(--neutral-50);
+  --el-bg-color-page:         var(--surface-canvas);
   --el-bg-color-overlay:      var(--neutral-0);
 
   --el-fill-color-blank:      var(--neutral-0);
-  --el-fill-color-light:      var(--neutral-50);
+  --el-fill-color-light:      var(--surface-sunken);
   --el-fill-color:            var(--neutral-100);
 
+  /* ────── 阴影 ────── */
   --el-box-shadow-light:      var(--shadow-medium);
   --el-box-shadow:            var(--shadow-floating);
+}
+
+/* ============================================================
+ *  组件级精修（2026 新增）
+ * ============================================================ */
+
+/* ── 按钮：hover 微抬，主按钮加渐变细描边 ── */
+.el-button {
+  transition:
+    background-color var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur-fast) var(--ease-out),
+    transform var(--dur-fast) var(--ease-out);
+  font-weight: 500;
+}
+.el-button:hover:not(.is-disabled):not(.is-loading) {
+  transform: translateY(-1px);
+}
+.el-button:active:not(.is-disabled):not(.is-loading) {
+  transform: translateY(0);
+}
+.el-button--primary {
+  background: var(--accent-gradient);
+  border-color: transparent;
+}
+.el-button--primary:hover:not(.is-disabled):not(.is-loading) {
+  background: var(--accent-gradient);
+  filter: brightness(1.05);
+  box-shadow: var(--shadow-blue);
+}
+.el-button--primary:active:not(.is-disabled):not(.is-loading) {
+  filter: brightness(0.95);
+}
+.el-button.is-link {
+  transform: none !important;
+}
+.el-button.is-link:hover:not(.is-disabled) {
+  text-decoration: none;
+}
+
+/* ── 输入框：focus 时柔光 ── */
+.el-input__wrapper {
+  transition: box-shadow var(--dur-base) var(--ease-out);
+}
+.el-input__wrapper.is-focus {
+  box-shadow: var(--ring-primary), 0 0 0 1px var(--color-primary-500) inset !important;
+}
+.el-textarea__inner:focus {
+  box-shadow: var(--ring-primary), 0 0 0 1px var(--color-primary-500) inset !important;
+}
+
+/* ── select 高度对齐 ── */
+.el-select .el-select__wrapper {
+  transition: box-shadow var(--dur-base) var(--ease-out);
+}
+
+/* ── 卡片 ── */
+.el-card {
+  border: var(--border-base);
+  border-radius: var(--radius-lg);
+  transition: box-shadow var(--dur-base) var(--ease-out);
+}
+
+/* ── 表格 ── */
+.el-table {
+  --el-table-border-color: var(--neutral-200);
+  --el-table-header-bg-color: #F4F7FB;
+  --el-table-row-hover-bg-color: rgba(37, 99, 235, 0.04);
+  font-size: 13px;
+}
+.el-table th.el-table__cell {
+  background: #F4F7FB !important;
+  color: var(--neutral-700);
+  font-weight: 600;
+  font-size: 12.5px;
+  letter-spacing: 0.02em;
+}
+.el-table td.el-table__cell {
+  border-bottom-color: var(--neutral-100);
+}
+.el-table--striped .el-table__body tr.el-table__row--striped td.el-table__cell {
+  background: var(--surface-sunken);
+}
+
+/* ── Tag ── */
+.el-tag {
+  border-radius: var(--radius-sm);
+  font-weight: 500;
+}
+.el-tag.el-tag--small {
+  height: 22px;
+  padding: 0 8px;
+}
+
+/* ── Dialog ── */
+.el-dialog {
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-floating);
+  border: var(--border-base);
+}
+.el-dialog__header {
+  padding: var(--space-4) var(--space-6);
+  border-bottom: var(--border-base);
+  margin: 0;
+}
+.el-dialog__title {
+  font-size: var(--fs-h4);
+  font-weight: 600;
+  color: var(--neutral-900);
+}
+.el-dialog__body {
+  padding: var(--space-6);
+}
+.el-dialog__footer {
+  padding: var(--space-4) var(--space-6);
+  border-top: var(--border-base);
+}
+
+/* ── Dropdown ── */
+.el-dropdown-menu {
+  padding: 6px;
+  border: var(--border-base);
+  border-radius: var(--radius-md);
+}
+.el-dropdown-menu__item {
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  padding: 6px 12px;
+  gap: 8px;
+}
+.el-dropdown-menu__item:not(.is-disabled):hover {
+  background: var(--color-primary-50);
+  color: var(--color-primary-700);
+}
+
+/* ── Pagination ── */
+.el-pagination {
+  --el-pagination-button-bg-color: transparent;
+  --el-pagination-hover-color: var(--color-primary-500);
+}
+.el-pagination .btn-prev,
+.el-pagination .btn-next,
+.el-pagination .el-pager li {
+  border-radius: var(--radius-sm);
+  font-weight: 500;
+}
+
+/* ── Progress 圆弧化 ── */
+.el-progress-bar__outer {
+  background: var(--surface-sunken);
+}
+
+/* ── Tabs ── */
+.el-tabs__item {
+  font-size: 14px;
+  color: var(--neutral-500);
+}
+.el-tabs__item.is-active {
+  color: var(--color-primary-700);
+  font-weight: 600;
+}
+.el-tabs__active-bar {
+  background: var(--accent-gradient);
+  height: 3px;
+  border-radius: 3px 3px 0 0;
+}
+
+/* ── Form item label 增加可读性 ── */
+.el-form-item__label {
+  color: var(--neutral-700);
+  font-weight: 500;
+}
+
+/* ── Notification / Message ── */
+.el-message {
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-floating);
+  border: var(--border-base);
+}
+.el-notification {
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-floating);
+  border: var(--border-base);
+}
+
+/* ── Switch ── */
+.el-switch.is-checked .el-switch__core {
+  background: var(--accent-gradient);
+  border-color: transparent;
 }

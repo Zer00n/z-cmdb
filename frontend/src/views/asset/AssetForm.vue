@@ -126,14 +126,12 @@ onMounted(loadAsset)
   <div v-loading="loading" class="asset-form-page">
     <div class="container">
       <!-- 页头 -->
-      <div class="page-head">
+      <div class="ui-page-head" style="margin-bottom: var(--space-6)">
         <div>
-          <h1>{{ pageTitle }}</h1>
-          <div class="sub">
-            <span>所有带 <span style="color: var(--color-danger)">*</span> 字段为必填</span>
-          </div>
+          <h1 class="ui-page-title">{{ pageTitle }}</h1>
+          <p class="ui-page-subtitle">所有带 <span style="color: var(--color-danger)">*</span> 字段为必填</p>
         </div>
-        <div class="actions">
+        <div class="ui-page-actions">
           <el-button @click="handleCancel">取消</el-button>
           <el-button type="primary" :loading="submitting" @click="handleSubmit">
             <el-icon><Check /></el-icon>
@@ -316,54 +314,40 @@ onMounted(loadAsset)
   max-width: 960px;
 }
 
-/* 页头 */
-.page-head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--space-4);
-  margin-bottom: var(--space-6);
-}
-.page-head h1 {
-  margin: 0;
-  font-size: var(--fs-h2);
-  line-height: var(--lh-h2);
-  color: var(--neutral-900);
-  font-weight: 600;
-}
-.sub {
-  margin-top: 6px;
-  font-size: var(--fs-caption);
-  color: var(--neutral-500);
-}
-.actions { display: flex; align-items: center; gap: var(--space-2); }
-
 /* 段卡片 */
 .sec-card {
-  background: var(--neutral-0);
-  border: 1px solid var(--neutral-200);
+  background: var(--surface-base);
+  border: var(--border-base);
   border-radius: var(--radius-lg);
   margin-bottom: var(--space-4);
+  box-shadow: var(--shadow-subtle);
+  transition: box-shadow var(--dur-base) var(--ease-out);
+}
+.sec-card:hover {
+  box-shadow: var(--shadow-medium);
 }
 .sec-head {
   display: flex;
   align-items: center;
   gap: var(--space-3);
   padding: var(--space-4) var(--space-6);
-  border-bottom: 1px solid var(--neutral-200);
+  border-bottom: var(--border-base);
+  background: linear-gradient(180deg, rgba(37, 99, 235, 0.02) 0%, transparent 100%);
 }
 .sec-num {
-  width: 22px;
-  height: 22px;
-  border-radius: var(--radius-sm);
-  background: var(--color-primary-50);
-  color: var(--color-primary-700);
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-md);
+  background: var(--accent-gradient);
+  color: #FFFFFF;
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 12px;
+  font-weight: 600;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  box-shadow: 0 2px 6px -1px rgba(37, 99, 235, 0.4);
 }
 .sec-title {
   font-size: var(--fs-h4);

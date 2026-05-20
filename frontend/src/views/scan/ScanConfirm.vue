@@ -132,18 +132,19 @@ onMounted(loadDiff)
   <div v-loading="loading" class="scan-confirm-page">
     <template v-if="diffData">
       <!-- 页头 -->
-      <div class="page-head">
+      <div class="ui-page-head">
         <div>
           <div class="title-row">
-            <h1>扫描批次确认</h1>
+            <h1 class="ui-page-title">扫描批次确认</h1>
             <span class="file-tag">{{ diffData.batch_name }}</span>
-            <span class="status-tag">
-              <span class="dot" />
+            <span class="ui-badge is-warning">
+              <span class="ui-badge-dot" />
               待确认
             </span>
           </div>
+          <p class="ui-page-subtitle">请逐 Tab review 后确认导入</p>
         </div>
-        <div class="actions">
+        <div class="ui-page-actions">
           <el-button @click="router.push('/scans')">
             <el-icon><ArrowLeft /></el-icon>
             返回列表
@@ -152,35 +153,39 @@ onMounted(loadDiff)
       </div>
 
       <!-- KPI 卡片 -->
-      <div class="kpi-row">
-        <div class="kpi total">
-          <div class="kpi-body">
-            <div class="kpi-label">本次扫描主机</div>
-            <div class="kpi-num">{{ diffData.total_hosts }}</div>
+      <div class="ui-kpi-grid">
+        <div class="ui-kpi">
+          <div class="ui-kpi-head">
+            <span class="ui-kpi-label">本次扫描主机</span>
+            <span class="ui-kpi-icon"><el-icon size="16"><Connection /></el-icon></span>
           </div>
+          <div class="ui-kpi-num">{{ diffData.total_hosts }}</div>
         </div>
-        <div class="kpi new">
-          <div class="kpi-body">
-            <div class="kpi-label">新发现</div>
-            <div class="kpi-num">{{ diffData.new_count }}</div>
+        <div class="ui-kpi is-accent">
+          <div class="ui-kpi-head">
+            <span class="ui-kpi-label">新发现</span>
+            <span class="ui-kpi-icon"><el-icon size="16"><Plus /></el-icon></span>
           </div>
+          <div class="ui-kpi-num">{{ diffData.new_count }}</div>
         </div>
-        <div class="kpi chg">
-          <div class="kpi-body">
-            <div class="kpi-label">变更</div>
-            <div class="kpi-num">{{ diffData.changed_count }}</div>
+        <div class="ui-kpi is-warning">
+          <div class="ui-kpi-head">
+            <span class="ui-kpi-label">变更</span>
+            <span class="ui-kpi-icon"><el-icon size="16"><Refresh /></el-icon></span>
           </div>
+          <div class="ui-kpi-num">{{ diffData.changed_count }}</div>
         </div>
-        <div class="kpi miss">
-          <div class="kpi-body">
-            <div class="kpi-label">消失</div>
-            <div class="kpi-num">{{ diffData.missing_count }}</div>
+        <div class="ui-kpi">
+          <div class="ui-kpi-head">
+            <span class="ui-kpi-label">消失</span>
+            <span class="ui-kpi-icon"><el-icon size="16"><Minus /></el-icon></span>
           </div>
+          <div class="ui-kpi-num" style="color: var(--neutral-500)">{{ diffData.missing_count }}</div>
         </div>
       </div>
 
       <!-- Tab 区域 -->
-      <div class="tabs-card">
+      <div class="ui-card" style="padding: var(--space-4) var(--space-6)">
         <el-tabs v-model="activeTab">
           <!-- 新发现 Tab -->
           <el-tab-pane :label="`新发现 (${diffData.new_count})`" name="new">
@@ -373,92 +378,26 @@ onMounted(loadDiff)
   gap: var(--space-4);
 }
 
-/* 页头 */
-.page-head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-}
+/* 页头辅助 */
 .title-row {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: var(--space-3);
   flex-wrap: wrap;
-}
-.page-head h1 {
-  margin: 0;
-  font-size: var(--fs-h2);
-  color: var(--neutral-900);
-  font-weight: 600;
 }
 .file-tag {
   font-family: var(--font-mono);
   font-size: 13px;
-  background: var(--neutral-100);
+  background: var(--surface-sunken);
   color: var(--neutral-700);
   border: 1px solid var(--neutral-200);
-  padding: 2px 8px;
-  border-radius: var(--radius-sm);
-}
-.status-tag {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  background: #FEF3C7;
-  color: #92400E;
-  font-size: 12px;
-  padding: 1px 8px;
-  border-radius: var(--radius-sm);
-  font-weight: 500;
-}
-.status-tag .dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: #F59E0B;
-}
-.actions { display: flex; gap: var(--space-2); }
-
-/* KPI */
-.kpi-row {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: var(--space-4);
-}
-.kpi {
-  background: var(--neutral-0);
-  border: 1px solid var(--neutral-200);
-  border-radius: var(--radius-lg);
-  padding: var(--space-4);
-}
-.kpi-label {
-  font-size: 11px;
-  color: var(--neutral-500);
-  font-family: var(--font-mono);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  margin-bottom: 4px;
-}
-.kpi-num {
-  font-size: 28px;
-  font-weight: 600;
-  font-family: var(--font-mono);
-  color: var(--neutral-900);
-}
-.kpi.new .kpi-num { color: var(--color-primary-700); }
-.kpi.chg .kpi-num { color: #B45309; }
-
-/* Tabs */
-.tabs-card {
-  background: var(--neutral-0);
-  border: 1px solid var(--neutral-200);
-  border-radius: var(--radius-lg);
-  padding: var(--space-4) var(--space-6);
+  padding: 2px 10px;
+  border-radius: 999px;
 }
 
 .empty-hint {
   text-align: center;
-  padding: var(--space-8);
+  padding: var(--space-12) var(--space-6);
   color: var(--neutral-400);
   font-size: var(--fs-body);
 }
@@ -470,7 +409,7 @@ onMounted(loadDiff)
   gap: var(--space-3);
   margin-bottom: var(--space-4);
   padding-bottom: var(--space-3);
-  border-bottom: 1px solid var(--neutral-200);
+  border-bottom: var(--border-base);
 }
 .tab-toolbar .hint {
   font-size: var(--fs-caption);
@@ -483,9 +422,15 @@ onMounted(loadDiff)
   gap: var(--space-3);
 }
 .new-host-card {
-  border: 1px solid var(--neutral-200);
+  border: var(--border-base);
   border-radius: var(--radius-md);
   overflow: hidden;
+  transition: border-color var(--dur-fast) var(--ease-out),
+              box-shadow var(--dur-fast) var(--ease-out);
+}
+.new-host-card:hover {
+  border-color: var(--neutral-300);
+  box-shadow: var(--shadow-subtle);
 }
 .new-host-card.disabled {
   opacity: 0.5;
@@ -495,10 +440,15 @@ onMounted(loadDiff)
   align-items: center;
   gap: var(--space-3);
   padding: var(--space-3) var(--space-4);
-  background: var(--neutral-50);
-  border-bottom: 1px solid var(--neutral-200);
+  background: var(--surface-sunken);
+  border-bottom: var(--border-base);
 }
-.nh-ip { font-weight: 600; color: var(--neutral-900); }
+.nh-ip {
+  font-weight: 600;
+  color: var(--neutral-900);
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
 .nh-hostname { color: var(--neutral-700); }
 .nh-os { font-size: var(--fs-caption); color: var(--neutral-500); }
 
@@ -517,7 +467,7 @@ onMounted(loadDiff)
 }
 .form-item label {
   font-size: 12px;
-  color: var(--neutral-600);
+  color: var(--neutral-700);
   font-weight: 500;
 }
 
@@ -528,7 +478,7 @@ onMounted(loadDiff)
   gap: var(--space-3);
 }
 .chg-card {
-  border: 1px solid var(--neutral-200);
+  border: var(--border-base);
   border-radius: var(--radius-md);
   overflow: hidden;
 }
@@ -537,26 +487,37 @@ onMounted(loadDiff)
   align-items: center;
   gap: var(--space-3);
   padding: var(--space-3) var(--space-4);
-  background: var(--neutral-50);
+  background: var(--surface-sunken);
 }
-.chg-id { color: var(--color-primary-500); font-size: 13px; }
-.chg-ip { color: var(--neutral-900); font-weight: 500; }
+.chg-id {
+  color: var(--color-primary-600);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 500;
+}
+.chg-ip {
+  color: var(--neutral-900);
+  font-weight: 500;
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
 .chg-hostname { color: var(--neutral-500); font-size: var(--fs-caption); }
 .chg-pills { display: flex; gap: 6px; flex-wrap: wrap; margin-left: auto; }
 .chg-pill {
   font-size: 11px;
-  padding: 1px 6px;
-  border-radius: 3px;
+  padding: 2px 8px;
+  border-radius: 999px;
   font-family: var(--font-mono);
+  font-weight: 500;
 }
-.chg-pill.added { background: #DCFCE7; color: #15803D; }
-.chg-pill.removed { background: #FEE2E2; color: #B91C1C; }
-.chg-pill.modified { background: #FEF3C7; color: #92400E; }
+.chg-pill.added { background: var(--color-success-soft); color: #15803D; }
+.chg-pill.removed { background: var(--color-danger-soft); color: #B91C1C; }
+.chg-pill.modified { background: var(--color-warning-soft); color: #92400E; }
 
 .chg-body {
   padding: var(--space-4);
-  border-top: 1px solid var(--neutral-200);
-  background: #FBFCFE;
+  border-top: var(--border-base);
+  background: linear-gradient(180deg, rgba(37, 99, 235, 0.02), transparent);
 }
 .compare-head {
   display: grid;
@@ -567,7 +528,7 @@ onMounted(loadDiff)
   color: var(--neutral-500);
   font-family: var(--font-mono);
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.08em;
 }
 .compare-row {
   display: grid;
@@ -578,24 +539,31 @@ onMounted(loadDiff)
   font-size: var(--fs-body);
 }
 .compare-row:last-child { border-bottom: none; }
-.col-label { color: var(--neutral-700); font-weight: 500; }
+.col-label {
+  color: var(--neutral-700);
+  font-weight: 500;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+}
 .col-scan .val { color: var(--neutral-900); }
 .col-current .val { color: var(--neutral-500); }
 .diff-add {
   font-size: 11px;
-  background: #DCFCE7;
+  background: var(--color-success-soft);
   color: #15803D;
-  padding: 0 4px;
+  padding: 1px 6px;
   border-radius: 3px;
   margin-left: 6px;
+  font-weight: 500;
 }
 .diff-del {
   font-size: 11px;
-  background: #FEE2E2;
+  background: var(--color-danger-soft);
   color: #B91C1C;
-  padding: 0 4px;
+  padding: 1px 6px;
   border-radius: 3px;
   margin-left: 6px;
+  font-weight: 500;
 }
 
 /* 消失 Tab */
@@ -603,29 +571,31 @@ onMounted(loadDiff)
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  padding: var(--space-3) var(--space-4);
-  background: var(--neutral-100);
-  border: 1px solid var(--neutral-200);
+  padding: 10px var(--space-4);
+  background: linear-gradient(90deg, rgba(217, 119, 6, 0.06) 0%, rgba(245, 158, 11, 0.04) 100%);
+  border: 1px solid rgba(217, 119, 6, 0.16);
   border-radius: var(--radius-md);
   font-size: var(--fs-caption);
   color: var(--neutral-700);
   margin-bottom: var(--space-4);
 }
-.text-warning { color: #B45309; font-weight: 500; }
+.text-warning { color: var(--color-warning); font-weight: 500; }
 .text-muted { color: var(--neutral-400); font-size: var(--fs-caption); }
 
-/* 底部操作栏 */
+/* 底部操作栏（粘性） */
 .action-bar {
   position: sticky;
   bottom: 0;
-  background: var(--neutral-0);
-  border: 1px solid var(--neutral-200);
+  background: var(--surface-overlay);
+  -webkit-backdrop-filter: saturate(140%) blur(14px);
+  backdrop-filter: saturate(140%) blur(14px);
+  border: var(--border-base);
   border-radius: var(--radius-lg);
   padding: var(--space-3) var(--space-6);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  box-shadow: 0 -4px 12px -4px rgba(15, 23, 42, 0.04);
+  box-shadow: 0 -8px 24px -8px rgba(15, 23, 42, 0.08);
 }
 .action-left {
   display: flex;
@@ -634,17 +604,22 @@ onMounted(loadDiff)
 .summary-item {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 3px 8px;
-  border-radius: var(--radius-sm);
-  background: var(--neutral-50);
+  gap: 6px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: var(--surface-base);
   border: 1px solid var(--neutral-200);
   font-size: 12px;
   color: var(--neutral-700);
 }
-.summary-item b { font-family: var(--font-mono); font-weight: 600; }
+.summary-item b {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 13px;
+}
 .summary-item.new b { color: var(--color-primary-700); }
-.summary-item.chg b { color: #B45309; }
+.summary-item.chg b { color: var(--color-warning); }
+.summary-item.miss b { color: var(--neutral-500); }
 .action-right { display: flex; gap: var(--space-3); }
 
 .mono { font-family: var(--font-mono); font-size: 13px; }

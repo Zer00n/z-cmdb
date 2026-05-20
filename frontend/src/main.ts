@@ -11,10 +11,11 @@ import zhCn from 'element-plus/es/locale/lang/zh-cn'
 import App from './App.vue'
 import router from './router'
 
-// 样式引入顺序：token → element-theme → element-plus
+// 样式引入顺序：token → element-plus → element-theme（覆盖）→ app（全局工具类）
 import '@/styles/tokens.css'
-import '@/styles/element-theme.scss'
 import 'element-plus/dist/index.css'
+import '@/styles/element-theme.scss'
+import '@/styles/app.css'
 
 const app = createApp(App)
 
