@@ -8,6 +8,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { fetchAsset, decommissionAsset, updateAsset } from '@/api/asset'
 import type { Asset } from '@/types/asset'
+import AppServiceTable from '@/components/asset/AppServiceTable.vue'
 import dayjs from 'dayjs'
 
 const route = useRoute()
@@ -16,6 +17,7 @@ const router = useRouter()
 const loading = ref(true)
 const asset = ref<Asset | null>(null)
 const activeTab = ref('basic')
+const appCount = ref(0)
 
 const assetId = computed(() => Number(route.params.id))
 
@@ -226,6 +228,13 @@ onMounted(loadAsset)
                 </template>
               </el-table-column>
             </el-table>
+          </el-tab-pane>
+
+          <el-tab-pane :label="`应用 (${appCount})`" name="apps">
+            <AppServiceTable
+              :asset-id="assetId"
+              @count-change="(n: number) => appCount = n"
+            />
           </el-tab-pane>
         </el-tabs>
       </div>

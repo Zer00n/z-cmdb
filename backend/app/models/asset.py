@@ -72,6 +72,11 @@ class Asset(Base):
         "AssetPort", back_populates="asset", cascade="all, delete-orphan"
     )
 
+    # 关联应用（v2.5）
+    apps: Mapped[list["AssetApp"]] = relationship(
+        "AssetApp", back_populates="asset", cascade="all, delete-orphan"
+    )
+
     __table_args__ = (
         CheckConstraint(
             "asset_type IN ('physical', 'virtual', 'network_device', 'other')",

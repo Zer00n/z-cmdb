@@ -192,9 +192,9 @@ onMounted(loadData)
     <div class="ui-filter-bar">
       <el-input
         v-model="query.search"
-        placeholder="搜索 IP / 主机名 / 资产编号 / 备注"
+        placeholder="搜索 IP / 主机名 / 资产编号 / 业务系统 / 应用（如 nginx, mysql）"
         clearable
-        style="width: 320px"
+        style="width: 380px"
         @keyup.enter="handleSearch"
         @clear="handleSearch"
       >
@@ -279,7 +279,19 @@ onMounted(loadData)
           </template>
         </el-table-column>
 
-        <el-table-column prop="business_system" label="业务系统" width="140" show-overflow-tooltip />
+        <el-table-column prop="business_system" label="业务系统" width="140" show-overflow-tooltip>
+          <template #default="{ row }">
+            <span v-if="row.business_system" class="ui-mono" style="color: var(--neutral-700)">{{ row.business_system }}</span>
+            <span v-else class="ui-mono-muted" style="font-size: 12px">-</span>
+          </template>
+        </el-table-column>
+
+        <el-table-column prop="os_info" label="操作系统" width="160" show-overflow-tooltip>
+          <template #default="{ row }">
+            <span v-if="row.os_info" style="color: var(--neutral-700)">{{ row.os_info }}</span>
+            <span v-else class="ui-mono-muted" style="font-size: 12px">未识别</span>
+          </template>
+        </el-table-column>
 
         <el-table-column prop="importance" label="重要性" width="100">
           <template #default="{ row }">

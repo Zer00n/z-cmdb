@@ -26,6 +26,14 @@ class AssetNotFoundError(CMDBException):
         super().__init__(message)
 
 
+class NotFoundError(CMDBException):
+    status_code = 404
+    error_code = "NOT_FOUND"
+
+    def __init__(self, message: str = "资源不存在") -> None:
+        super().__init__(message)
+
+
 class UserNotFoundError(CMDBException):
     status_code = 404
     error_code = "USER_NOT_FOUND"
