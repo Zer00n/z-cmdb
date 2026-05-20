@@ -1,0 +1,1275 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<title>CMDB Lite · 资产详情 · CMDB-001247</title>
+<meta name="viewport" content="width=1280" />
+<link rel="stylesheet" href="tokens.css" />
+<link rel="stylesheet" href="shell.css" />
+<style>
+html, body { height: 100%; }
+body { min-width: 1280px; overflow: hidden; }
+
+/* Main is scrollable for detail content */
+.main { padding: 0; display: flex; flex-direction: column; min-width: 0; overflow: hidden; }
+.main .scroll {
+  flex: 1; overflow-y: auto;
+  padding: var(--space-6) var(--space-6) var(--space-12);
+}
+.main .scroll::-webkit-scrollbar { width: 10px; }
+.main .scroll::-webkit-scrollbar-thumb { background: var(--neutral-200); border-radius: 5px; }
+.main .scroll::-webkit-scrollbar-thumb:hover { background: var(--neutral-300); }
+
+/* =========================================================
+   Page head
+   ========================================================= */
+.page-head {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+.page-head .title-row {
+  display: flex; align-items: baseline; gap: var(--space-3); flex-wrap: wrap;
+}
+.page-head .id-tag {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  background: var(--neutral-100);
+  color: var(--neutral-700);
+  border: 1px solid var(--neutral-200);
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  line-height: 18px;
+}
+.page-head h1 {
+  margin: 0; font-size: var(--fs-h2); line-height: var(--lh-h2);
+  color: var(--neutral-900); font-weight: 600;
+}
+.page-head .fqdn {
+  font-family: var(--font-mono); font-size: 13px; color: var(--neutral-500);
+}
+.page-head .sub {
+  margin-top: 6px;
+  font-size: var(--fs-caption);
+  color: var(--neutral-500);
+  display: flex; gap: var(--space-3); flex-wrap: wrap; align-items: center;
+}
+.page-head .sub span.sep { color: var(--neutral-300); }
+.page-head .sub .mono-key { font-family: var(--font-mono); color: var(--neutral-700); }
+
+.actions { display: flex; align-items: center; gap: var(--space-2); }
+
+/* =========================================================
+   Info cards row
+   ========================================================= */
+.info-cards {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-4);
+  margin-bottom: var(--space-6);
+}
+.info-card {
+  background: var(--neutral-0);
+  border: 1px solid var(--neutral-200);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  display: flex;
+  gap: var(--space-3);
+  align-items: flex-start;
+  min-height: 88px;
+}
+.info-card .ic-icon {
+  width: 36px; height: 36px;
+  border-radius: var(--radius-md);
+  display: inline-flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.info-card.c-status .ic-icon { background: var(--color-success-soft); color: var(--color-success); }
+.info-card.c-zone   .ic-icon { background: var(--color-primary-50); color: var(--color-primary-700); }
+.info-card.c-imp    .ic-icon { background: var(--color-danger-soft); color: var(--color-danger); }
+.info-card.c-owner  .ic-icon { background: var(--neutral-100); color: var(--neutral-700); }
+.info-card .ic-body { flex: 1; min-width: 0; }
+.info-card .ic-label {
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: var(--neutral-400);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+.info-card .ic-value {
+  font-size: 16px;
+  line-height: 22px;
+  font-weight: 600;
+  color: var(--neutral-900);
+  display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap;
+}
+.info-card .ic-meta {
+  margin-top: 6px;
+  font-size: var(--fs-caption);
+  color: var(--neutral-500);
+  font-family: var(--font-mono);
+  line-height: 18px;
+}
+.info-card .ic-meta .label { font-family: var(--font-sans); color: var(--neutral-400); margin-right: 4px; }
+
+/* =========================================================
+   Tabs
+   ========================================================= */
+.tabs-wrap {
+  background: var(--neutral-0);
+  border: 1px solid var(--neutral-200);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+.tabs {
+  display: flex;
+  border-bottom: 1px solid var(--neutral-200);
+  padding: 0 var(--space-4);
+  background: #FBFCFE;
+}
+.tab {
+  padding: 12px 16px;
+  font-size: var(--fs-body);
+  color: var(--neutral-500);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  user-select: none;
+  display: inline-flex; align-items: center; gap: var(--space-2);
+  transition: color .12s ease;
+}
+.tab:hover { color: var(--neutral-900); }
+.tab .count {
+  background: var(--neutral-100);
+  color: var(--neutral-500);
+  font-size: 11px;
+  font-weight: 500;
+  padding: 1px 6px;
+  border-radius: 8px;
+  font-family: var(--font-mono);
+  line-height: 16px;
+}
+.tab.active {
+  color: var(--color-primary-500);
+  border-bottom-color: var(--color-primary-500);
+  font-weight: 500;
+}
+.tab.active .count {
+  background: var(--color-primary-100);
+  color: var(--color-primary-700);
+}
+
+.tab-panel { display: none; padding: var(--space-6); }
+.tab-panel.active { display: block; }
+
+/* =========================================================
+   Tab 1 — Basic info: field groups
+   ========================================================= */
+.field-group { margin-bottom: var(--space-8); }
+.field-group:last-child { margin-bottom: 0; }
+.fg-head {
+  display: flex; align-items: center; gap: var(--space-2);
+  font-size: var(--fs-h4);
+  font-weight: 600;
+  color: var(--neutral-900);
+  margin-bottom: var(--space-4);
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--neutral-200);
+}
+.fg-head .num {
+  width: 22px; height: 22px;
+  border-radius: var(--radius-sm);
+  background: var(--color-primary-50);
+  color: var(--color-primary-700);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  display: inline-flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.field-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-4) var(--space-8);
+}
+.field {
+  display: flex; flex-direction: column; gap: 4px;
+  min-width: 0;
+}
+.field .lbl {
+  font-size: var(--fs-caption);
+  color: var(--neutral-500);
+  line-height: var(--lh-caption);
+}
+.field .val {
+  font-size: var(--fs-body);
+  color: var(--neutral-900);
+  line-height: var(--lh-body);
+  word-break: break-word;
+}
+.field .val.mono { font-family: var(--font-mono); font-size: 13px; }
+.field .val.empty { color: var(--neutral-400); }
+.field .val.flex { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+
+/* Notes block */
+.notes-block {
+  background: var(--neutral-50);
+  border: 1px solid var(--neutral-200);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  color: var(--neutral-700);
+  font-size: var(--fs-body);
+  line-height: 22px;
+}
+.notes-block .meta {
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px dashed var(--neutral-200);
+  font-size: var(--fs-caption);
+  color: var(--neutral-500);
+  font-family: var(--font-mono);
+}
+
+/* =========================================================
+   Tab 2 — Ports table
+   ========================================================= */
+.subhead {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: var(--space-4);
+}
+.subhead .left { display: flex; align-items: center; gap: var(--space-3); }
+.subhead h3 { margin: 0; font-size: var(--fs-h4); color: var(--neutral-900); font-weight: 600; }
+.subhead .meta { color: var(--neutral-500); font-size: var(--fs-caption); font-family: var(--font-mono); }
+.subhead .pill {
+  display: inline-flex; align-items: center; gap: 4px;
+  background: var(--color-alert-soft);
+  color: #C2410C;
+  font-size: 12px; line-height: 18px;
+  padding: 1px 8px; border-radius: var(--radius-sm);
+}
+.subhead .pill .tri {
+  width: 0; height: 0;
+  border-left: 4px solid transparent; border-right: 4px solid transparent;
+  border-bottom: 6px solid var(--color-alert);
+}
+
+table.simple-tbl {
+  width: 100%;
+  border-collapse: separate; border-spacing: 0;
+  font-size: var(--fs-body);
+  border: 1px solid var(--neutral-200);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+.simple-tbl thead th {
+  background: #F4F7FB; color: var(--neutral-700);
+  font-weight: 600; text-align: left;
+  padding: 0 16px; height: 40px;
+  font-size: 13px;
+  border-bottom: 1px solid var(--neutral-200);
+  white-space: nowrap;
+}
+.simple-tbl tbody td {
+  padding: 0 16px; height: 44px;
+  border-bottom: 1px solid var(--neutral-100);
+  vertical-align: middle;
+  color: var(--neutral-700);
+}
+.simple-tbl tbody tr:nth-child(even) td { background: #FBFCFE; }
+.simple-tbl tbody tr:hover td { background: var(--color-primary-50); }
+.simple-tbl tbody tr.danger td { background: #FFF8F4; }
+.simple-tbl tbody tr.danger:hover td { background: #FFEED9; }
+.simple-tbl tbody tr:last-child td { border-bottom: 0; }
+
+.port-cell { display: inline-flex; align-items: center; gap: 8px; }
+.port-cell .num { font-family: var(--font-mono); color: var(--neutral-900); font-weight: 600; font-size: 14px; }
+.port-cell .tri {
+  display: inline-block;
+  width: 0; height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-bottom: 8px solid var(--color-alert);
+  position: relative;
+  cursor: help;
+}
+.port-cell .tri::after {
+  content: "!";
+  position: absolute;
+  left: 50%; top: 1.5px;
+  transform: translateX(-50%);
+  color: #fff;
+  font-size: 7px;
+  font-weight: 700;
+  font-family: var(--font-sans);
+}
+.proto {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  background: var(--neutral-100);
+  color: var(--neutral-700);
+  border: 1px solid var(--neutral-200);
+  padding: 1px 6px;
+  border-radius: 3px;
+  line-height: 16px;
+}
+.proto.udp { background: #EDE9FE; color: #5B21B6; border-color: #D9CDFB; }
+.port-state {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 13px;
+}
+.port-state .d { width: 7px; height: 7px; border-radius: 50%; background: var(--status-online); }
+.port-state.closed .d { background: var(--neutral-400); }
+.port-state.closed { color: var(--neutral-500); }
+.port-state.filtered .d { background: var(--color-warning); }
+
+/* =========================================================
+   Tab 3 — Timeline
+   ========================================================= */
+.timeline {
+  position: relative;
+  padding-left: 0;
+}
+.tl-item {
+  position: relative;
+  display: grid;
+  grid-template-columns: 150px 28px 1fr;
+  gap: var(--space-4);
+  align-items: flex-start;
+  padding-bottom: var(--space-6);
+}
+.tl-item:last-child { padding-bottom: 0; }
+.tl-item::before {
+  content: "";
+  position: absolute;
+  left: calc(150px + var(--space-4) + 13px);
+  top: 22px; bottom: -6px;
+  width: 1px;
+  background: var(--neutral-200);
+}
+.tl-item:last-child::before { display: none; }
+
+.tl-time {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--neutral-500);
+  text-align: right;
+  padding-top: 4px;
+  line-height: 18px;
+}
+.tl-time b {
+  display: block;
+  color: var(--neutral-900);
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.tl-dot {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  background: var(--neutral-0);
+  border: 2px solid var(--neutral-300);
+  display: inline-flex; align-items: center; justify-content: center;
+  color: var(--neutral-500);
+  z-index: 1;
+  position: relative;
+}
+.tl-dot.add    { border-color: var(--color-warning); background: var(--color-warning-soft); color: var(--color-warning); }
+.tl-dot.remove { border-color: var(--neutral-400); background: var(--neutral-100); color: var(--neutral-500); }
+.tl-dot.ver    { border-color: var(--color-info); background: var(--color-info-soft); color: #0E7490; }
+.tl-dot.edit   { border-color: var(--color-primary-300); background: var(--color-primary-50); color: var(--color-primary-700); }
+.tl-dot.create { border-color: var(--color-success); background: var(--color-success-soft); color: var(--color-success); }
+
+.tl-card {
+  background: var(--neutral-0);
+  border: 1px solid var(--neutral-200);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+}
+.tl-card.warn {
+  background: #FFFBEB;
+  border-color: #FDE68A;
+}
+.tl-card-head {
+  display: flex; align-items: center; gap: var(--space-2);
+  margin-bottom: 4px;
+  flex-wrap: wrap;
+}
+.tl-type {
+  font-size: 12px; line-height: 18px;
+  padding: 1px 8px; border-radius: var(--radius-sm);
+  font-weight: 500;
+  white-space: nowrap;
+}
+.tl-type.add    { background: var(--color-warning-soft); color: #92400E; }
+.tl-type.remove { background: var(--neutral-100); color: var(--neutral-500); }
+.tl-type.ver    { background: var(--color-info-soft); color: #0E7490; }
+.tl-type.edit   { background: var(--color-primary-50); color: var(--color-primary-700); }
+.tl-type.create { background: var(--color-success-soft); color: #15803D; }
+.tl-card-head .by {
+  margin-left: auto;
+  font-size: var(--fs-caption);
+  color: var(--neutral-500);
+  display: inline-flex; align-items: center; gap: 4px;
+}
+.tl-card-head .by .av {
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  background: var(--color-primary-100);
+  color: var(--color-primary-700);
+  font-size: 10px; font-weight: 600;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.tl-card-head .by .av.gray { background: var(--neutral-200); color: var(--neutral-700); }
+.tl-card-head .by .av.sys { background: var(--neutral-900); color: #fff; }
+.tl-desc {
+  font-size: var(--fs-body); color: var(--neutral-700);
+  line-height: 22px;
+}
+.tl-desc .mono { font-family: var(--font-mono); font-size: 13px; }
+.tl-desc .arr { color: var(--neutral-400); margin: 0 4px; }
+.tl-desc .diff-old { color: var(--neutral-500); text-decoration: line-through; }
+.tl-desc .diff-new { color: var(--neutral-900); font-weight: 500; }
+.tl-warn-tag {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 11px; line-height: 16px;
+  background: var(--color-alert-soft); color: #C2410C;
+  padding: 1px 6px; border-radius: 3px;
+  font-weight: 500;
+}
+.tl-warn-tag .tri {
+  width: 0; height: 0;
+  border-left: 4px solid transparent; border-right: 4px solid transparent;
+  border-bottom: 6px solid var(--color-alert);
+}
+
+/* =========================================================
+   Tab 4 — Batches list
+   ========================================================= */
+.batch-list {
+  display: flex; flex-direction: column;
+  border: 1px solid var(--neutral-200);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+.batch-row {
+  display: grid;
+  grid-template-columns: 160px 1fr 110px 100px 120px 100px;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--neutral-100);
+  cursor: pointer;
+  transition: background-color .12s ease;
+}
+.batch-row.head {
+  background: #F4F7FB;
+  color: var(--neutral-700);
+  font-size: 13px; font-weight: 600;
+  cursor: default;
+  padding: 0 var(--space-4);
+  height: 40px;
+  border-bottom: 1px solid var(--neutral-200);
+}
+.batch-row:not(.head):hover { background: var(--color-primary-50); }
+.batch-row:last-child { border-bottom: 0; }
+
+.batch-row .when { font-family: var(--font-mono); font-size: 13px; color: var(--neutral-900); }
+.batch-row .when .ago { color: var(--neutral-500); font-size: 11px; display: block; margin-top: 2px; }
+.batch-row .name { color: var(--color-primary-500); font-weight: 500; font-size: 14px; cursor: pointer; }
+.batch-row .name:hover { color: var(--color-primary-700); text-decoration: underline; }
+.batch-row .name .sub { display: block; color: var(--neutral-500); font-size: 11px; font-weight: 400; font-family: var(--font-mono); margin-top: 2px; }
+.batch-row .src { font-size: 13px; color: var(--neutral-700); }
+.batch-row .count { font-family: var(--font-mono); font-size: 13px; color: var(--neutral-900); }
+.batch-row .by { font-size: 13px; color: var(--neutral-700); }
+.batch-row .status-chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 12px; line-height: 18px;
+  padding: 1px 8px; border-radius: var(--radius-sm);
+}
+.status-chip .d { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.status-chip.confirmed { background: var(--color-success-soft); color: #15803D; }
+.status-chip.pending   { background: var(--color-warning-soft); color: #92400E; }
+.status-chip.ignored   { background: var(--neutral-100); color: var(--neutral-500); }
+
+</style>
+</head>
+<body>
+
+<div class="app" id="app" data-screen-label="Asset Detail">
+
+  <!-- =====================================================
+       Topbar
+       ===================================================== -->
+  <header class="topbar">
+    <div class="brand-zone">
+      <span class="logo" aria-hidden="true"></span>
+      <span class="word">CMDB <em>Lite</em></span>
+    </div>
+
+    <div class="tb-left">
+      <button class="icon-btn" id="toggleBtn" title="折叠 / 展开侧边栏" aria-label="折叠侧边栏">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3 4h12M3 9h12M3 14h12"/></svg>
+      </button>
+
+      <nav class="crumb" aria-label="breadcrumb">
+        <a>首页</a>
+        <span class="sep">/</span>
+        <a>资产管理</a>
+        <span class="sep">/</span>
+        <a>资产列表</a>
+        <span class="sep">/</span>
+        <span class="here">CMDB-001247</span>
+      </nav>
+    </div>
+
+    <div class="tb-spacer"></div>
+
+    <div class="tb-right">
+      <div class="search" role="button" tabindex="0">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="7" cy="7" r="4.5"/><path d="M10.5 10.5L13.5 13.5"/></svg>
+        <span>搜索主机 / IP / 配置项…</span>
+        <span class="kbd">⌘ K</span>
+      </div>
+      <button class="icon-btn" aria-label="通知">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7a4 4 0 0 1 8 0v3l1 2H3l1-2V7z"/><path d="M6.5 13.5a1.5 1.5 0 0 0 3 0"/></svg>
+        <span class="badge">5</span>
+      </button>
+      <div style="width:1px; height:24px; background:var(--neutral-200); margin: 0 6px;"></div>
+      <div class="user">
+        <div class="avatar">ZT</div>
+        <div class="info">
+          <span class="name">张涛</span>
+          <span class="role-badge super"><span class="dot"></span>super_admin</span>
+        </div>
+        <span class="chev"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6.5l4 4 4-4"/></svg></span>
+      </div>
+    </div>
+  </header>
+
+  <!-- =====================================================
+       Body
+       ===================================================== -->
+  <div class="body-grid">
+
+    <!-- ---------- Sidebar ---------- -->
+    <aside class="sidebar">
+      <div class="sidebar-scroll">
+        <div class="nav-group">
+          <div class="nav-group-head">资产管理</div>
+          <a class="nav-item active">
+            <span class="ico"><svg width="16" height="16" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><rect x="2.5" y="3" width="13" height="4.5" rx="1"/><rect x="2.5" y="10.5" width="13" height="4.5" rx="1"/><circle cx="5" cy="5.25" r=".5" fill="currentColor"/><circle cx="5" cy="12.75" r=".5" fill="currentColor"/></svg></span>
+            <span class="label">资产列表</span>
+          </a>
+          <a class="nav-item">
+            <span class="ico"><svg width="16" height="16" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M9 3v12M3 9h12"/></svg></span>
+            <span class="label">手动新增</span>
+          </a>
+          <a class="nav-item">
+            <span class="ico"><svg width="16" height="16" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2.5v8.5M5.5 8L9 11.5 12.5 8"/><path d="M3 13.5v1A1.5 1.5 0 0 0 4.5 16h9a1.5 1.5 0 0 0 1.5-1.5v-1"/></svg></span>
+            <span class="label">CSV 导出</span>
+          </a>
+        </div>
+
+        <div class="nav-group">
+          <div class="nav-group-head">扫描导入</div>
+          <a class="nav-item"><span class="ico"><svg width="16" height="16" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11.5v-8M5.5 6L9 2.5 12.5 6"/><path d="M3 13v1.5A1.5 1.5 0 0 0 4.5 16h9a1.5 1.5 0 0 0 1.5-1.5V13"/></svg></span><span class="label">上传报告</span></a>
+          <a class="nav-item"><span class="ico"><svg width="16" height="16" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="9" r="6.5"/><path d="M9 5v4l2.5 1.5"/></svg></span><span class="label">批次历史</span></a>
+          <a class="nav-item has-badge"><span class="ico"><svg width="16" height="16" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5l6 4 6-4"/><rect x="3" y="4" width="12" height="10" rx="1.25"/></svg></span><span class="label">待确认批次</span><span class="badge">3</span></a>
+        </div>
+
+        <div class="nav-group">
+          <div class="nav-group-head">拓扑图</div>
+          <a class="nav-item"><span class="ico"><svg width="16" height="16" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="4" r="2"/><circle cx="4" cy="13" r="2"/><circle cx="14" cy="13" r="2"/><path d="M8.2 5.6L5 11.2M9.8 5.6l3.2 5.6M6 13h6"/></svg></span><span class="label">当前拓扑</span></a>
+          <a class="nav-item"><span class="ico"><svg width="16" height="16" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2.75 9a6.25 6.25 0 1 0 1.5-4.1"/><path d="M2.5 3v3h3"/><path d="M9 5.5V9l2.25 1.25"/></svg></span><span class="label">历史版本</span></a>
+        </div>
+
+        <div class="nav-group">
+          <div class="nav-group-head">安全报表</div>
+          <a class="nav-item"><span class="ico"><svg width="16" height="16" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="6" width="13" height="6" rx="1"/><path d="M5.5 6V4.5M9 6V4.5M12.5 6V4.5M5.5 12v1.5M9 12v1.5M12.5 12v1.5"/></svg></span><span class="label">端口暴露面</span></a>
+          <a class="nav-item"><span class="ico"><svg width="16" height="16" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2L2.5 5v4c0 3.5 2.5 6 6.5 7 4-1 6.5-3.5 6.5-7V5L9 2z"/><path d="M9 6.5v3M9 11.5v.5"/></svg></span><span class="label">危险端口</span></a>
+          <a class="nav-item"><span class="ico"><svg width="16" height="16" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="9" r="6.5" stroke-dasharray="2.5 2"/><path d="M6.5 9a2.5 2.5 0 1 0 5 0 2.5 2.5 0 0 0-5 0z"/></svg></span><span class="label">影子资产</span></a>
+          <a class="nav-item"><span class="ico"><svg width="16" height="16" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 14l4-5 3 3 5-7"/><path d="M11 5h4v4"/></svg></span><span class="label">资产变化</span></a>
+        </div>
+
+        <div class="nav-group">
+          <div class="nav-group-head">系统管理<span class="role-gate super">super</span></div>
+          <a class="nav-item"><span class="ico"><svg width="16" height="16" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="6.5" cy="6" r="2.25"/><path d="M2.5 14c.5-2.3 2.2-3.75 4-3.75s3.5 1.45 4 3.75"/><circle cx="12.5" cy="7.5" r="1.5"/><path d="M10.5 14c.4-1.7 1.4-2.75 2.5-2.75s2.1 1.05 2.5 2.75"/></svg></span><span class="label">用户管理</span></a>
+          <a class="nav-item"><span class="ico"><svg width="16" height="16" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="9" r="2.25"/><path d="M14.3 11.1l1 .8-1.2 2-1.2-.5a4.5 4.5 0 0 1-1.6.9l-.2 1.3h-2.2l-.2-1.3a4.5 4.5 0 0 1-1.6-.9l-1.2.5-1.2-2 1-.8a4.5 4.5 0 0 1 0-1.8l-1-.8 1.2-2 1.2.5a4.5 4.5 0 0 1 1.6-.9l.2-1.3h2.2l.2 1.3a4.5 4.5 0 0 1 1.6.9l1.2-.5 1.2 2-1 .8a4.5 4.5 0 0 1 0 1.8z"/></svg></span><span class="label">系统配置</span></a>
+        </div>
+
+        <div class="nav-group">
+          <div class="nav-group-head">审计<span class="role-gate audit">audit</span></div>
+          <a class="nav-item"><span class="ico"><svg width="16" height="16" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="2.5" width="11" height="13" rx="1.25"/><path d="M6 6h6M6 9h6M6 12h4"/></svg></span><span class="label">操作日志</span></a>
+          <a class="nav-item"><span class="ico"><svg width="16" height="16" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 5.5h11M3.5 9h11M3.5 12.5h7"/><circle cx="14" cy="13" r="1.5"/></svg></span><span class="label">LLM 调用日志</span></a>
+          <a class="nav-item"><span class="ico"><svg width="16" height="16" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 3.5h6l3 3v8a1 1 0 0 1-1 1h-8a1 1 0 0 1-1-1V4.5a1 1 0 0 1 1-1z"/><path d="M10 3.5V7h3.5"/><path d="M6.5 11.5l1.75 1.75L11.5 10"/></svg></span><span class="label">导出审计报告</span></a>
+        </div>
+      </div>
+
+      <div class="sidebar-foot">
+        <button class="collapse-btn" onclick="document.getElementById('toggleBtn').click()">
+          <span class="arr"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 4l-4 4 4 4"/></svg></span>
+          <span class="lbl">折叠侧边栏</span>
+        </button>
+      </div>
+    </aside>
+
+    <!-- =====================================================
+         Main
+         ===================================================== -->
+    <main class="main">
+      <div class="scroll">
+
+        <!-- Page head -->
+        <div class="page-head">
+          <div>
+            <div class="title-row">
+              <span class="id-tag">CMDB-001247</span>
+              <h1>web-prod-04</h1>
+              <span class="fqdn">web-prod-04.bjdc.internal</span>
+            </div>
+            <div class="sub">
+              <span><span class="mono-key">资产类型</span>：虚拟机（KVM）</span>
+              <span class="sep">·</span>
+              <span><span class="mono-key">业务系统</span>：订单服务</span>
+              <span class="sep">·</span>
+              <span>纳管 312 天</span>
+              <span class="sep">·</span>
+              <span>最后扫描 5 分钟前</span>
+            </div>
+          </div>
+
+          <div class="actions">
+            <button class="btn">
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 4l-4 4 4 4"/></svg>
+              返回列表
+            </button>
+            <button class="btn">
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 3l2 2-8 8H3v-2z"/></svg>
+              编辑
+            </button>
+            <button class="btn ghost-danger">
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 8.5h9M8 3.5v10"/><circle cx="8" cy="8" r="6"/></svg>
+              下线
+            </button>
+          </div>
+        </div>
+
+        <!-- Info cards -->
+        <div class="info-cards">
+          <div class="info-card c-status">
+            <div class="ic-icon">
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="9" cy="9" r="6.5"/><path d="M6 9l2 2 4-4"/>
+              </svg>
+            </div>
+            <div class="ic-body">
+              <div class="ic-label">状态</div>
+              <div class="ic-value">
+                <span class="status online" style="font-size: 16px;"><span class="dot"></span>在线</span>
+              </div>
+              <div class="ic-meta">
+                <span class="label">最后扫描</span> 2026-05-18 14:32
+              </div>
+            </div>
+          </div>
+
+          <div class="info-card c-zone">
+            <div class="ic-icon">
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="9" cy="9" r="6.5"/><path d="M2.5 9h13M9 2.5c2 2 3 4 3 6.5s-1 4.5-3 6.5c-2-2-3-4-3-6.5s1-4.5 3-6.5z"/>
+              </svg>
+            </div>
+            <div class="ic-body">
+              <div class="ic-label">网络区域 / IP</div>
+              <div class="ic-value">
+                <span class="tag-zone intranet" style="font-size: 13px; padding: 2px 8px;"><span class="dot"></span>内网</span>
+                <span class="mono" style="font-size: 14px;">192.168.10.24</span>
+              </div>
+              <div class="ic-meta"><span class="label">网段</span> 192.168.10.0/24 · vlan-100</div>
+            </div>
+          </div>
+
+          <div class="info-card c-imp">
+            <div class="ic-icon">
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="currentColor">
+                <path d="M9 1.5l2.2 4.8 5.2.6-3.9 3.6 1 5.1L9 13l-4.5 2.6 1-5.1L1.6 6.9l5.2-.6z"/>
+              </svg>
+            </div>
+            <div class="ic-body">
+              <div class="ic-label">重要性 / 业务系统</div>
+              <div class="ic-value">
+                <span class="imp core" style="font-size: 16px; font-weight: 600;">
+                  <span class="glyph"><svg viewBox="0 0 14 14" fill="currentColor"><path d="M7 1l1.7 3.7 4 .5-3 2.8.8 4-3.5-2-3.5 2 .8-4-3-2.8 4-.5z"/></svg></span>
+                  核心
+                </span>
+                <span style="color: var(--neutral-300);">·</span>
+                <span style="color: var(--neutral-900); font-weight: 500;">订单服务</span>
+              </div>
+              <div class="ic-meta"><span class="label">SLA 等级</span> P0 · 业务影响：直接</div>
+            </div>
+          </div>
+
+          <div class="info-card c-owner">
+            <div class="ic-icon">
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="9" cy="6.5" r="2.5"/><path d="M3.5 15c.7-2.5 2.9-4 5.5-4s4.8 1.5 5.5 4"/>
+              </svg>
+            </div>
+            <div class="ic-body">
+              <div class="ic-label">负责人 / 物理位置</div>
+              <div class="ic-value">
+                <span style="display:inline-flex; align-items:center; gap:6px;">
+                  <span style="width:22px;height:22px;border-radius:50%;background:var(--color-primary-100);color:var(--color-primary-700);font-size:10px;font-weight:600;display:inline-flex;align-items:center;justify-content:center;">ZT</span>
+                  张涛
+                </span>
+              </div>
+              <div class="ic-meta"><span class="label">机房</span> BJDC-A · 机柜 R12-08 · U18</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tabs -->
+        <div class="tabs-wrap">
+          <div class="tabs" id="tabs">
+            <div class="tab active" data-tab="basic">基本信息</div>
+            <div class="tab" data-tab="ports">端口与服务 <span class="count">12</span></div>
+            <div class="tab" data-tab="timeline">变更历史 <span class="count">28</span></div>
+            <div class="tab" data-tab="batches">扫描批次 <span class="count">47</span></div>
+          </div>
+
+          <!-- =================================================
+               Tab 1 — Basic info
+               ================================================= -->
+          <div class="tab-panel active" data-panel="basic">
+
+            <div class="field-group">
+              <div class="fg-head"><span class="num">01</span>基础信息</div>
+              <div class="field-grid">
+                <div class="field"><span class="lbl">资产编号</span><span class="val mono">CMDB-001247</span></div>
+                <div class="field"><span class="lbl">主机名</span><span class="val">web-prod-04</span></div>
+                <div class="field"><span class="lbl">FQDN</span><span class="val mono">web-prod-04.bjdc.internal</span></div>
+                <div class="field"><span class="lbl">资产类型</span><span class="val flex"><span style="display:inline-flex;align-items:center;background:var(--neutral-100);color:var(--neutral-700);border:1px solid var(--neutral-200);font-size:12px;padding:1px 8px;border-radius:var(--radius-sm);">虚拟机</span><span style="color:var(--neutral-500);font-size:12px;">KVM</span></span></div>
+                <div class="field"><span class="lbl">网络区域</span><span class="val flex"><span class="tag-zone intranet"><span class="dot"></span>内网</span></span></div>
+                <div class="field"><span class="lbl">业务系统</span><span class="val">订单服务</span></div>
+                <div class="field"><span class="lbl">IP 地址（主）</span><span class="val mono">192.168.10.24</span></div>
+                <div class="field"><span class="lbl">IP 地址（管理）</span><span class="val mono">10.99.10.24</span></div>
+                <div class="field"><span class="lbl">MAC 地址</span><span class="val mono">52:54:00:8a:3f:21</span></div>
+                <div class="field"><span class="lbl">操作系统</span><span class="val">Ubuntu 22.04.4 LTS</span></div>
+                <div class="field"><span class="lbl">内核版本</span><span class="val mono">5.15.0-91-generic</span></div>
+                <div class="field"><span class="lbl">系统启动时间</span><span class="val mono">2026-03-04 09:12:55</span></div>
+                <div class="field"><span class="lbl">时区</span><span class="val mono">Asia/Shanghai (UTC+8)</span></div>
+                <div class="field"><span class="lbl">CPU 架构</span><span class="val mono">x86_64</span></div>
+                <div class="field"><span class="lbl">虚拟化平台</span><span class="val">KVM / libvirt</span></div>
+              </div>
+            </div>
+
+            <div class="field-group">
+              <div class="fg-head"><span class="num">02</span>硬件信息</div>
+              <div class="field-grid">
+                <div class="field"><span class="lbl">CPU 型号</span><span class="val">Intel Xeon Gold 6248R @ 3.00GHz</span></div>
+                <div class="field"><span class="lbl">CPU 核数</span><span class="val mono">8 vCPU</span></div>
+                <div class="field"><span class="lbl">内存</span><span class="val mono">32 GiB DDR4</span></div>
+                <div class="field"><span class="lbl">系统盘</span><span class="val mono">100 GB · SSD · ext4</span></div>
+                <div class="field"><span class="lbl">数据盘</span><span class="val mono">500 GB × 2 · SSD · LVM</span></div>
+                <div class="field"><span class="lbl">网卡</span><span class="val mono">virtio-net · 10 Gbps</span></div>
+                <div class="field"><span class="lbl">厂商</span><span class="val">Dell Technologies</span></div>
+                <div class="field"><span class="lbl">机型 / 型号</span><span class="val">PowerEdge R650 · 宿主</span></div>
+                <div class="field"><span class="lbl">序列号</span><span class="val mono">VM-BJDC-7K4Q3X9</span></div>
+              </div>
+            </div>
+
+            <div class="field-group">
+              <div class="fg-head"><span class="num">03</span>资产生命周期</div>
+              <div class="field-grid">
+                <div class="field"><span class="lbl">来源</span><span class="val flex"><span style="display:inline-flex;align-items:center;background:var(--color-info-soft);color:#0E7490;font-size:12px;padding:1px 8px;border-radius:var(--radius-sm);">nmap 扫描</span></span></div>
+                <div class="field"><span class="lbl">纳管时间</span><span class="val mono">2025-07-10 16:22</span></div>
+                <div class="field"><span class="lbl">最后扫描</span><span class="val mono">2026-05-18 14:32 <span style="color:var(--neutral-500);">（5 分钟前）</span></span></div>
+                <div class="field"><span class="lbl">最后修改人</span><span class="val flex"><span style="width:20px;height:20px;border-radius:50%;background:var(--color-primary-100);color:var(--color-primary-700);font-size:10px;font-weight:600;display:inline-flex;align-items:center;justify-content:center;">ZT</span>张涛</span></div>
+                <div class="field"><span class="lbl">最后修改时间</span><span class="val mono">2026-05-15 16:40</span></div>
+                <div class="field"><span class="lbl">维保到期</span><span class="val mono">2027-12-31 <span style="color: var(--color-warning); font-family: var(--font-sans);">· 还有 593 天</span></span></div>
+                <div class="field"><span class="lbl">计划下线</span><span class="val empty">—</span></div>
+                <div class="field"><span class="lbl">合规标签</span><span class="val flex"><span style="display:inline-flex;background:var(--color-primary-50);color:var(--color-primary-700);font-size:12px;padding:1px 8px;border-radius:var(--radius-sm);">PCI-DSS</span><span style="display:inline-flex;background:var(--neutral-100);color:var(--neutral-700);font-size:12px;padding:1px 8px;border-radius:var(--radius-sm);border:1px solid var(--neutral-200);">等保 三级</span></span></div>
+                <div class="field"><span class="lbl">资产 ID（外部）</span><span class="val mono">vm-bjdc-1247 · libvirt:web04</span></div>
+              </div>
+            </div>
+
+            <div class="field-group">
+              <div class="fg-head"><span class="num">04</span>备注</div>
+              <div class="notes-block">
+                订单服务前端 Web 集群节点之一（4 台中的 #4），承载下单与支付回调入口。Nginx 反向代理至上游 app-pay-* / app-order-*。<br/>
+                变更需走运维变更工单；任何端口调整必须同步更新内网 ACL 与 DMZ 出口策略。
+                <div class="meta">最后编辑：2026-05-15 16:40 · 张涛</div>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- =================================================
+               Tab 2 — Ports & Services
+               ================================================= -->
+          <div class="tab-panel" data-panel="ports">
+
+            <div class="subhead">
+              <div class="left">
+                <h3>开放端口与服务</h3>
+                <span class="meta">共 12 个开放端口 · 最近一次扫描 2026-05-18 14:32</span>
+              </div>
+              <span class="pill"><span class="tri"></span>包含 3 个危险端口，请关注 ACL 配置</span>
+            </div>
+
+            <table class="simple-tbl">
+              <thead>
+                <tr>
+                  <th style="width: 130px;">端口号</th>
+                  <th style="width: 90px;">协议</th>
+                  <th style="width: 130px;">服务</th>
+                  <th>版本</th>
+                  <th style="width: 110px;">状态</th>
+                  <th style="width: 140px;">首次发现</th>
+                  <th style="width: 140px;">最后发现</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr class="danger">
+                  <td><span class="port-cell"><span class="tri" title="危险端口"></span><span class="num">22</span></span></td>
+                  <td><span class="proto">TCP</span></td>
+                  <td>SSH</td>
+                  <td><span class="mono">OpenSSH 8.9p1 Ubuntu</span></td>
+                  <td><span class="port-state"><span class="d"></span>open</span></td>
+                  <td><span class="mono muted">2025-07-10</span></td>
+                  <td><span class="mono muted">2026-05-18</span></td>
+                </tr>
+                <tr>
+                  <td><span class="port-cell"><span class="num">80</span></span></td>
+                  <td><span class="proto">TCP</span></td>
+                  <td>HTTP</td>
+                  <td><span class="mono">nginx 1.26.1</span></td>
+                  <td><span class="port-state"><span class="d"></span>open</span></td>
+                  <td><span class="mono muted">2025-07-10</span></td>
+                  <td><span class="mono muted">2026-05-18</span></td>
+                </tr>
+                <tr>
+                  <td><span class="port-cell"><span class="num">443</span></span></td>
+                  <td><span class="proto">TCP</span></td>
+                  <td>HTTPS</td>
+                  <td><span class="mono">nginx 1.26.1 (TLS 1.3)</span></td>
+                  <td><span class="port-state"><span class="d"></span>open</span></td>
+                  <td><span class="mono muted">2025-07-10</span></td>
+                  <td><span class="mono muted">2026-05-18</span></td>
+                </tr>
+                <tr class="danger">
+                  <td><span class="port-cell"><span class="tri" title="危险端口"></span><span class="num">3306</span></span></td>
+                  <td><span class="proto">TCP</span></td>
+                  <td>MySQL</td>
+                  <td><span class="mono">MySQL 8.0.35</span></td>
+                  <td><span class="port-state"><span class="d"></span>open</span></td>
+                  <td><span class="mono muted">2025-10-22</span></td>
+                  <td><span class="mono muted">2026-05-18</span></td>
+                </tr>
+                <tr>
+                  <td><span class="port-cell"><span class="num">8080</span></span></td>
+                  <td><span class="proto">TCP</span></td>
+                  <td>HTTP-alt</td>
+                  <td><span class="mono">Go app · /healthz</span></td>
+                  <td><span class="port-state"><span class="d"></span>open</span></td>
+                  <td><span class="mono muted">2025-07-10</span></td>
+                  <td><span class="mono muted">2026-05-18</span></td>
+                </tr>
+                <tr>
+                  <td><span class="port-cell"><span class="num">8081</span></span></td>
+                  <td><span class="proto">TCP</span></td>
+                  <td>HTTP-mgmt</td>
+                  <td><span class="mono">Prometheus exporter</span></td>
+                  <td><span class="port-state"><span class="d"></span>open</span></td>
+                  <td><span class="mono muted">2026-05-18</span></td>
+                  <td><span class="mono muted">2026-05-18</span></td>
+                </tr>
+                <tr>
+                  <td><span class="port-cell"><span class="num">9100</span></span></td>
+                  <td><span class="proto">TCP</span></td>
+                  <td>node_exporter</td>
+                  <td><span class="mono">node_exporter 1.7.0</span></td>
+                  <td><span class="port-state"><span class="d"></span>open</span></td>
+                  <td><span class="mono muted">2025-07-10</span></td>
+                  <td><span class="mono muted">2026-05-18</span></td>
+                </tr>
+                <tr class="danger">
+                  <td><span class="port-cell"><span class="tri" title="危险端口"></span><span class="num">6379</span></span></td>
+                  <td><span class="proto">TCP</span></td>
+                  <td>Redis</td>
+                  <td><span class="mono">Redis 7.2.4</span></td>
+                  <td><span class="port-state"><span class="d"></span>open</span></td>
+                  <td><span class="mono muted">2025-12-01</span></td>
+                  <td><span class="mono muted">2026-05-18</span></td>
+                </tr>
+                <tr>
+                  <td><span class="port-cell"><span class="num">123</span></span></td>
+                  <td><span class="proto udp">UDP</span></td>
+                  <td>NTP</td>
+                  <td><span class="mono">chrony 4.2</span></td>
+                  <td><span class="port-state"><span class="d"></span>open</span></td>
+                  <td><span class="mono muted">2025-07-10</span></td>
+                  <td><span class="mono muted">2026-05-18</span></td>
+                </tr>
+                <tr>
+                  <td><span class="port-cell"><span class="num">5666</span></span></td>
+                  <td><span class="proto">TCP</span></td>
+                  <td>NRPE</td>
+                  <td><span class="mono">nrpe 4.0.3</span></td>
+                  <td><span class="port-state filtered"><span class="d"></span>filtered</span></td>
+                  <td><span class="mono muted">2025-09-15</span></td>
+                  <td><span class="mono muted">2026-05-18</span></td>
+                </tr>
+                <tr>
+                  <td><span class="port-cell"><span class="num">25</span></span></td>
+                  <td><span class="proto">TCP</span></td>
+                  <td>SMTP</td>
+                  <td><span class="mono">—</span></td>
+                  <td><span class="port-state closed"><span class="d"></span>closed</span></td>
+                  <td><span class="mono muted">2025-07-10</span></td>
+                  <td><span class="mono muted">2026-05-14</span></td>
+                </tr>
+                <tr>
+                  <td><span class="port-cell"><span class="num">8443</span></span></td>
+                  <td><span class="proto">TCP</span></td>
+                  <td>HTTPS-alt</td>
+                  <td><span class="mono">—</span></td>
+                  <td><span class="port-state closed"><span class="d"></span>closed</span></td>
+                  <td><span class="mono muted">2025-08-12</span></td>
+                  <td><span class="mono muted">2026-05-13</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- =================================================
+               Tab 3 — Change Timeline
+               ================================================= -->
+          <div class="tab-panel" data-panel="timeline">
+
+            <div class="subhead">
+              <div class="left">
+                <h3>变更历史</h3>
+                <span class="meta">共 28 次变更 · 近 30 天 9 次</span>
+              </div>
+              <div style="display:flex; gap:8px;">
+                <button class="btn sm">
+                  <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="3.5" width="11" height="10" rx="1.25"/><path d="M2.5 6.5h11"/></svg>
+                  时间范围
+                </button>
+                <select class="btn sm" style="padding-right: 28px; background-color: var(--neutral-0); appearance:none; cursor:pointer;">
+                  <option>全部变更类型</option>
+                  <option>端口新增</option>
+                  <option>端口消失</option>
+                  <option>服务版本变化</option>
+                  <option>字段修改</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="timeline">
+              <!-- 1 -->
+              <div class="tl-item">
+                <div class="tl-time"><b>14:32</b>2026-05-18 · 5 分钟前</div>
+                <div class="tl-dot add">
+                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 3v10M3 8h10"/></svg>
+                </div>
+                <div class="tl-card warn">
+                  <div class="tl-card-head">
+                    <span class="tl-type add">端口新增</span>
+                    <span class="tl-warn-tag"><span class="tri"></span>潜在安全风险</span>
+                    <span class="by"><span class="av sys">⌬</span>nmap-prod-bjdc · 自动</span>
+                  </div>
+                  <div class="tl-desc">
+                    新增开放端口 <span class="mono" style="background: var(--color-warning-soft); padding: 0 5px; border-radius: 3px; color: #92400E;">8081/TCP</span>
+                    → 识别为 <span class="mono">Prometheus exporter</span>。请确认该端口是否应对 DMZ 暴露并更新 ACL 规则。
+                  </div>
+                </div>
+              </div>
+
+              <!-- 2 -->
+              <div class="tl-item">
+                <div class="tl-time"><b>09:11</b>2026-05-17 · 1 天前</div>
+                <div class="tl-dot ver">
+                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8a5 5 0 0 1 9.5-2"/><path d="M12.5 3v3h-3"/><path d="M13 8a5 5 0 0 1-9.5 2"/><path d="M3.5 13v-3h3"/></svg>
+                </div>
+                <div class="tl-card">
+                  <div class="tl-card-head">
+                    <span class="tl-type ver">服务版本变化</span>
+                    <span class="by"><span class="av sys">⌬</span>nmap-prod-bjdc · 自动</span>
+                  </div>
+                  <div class="tl-desc">
+                    <span class="mono">nginx</span> 端口 <span class="mono">80/443</span>：
+                    <span class="diff-old mono">1.24.0</span><span class="arr">→</span><span class="diff-new mono">1.26.1</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 3 -->
+              <div class="tl-item">
+                <div class="tl-time"><b>16:40</b>2026-05-15 · 3 天前</div>
+                <div class="tl-dot edit">
+                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 3l2 2-8 8H3v-2z"/></svg>
+                </div>
+                <div class="tl-card">
+                  <div class="tl-card-head">
+                    <span class="tl-type edit">字段修改</span>
+                    <span class="by"><span class="av">ZT</span>张涛</span>
+                  </div>
+                  <div class="tl-desc">
+                    重要性：<span class="diff-old">重要</span><span class="arr">→</span><span class="diff-new">核心</span>
+                    · 修改原因：纳入支付链路 P0 SLA
+                  </div>
+                </div>
+              </div>
+
+              <!-- 4 -->
+              <div class="tl-item">
+                <div class="tl-time"><b>22:05</b>2026-05-14 · 4 天前</div>
+                <div class="tl-dot remove">
+                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 8h10"/></svg>
+                </div>
+                <div class="tl-card">
+                  <div class="tl-card-head">
+                    <span class="tl-type remove">端口消失</span>
+                    <span class="by"><span class="av sys">⌬</span>nmap-prod-bjdc · 自动</span>
+                  </div>
+                  <div class="tl-desc">
+                    端口 <span class="mono">8443/TCP</span> 由 <span class="mono">open</span> 转为 <span class="mono">closed</span> · 此前服务：HTTPS-alt
+                  </div>
+                </div>
+              </div>
+
+              <!-- 5 -->
+              <div class="tl-item">
+                <div class="tl-time"><b>11:22</b>2026-05-10 · 8 天前</div>
+                <div class="tl-dot edit">
+                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 3l2 2-8 8H3v-2z"/></svg>
+                </div>
+                <div class="tl-card">
+                  <div class="tl-card-head">
+                    <span class="tl-type edit">字段修改</span>
+                    <span class="by"><span class="av">LM</span>李敏</span>
+                  </div>
+                  <div class="tl-desc">
+                    负责人：<span class="diff-old">王晨</span><span class="arr">→</span><span class="diff-new">张涛</span>
+                    · 备注：原负责人转岗
+                  </div>
+                </div>
+              </div>
+
+              <!-- 6 -->
+              <div class="tl-item">
+                <div class="tl-time"><b>03:18</b>2026-05-08 · 10 天前</div>
+                <div class="tl-dot add">
+                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 3v10M3 8h10"/></svg>
+                </div>
+                <div class="tl-card warn">
+                  <div class="tl-card-head">
+                    <span class="tl-type add">端口新增</span>
+                    <span class="tl-warn-tag"><span class="tri"></span>危险端口</span>
+                    <span class="by"><span class="av sys">⌬</span>nmap-prod-bjdc · 自动</span>
+                  </div>
+                  <div class="tl-desc">
+                    新增开放端口 <span class="mono" style="background: var(--color-warning-soft); padding: 0 5px; border-radius: 3px; color: #92400E;">22/TCP</span>
+                    → 识别为 <span class="mono">OpenSSH 8.9p1 Ubuntu</span>。请确认该端口的暴露范围是否符合安全策略。
+                  </div>
+                </div>
+              </div>
+
+              <!-- 7 -->
+              <div class="tl-item">
+                <div class="tl-time"><b>14:55</b>2026-04-22 · 26 天前</div>
+                <div class="tl-dot edit">
+                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 3l2 2-8 8H3v-2z"/></svg>
+                </div>
+                <div class="tl-card">
+                  <div class="tl-card-head">
+                    <span class="tl-type edit">字段修改</span>
+                    <span class="by"><span class="av">WC</span>王晨</span>
+                  </div>
+                  <div class="tl-desc">
+                    备注内容已更新（+62 字符）· <button class="btn-link" style="font-size: 12px;">查看 diff</button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 8 -->
+              <div class="tl-item">
+                <div class="tl-time"><b>16:22</b>2025-07-10 · 313 天前</div>
+                <div class="tl-dot create">
+                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5L6.5 12 13 5"/></svg>
+                </div>
+                <div class="tl-card">
+                  <div class="tl-card-head">
+                    <span class="tl-type create">资产创建</span>
+                    <span class="by"><span class="av sys">⌬</span>nmap-init-bjdc · 自动</span>
+                  </div>
+                  <div class="tl-desc">
+                    资产首次入库 · 来源：<span class="mono">nmap-init-bjdc-20250710</span> · 初始端口 6 个 · 初始负责人 王晨
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- =================================================
+               Tab 4 — Scan Batches
+               ================================================= -->
+          <div class="tab-panel" data-panel="batches">
+
+            <div class="subhead">
+              <div class="left">
+                <h3>扫描批次记录</h3>
+                <span class="meta">该资产曾出现在 47 个扫描批次 · 展示最近 12 个</span>
+              </div>
+              <button class="btn sm">
+                <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2.5v8M4.5 7L8 10.5 11.5 7"/><path d="M2.5 13h11"/></svg>
+                导出全部
+              </button>
+            </div>
+
+            <div class="batch-list">
+              <div class="batch-row head">
+                <span>扫描时间</span>
+                <span>批次名称</span>
+                <span>扫描源</span>
+                <span>资产数</span>
+                <span>导入人</span>
+                <span>状态</span>
+              </div>
+
+              <div class="batch-row">
+                <span class="when">2026-05-18 14:30<span class="ago">5 分钟前</span></span>
+                <span class="name">nmap-prod-bjdc-20260518<span class="sub">scan-id 4781</span></span>
+                <span class="src">nmap 自动</span>
+                <span class="count">2,468</span>
+                <span class="by">系统</span>
+                <span><span class="status-chip confirmed"><span class="d"></span>已确认</span></span>
+              </div>
+              <div class="batch-row">
+                <span class="when">2026-05-15 10:00<span class="ago">3 天前</span></span>
+                <span class="name">nmap-prod-bjdc-20260515<span class="sub">scan-id 4762</span></span>
+                <span class="src">nmap 自动</span>
+                <span class="count">2,461</span>
+                <span class="by">系统</span>
+                <span><span class="status-chip confirmed"><span class="d"></span>已确认</span></span>
+              </div>
+              <div class="batch-row">
+                <span class="when">2026-05-13 18:42<span class="ago">5 天前</span></span>
+                <span class="name">manual-upload-li-1305<span class="sub">scan-id 4738</span></span>
+                <span class="src">手动上传</span>
+                <span class="count">312</span>
+                <span class="by">李敏</span>
+                <span><span class="status-chip pending"><span class="d"></span>待确认</span></span>
+              </div>
+              <div class="batch-row">
+                <span class="when">2026-05-11 10:00<span class="ago">7 天前</span></span>
+                <span class="name">nmap-prod-bjdc-20260511<span class="sub">scan-id 4716</span></span>
+                <span class="src">nmap 自动</span>
+                <span class="count">2,455</span>
+                <span class="by">系统</span>
+                <span><span class="status-chip confirmed"><span class="d"></span>已确认</span></span>
+              </div>
+              <div class="batch-row">
+                <span class="when">2026-05-08 03:15<span class="ago">10 天前</span></span>
+                <span class="name">nmap-prod-bjdc-20260508<span class="sub">scan-id 4689</span></span>
+                <span class="src">nmap 自动</span>
+                <span class="count">2,452</span>
+                <span class="by">系统</span>
+                <span><span class="status-chip confirmed"><span class="d"></span>已确认</span></span>
+              </div>
+              <div class="batch-row">
+                <span class="when">2026-05-04 10:00<span class="ago">14 天前</span></span>
+                <span class="name">nmap-prod-bjdc-20260504<span class="sub">scan-id 4651</span></span>
+                <span class="src">nmap 自动</span>
+                <span class="count">2,449</span>
+                <span class="by">系统</span>
+                <span><span class="status-chip confirmed"><span class="d"></span>已确认</span></span>
+              </div>
+              <div class="batch-row">
+                <span class="when">2026-04-30 22:08<span class="ago">18 天前</span></span>
+                <span class="name">manual-upload-zhao-0430<span class="sub">scan-id 4622</span></span>
+                <span class="src">手动上传</span>
+                <span class="count">94</span>
+                <span class="by">赵宇</span>
+                <span><span class="status-chip ignored"><span class="d"></span>已忽略</span></span>
+              </div>
+              <div class="batch-row">
+                <span class="when">2026-04-27 10:00<span class="ago">21 天前</span></span>
+                <span class="name">nmap-prod-bjdc-20260427<span class="sub">scan-id 4598</span></span>
+                <span class="src">nmap 自动</span>
+                <span class="count">2,441</span>
+                <span class="by">系统</span>
+                <span><span class="status-chip confirmed"><span class="d"></span>已确认</span></span>
+              </div>
+              <div class="batch-row">
+                <span class="when">2026-04-22 10:00<span class="ago">26 天前</span></span>
+                <span class="name">nmap-prod-bjdc-20260422<span class="sub">scan-id 4567</span></span>
+                <span class="src">nmap 自动</span>
+                <span class="count">2,438</span>
+                <span class="by">系统</span>
+                <span><span class="status-chip confirmed"><span class="d"></span>已确认</span></span>
+              </div>
+              <div class="batch-row">
+                <span class="when">2026-04-15 10:00<span class="ago">33 天前</span></span>
+                <span class="name">nmap-prod-bjdc-20260415<span class="sub">scan-id 4521</span></span>
+                <span class="src">nmap 自动</span>
+                <span class="count">2,430</span>
+                <span class="by">系统</span>
+                <span><span class="status-chip confirmed"><span class="d"></span>已确认</span></span>
+              </div>
+              <div class="batch-row">
+                <span class="when">2026-04-08 10:00<span class="ago">40 天前</span></span>
+                <span class="name">nmap-prod-bjdc-20260408<span class="sub">scan-id 4485</span></span>
+                <span class="src">nmap 自动</span>
+                <span class="count">2,427</span>
+                <span class="by">系统</span>
+                <span><span class="status-chip confirmed"><span class="d"></span>已确认</span></span>
+              </div>
+              <div class="batch-row">
+                <span class="when">2026-04-01 10:00<span class="ago">47 天前</span></span>
+                <span class="name">nmap-prod-bjdc-20260401<span class="sub">scan-id 4441</span></span>
+                <span class="src">nmap 自动</span>
+                <span class="count">2,420</span>
+                <span class="by">系统</span>
+                <span><span class="status-chip confirmed"><span class="d"></span>已确认</span></span>
+              </div>
+            </div>
+
+            <div style="text-align: center; margin-top: var(--space-4);">
+              <button class="btn sm">查看全部 47 条扫描记录 ↓</button>
+            </div>
+          </div>
+
+        </div>
+
+      </div><!-- /.scroll -->
+    </main>
+  </div>
+</div>
+
+<script>
+  // Sidebar collapse
+  document.getElementById('toggleBtn').addEventListener('click', () => {
+    document.getElementById('app').classList.toggle('collapsed');
+  });
+
+  // Tabs switch
+  const tabs = document.querySelectorAll('#tabs .tab');
+  const panels = document.querySelectorAll('.tab-panel');
+  tabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      const key = tab.dataset.tab;
+      tabs.forEach(t => t.classList.toggle('active', t === tab));
+      panels.forEach(p => p.classList.toggle('active', p.dataset.panel === key));
+      // scroll to top of panel
+      document.querySelector('.main .scroll').scrollTo({ top: 0, behavior: 'instant' });
+    });
+  });
+</script>
+
+</body>
+</html>

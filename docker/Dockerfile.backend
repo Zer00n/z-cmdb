@@ -1,0 +1,38 @@
+# ── Stage 1: 安装依赖 ────────────────────────────────────────
+FROM python:3.11-slim AS builder
+WORKDIR /build
+COPY requirements.txt .
+RUN pip install --no-cache-dir --user -r requirements.txt
+
+# ── Stage 2: 运行镜像 ────────────────────────────────────────
+FROM python:3.11-slim
+
+# 安装 tini（优雅处理信号）
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    tini \
+    && rm -rf /var/lib/apt/lists/*
+
+# 非 root 用户
+RUN groupadd -r cmdb && useradd -r -g cmdb -u 1001 cmdb
+
+WORKDIR /app
+
+# 从 builder 复制已安装的包
+COPY --from=builder /root/.local /home/cmdb/.local
+
+# 复制应用代码
+COPY --chown=cmdb:cmdb ./app ./app
+COPY --chown=cmdb:cmdb ./alembic ./alembic
+COPY --chown=cmdb:cmdb ./alembic.ini ./
+
+# 创建数据目录
+RUN mkdir -p /app/data /app/uploads && chown -R cmdb:cmdb /app
+
+ENV PATH=/home/cmdb/.local/bin:$PATH
+ENV PYTHONPATH=/app
+
+USER cmdb
+EXPOSE 8000
+
+ENTRYPOINT ["tini", "--"]
+CMD ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"]

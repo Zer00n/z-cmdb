@@ -1,0 +1,45 @@
+/**
+ * Element Plus 主题覆盖
+ * 与 tokens.css 对齐，仅覆盖必要变量
+ */
+:root {
+  --el-color-primary:         var(--color-primary-500);
+  --el-color-primary-light-3: var(--color-primary-200);
+  --el-color-primary-light-5: var(--color-primary-100);
+  --el-color-primary-light-7: var(--color-primary-50);
+  --el-color-primary-light-9: var(--color-primary-50);
+  --el-color-primary-dark-2:  var(--color-primary-700);
+
+  --el-color-success:         var(--color-success);
+  --el-color-warning:         var(--color-warning);
+  --el-color-danger:          var(--color-danger);
+  --el-color-info:            var(--color-info);
+
+  --el-border-radius-base:    var(--radius-md);
+  --el-border-radius-small:   var(--radius-sm);
+  --el-border-radius-large:   var(--radius-lg);
+
+  --el-font-size-base:        var(--fs-body);
+  --el-font-family:           var(--font-sans);
+
+  --el-border-color:          var(--neutral-300);
+  --el-border-color-light:    var(--neutral-200);
+  --el-border-color-lighter:  var(--neutral-200);
+
+  --el-text-color-primary:    var(--neutral-900);
+  --el-text-color-regular:    var(--neutral-700);
+  --el-text-color-secondary:  var(--neutral-500);
+  --el-text-color-placeholder:var(--neutral-400);
+  --el-text-color-disabled:   var(--neutral-400);
+
+  --el-bg-color:              var(--neutral-0);
+  --el-bg-color-page:         var(--neutral-50);
+  --el-bg-color-overlay:      var(--neutral-0);
+
+  --el-fill-color-blank:      var(--neutral-0);
+  --el-fill-color-light:      var(--neutral-50);
+  --el-fill-color:            var(--neutral-100);
+
+  --el-box-shadow-light:      var(--shadow-medium);
+  --el-box-shadow:            var(--shadow-floating);
+}

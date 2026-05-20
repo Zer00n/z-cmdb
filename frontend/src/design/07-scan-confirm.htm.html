@@ -1,0 +1,1191 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<title>CMDB Lite · 扫描批次确认 · scan_20260518_1430.xml</title>
+<meta name="viewport" content="width=1280" />
+<link rel="stylesheet" href="tokens.css" />
+<link rel="stylesheet" href="shell.css" />
+<style>
+html, body { height: 100%; }
+body { min-width: 1280px; overflow: hidden; }
+
+/* Main scroll area + sticky action bar */
+.main { padding: 0; display: flex; flex-direction: column; min-width: 0; overflow: hidden; }
+.main .scroll { flex: 1; overflow-y: auto; padding: var(--space-6) var(--space-6) var(--space-8); }
+.main .scroll::-webkit-scrollbar { width: 10px; }
+.main .scroll::-webkit-scrollbar-thumb { background: var(--neutral-200); border-radius: 5px; }
+
+/* =========================================================
+   Page head
+   ========================================================= */
+.page-head {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: var(--space-6); margin-bottom: var(--space-6);
+}
+.page-head .title-row {
+  display: flex; align-items: baseline; gap: var(--space-3); flex-wrap: wrap;
+}
+.page-head h1 {
+  margin: 0; font-size: var(--fs-h2); line-height: var(--lh-h2);
+  color: var(--neutral-900); font-weight: 600;
+}
+.page-head .file-tag {
+  font-family: var(--font-mono); font-size: 13px;
+  background: var(--neutral-100); color: var(--neutral-700);
+  border: 1px solid var(--neutral-200);
+  padding: 2px 8px; border-radius: var(--radius-sm);
+}
+.page-head .status-tag {
+  display: inline-flex; align-items: center; gap: 5px;
+  background: var(--color-warning-soft); color: #92400E;
+  font-size: 12px; line-height: 18px;
+  padding: 1px 8px; border-radius: var(--radius-sm);
+  font-weight: 500;
+}
+.page-head .status-tag .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--color-warning); }
+.page-head .sub {
+  margin-top: 8px;
+  font-size: var(--fs-caption);
+  color: var(--neutral-500);
+  display: flex; gap: var(--space-3); align-items: center; flex-wrap: wrap;
+}
+.page-head .sub .k { color: var(--neutral-400); }
+.page-head .sub .v { color: var(--neutral-900); font-family: var(--font-mono); }
+.page-head .sub .sep { color: var(--neutral-300); }
+.page-head .av {
+  width: 18px; height: 18px; border-radius: 50%;
+  background: var(--color-primary-100); color: var(--color-primary-700);
+  font-size: 10px; font-weight: 600;
+  display: inline-flex; align-items: center; justify-content: center;
+  margin-right: 4px;
+}
+
+/* =========================================================
+   KPI cards
+   ========================================================= */
+.kpi-row {
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-4);
+  margin-bottom: var(--space-6);
+}
+.kpi {
+  background: var(--neutral-0);
+  border: 1px solid var(--neutral-200);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4) var(--space-4) var(--space-3);
+  display: flex; gap: var(--space-3); align-items: center;
+}
+.kpi .ic {
+  width: 40px; height: 40px;
+  border-radius: var(--radius-md);
+  display: inline-flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.kpi.total .ic { background: var(--neutral-100); color: var(--neutral-700); }
+.kpi.new   .ic { background: var(--color-primary-50); color: var(--color-primary-700); }
+.kpi.chg   .ic { background: var(--color-warning-soft); color: #B45309; }
+.kpi.miss  .ic { background: var(--neutral-100); color: var(--neutral-500); }
+.kpi .body { min-width: 0; }
+.kpi .label {
+  font-size: 11px; color: var(--neutral-500);
+  font-family: var(--font-mono); letter-spacing: 0.06em;
+  text-transform: uppercase; margin-bottom: 4px;
+}
+.kpi .num {
+  font-size: 28px; line-height: 32px;
+  font-weight: 600;
+  color: var(--neutral-900);
+  font-family: var(--font-mono);
+  letter-spacing: -0.02em;
+}
+.kpi.new  .num { color: var(--color-primary-700); }
+.kpi.chg  .num { color: #B45309; }
+.kpi .num .unit { font-size: 13px; color: var(--neutral-500); font-weight: 400; font-family: var(--font-sans); margin-left: 6px; }
+.kpi .meta { font-size: var(--fs-caption); color: var(--neutral-500); margin-top: 2px; }
+
+/* =========================================================
+   Tabs (segmented head)
+   ========================================================= */
+.tabs-wrap {
+  background: var(--neutral-0);
+  border: 1px solid var(--neutral-200);
+  border-radius: var(--radius-lg);
+}
+.tabs {
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid var(--neutral-200);
+  padding: 0 var(--space-4);
+  background: #FBFCFE;
+}
+.tab {
+  padding: 12px 16px;
+  font-size: var(--fs-body); color: var(--neutral-500);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  user-select: none;
+  display: inline-flex; align-items: center; gap: var(--space-2);
+  transition: color .12s ease;
+}
+.tab:hover { color: var(--neutral-900); }
+.tab .count {
+  background: var(--neutral-100); color: var(--neutral-500);
+  font-size: 11px; font-weight: 500;
+  padding: 1px 6px; border-radius: 8px;
+  font-family: var(--font-mono); line-height: 16px;
+}
+.tab.active {
+  color: var(--color-primary-500);
+  border-bottom-color: var(--color-primary-500);
+  font-weight: 500;
+}
+.tab.active .count { background: var(--color-primary-100); color: var(--color-primary-700); }
+.tab.t-chg.active { color: #B45309; border-bottom-color: #B45309; }
+.tab.t-chg.active .count { background: var(--color-warning-soft); color: #92400E; }
+.tab.t-miss.active { color: var(--neutral-700); border-bottom-color: var(--neutral-500); }
+.tab.t-miss.active .count { background: var(--neutral-200); color: var(--neutral-700); }
+
+.tab-toolbar {
+  margin-left: auto;
+  display: flex; align-items: center; gap: 8px;
+  padding-right: var(--space-2);
+  font-size: var(--fs-caption);
+  color: var(--neutral-500);
+}
+
+.panel { padding: var(--space-6); }
+.panel-hidden { display: none; }
+
+/* =========================================================
+   Tab 2 — Change comparison
+   ========================================================= */
+.tab2-toolbar {
+  display: flex; align-items: center; gap: var(--space-3);
+  margin-bottom: var(--space-4);
+  flex-wrap: wrap;
+}
+.tab2-toolbar .left { display: flex; align-items: center; gap: var(--space-2); }
+.tab2-toolbar .spacer { flex: 1; }
+.tab2-toolbar .filter-chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  height: 28px; padding: 0 10px;
+  border: 1px solid var(--neutral-300);
+  border-radius: 14px;
+  background: var(--neutral-0);
+  font-size: 12px; color: var(--neutral-700);
+  cursor: pointer;
+}
+.tab2-toolbar .filter-chip:hover { background: var(--neutral-50); border-color: var(--neutral-400); }
+.tab2-toolbar .filter-chip.active {
+  background: var(--color-primary-50);
+  border-color: var(--color-primary-300);
+  color: var(--color-primary-700);
+}
+.tab2-toolbar .filter-chip .num { font-family: var(--font-mono); font-size: 11px; opacity: .8; }
+.tab2-toolbar .strategy {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-size: var(--fs-caption); color: var(--neutral-500);
+}
+.tab2-toolbar .strategy-buttons {
+  display: inline-flex; border: 1px solid var(--neutral-300);
+  border-radius: var(--radius-md); overflow: hidden; background: var(--neutral-0);
+}
+.tab2-toolbar .strategy-buttons button {
+  border: 0; padding: 0 12px; height: 28px;
+  background: transparent; color: var(--neutral-700);
+  font-size: 12px; cursor: pointer;
+  border-right: 1px solid var(--neutral-200);
+}
+.tab2-toolbar .strategy-buttons button:last-child { border-right: 0; }
+.tab2-toolbar .strategy-buttons button:hover { background: var(--neutral-50); color: var(--neutral-900); }
+.tab2-toolbar .strategy-buttons button.use-scan { color: var(--color-primary-700); }
+.tab2-toolbar .strategy-buttons button.use-current { color: var(--neutral-700); }
+
+/* Change card */
+.chg-card {
+  border: 1px solid var(--neutral-200);
+  border-radius: var(--radius-md);
+  background: var(--neutral-0);
+  margin-bottom: var(--space-3);
+  overflow: hidden;
+}
+.chg-card + .chg-card { margin-top: 0; }
+.chg-card.expanded { box-shadow: var(--shadow-subtle); }
+
+.chg-head {
+  display: grid;
+  grid-template-columns: 24px 28px 120px 140px 1fr auto auto;
+  gap: var(--space-3);
+  align-items: center;
+  padding: 0 var(--space-4);
+  height: 52px;
+  cursor: pointer;
+  user-select: none;
+}
+.chg-head:hover { background: var(--neutral-50); }
+.chg-head .ck {
+  width: 16px; height: 16px;
+  border: 1px solid var(--neutral-300);
+  border-radius: 3px; background: var(--neutral-0);
+  display: inline-flex; align-items: center; justify-content: center;
+  transition: background-color .12s, border-color .12s;
+}
+.chg-head .ck.checked { background: var(--color-primary-500); border-color: var(--color-primary-500); }
+.chg-head .ck.checked::after {
+  content: ""; width: 9px; height: 5px;
+  border-left: 1.5px solid #fff; border-bottom: 1.5px solid #fff;
+  transform: rotate(-45deg) translate(1px, -1px);
+}
+
+.chg-head .chev {
+  color: var(--neutral-400);
+  transition: transform .18s ease;
+  width: 14px; height: 14px;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.chg-card.expanded .chg-head .chev { transform: rotate(90deg); color: var(--neutral-700); }
+
+.chg-head .id { font-family: var(--font-mono); color: var(--color-primary-500); font-size: 13px; }
+.chg-head .id:hover { color: var(--color-primary-700); text-decoration: underline; }
+.chg-head .host { color: var(--neutral-900); font-weight: 500; font-size: 14px; }
+.chg-head .host .ip {
+  display: block;
+  font-family: var(--font-mono); font-size: 11px;
+  color: var(--neutral-500); font-weight: 400; margin-top: 2px;
+}
+
+.chg-head .pills {
+  display: inline-flex; gap: 6px; flex-wrap: wrap;
+}
+.chg-pill {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 11px; line-height: 16px;
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-family: var(--font-mono);
+}
+.chg-pill.field { background: var(--color-warning-soft); color: #92400E; }
+.chg-pill.port-add { background: #FFF7E6; color: #B45309; border: 1px solid #FDE68A; }
+.chg-pill.port-rm  { background: var(--neutral-100); color: var(--neutral-700); border: 1px solid var(--neutral-300); }
+.chg-pill.version  { background: var(--color-info-soft); color: #0E7490; }
+.chg-pill.alert    { background: var(--color-alert-soft); color: #C2410C; }
+.chg-pill .n { font-weight: 600; }
+
+.chg-head .meta {
+  font-size: 11px; color: var(--neutral-500);
+  font-family: var(--font-mono);
+  white-space: nowrap;
+}
+.chg-head .strategy-summary {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  background: var(--color-success-soft);
+  color: #15803D;
+  white-space: nowrap;
+}
+.chg-head .strategy-summary.pending {
+  background: var(--color-warning-soft);
+  color: #92400E;
+}
+.chg-head .strategy-summary .dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+
+/* Body */
+.chg-body {
+  border-top: 1px solid var(--neutral-200);
+  background: #FBFCFE;
+  padding: var(--space-4);
+}
+
+/* 3-column compare row */
+.compare-head {
+  display: grid;
+  grid-template-columns: 160px 1fr 1fr 1fr;
+  gap: var(--space-3);
+  margin-bottom: 6px;
+  padding: 0 4px;
+}
+.compare-head .col {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--neutral-500);
+}
+.compare-head .col .badge-col {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 1px 6px;
+  font-size: 11px;
+  border-radius: 3px;
+  font-family: var(--font-mono);
+}
+.compare-head .col.scan .badge-col    { background: #DBE7FB; color: #1E40AF; }
+.compare-head .col.current .badge-col { background: var(--neutral-100); color: var(--neutral-700); border: 1px solid var(--neutral-200); }
+.compare-head .col.keep .badge-col    { background: #D7F3E2; color: #15803D; }
+
+.compare-row {
+  display: grid;
+  grid-template-columns: 160px 1fr 1fr 1fr;
+  gap: var(--space-3);
+  align-items: stretch;
+  margin-bottom: 6px;
+}
+.compare-row:last-child { margin-bottom: 0; }
+
+.compare-row .lbl-cell {
+  display: flex; flex-direction: column; gap: 4px;
+  justify-content: center;
+  padding: var(--space-3) 8px var(--space-3) 0;
+}
+.compare-row .lbl-cell .lbl {
+  font-size: var(--fs-body);
+  color: var(--neutral-900);
+  font-weight: 500;
+}
+.compare-row .lbl-cell .lbl-meta {
+  font-size: 11px;
+  color: var(--neutral-500);
+  font-family: var(--font-mono);
+}
+.compare-row.unchanged .lbl-cell .lbl { color: var(--neutral-500); font-weight: 400; }
+
+.cell {
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  border: 1px solid;
+  font-size: var(--fs-body);
+  display: flex; flex-direction: column; gap: 4px;
+  min-height: 60px;
+  justify-content: center;
+}
+.cell.scan {
+  background: #EFF4FF;
+  border-color: #C9D9FB;
+  color: var(--neutral-900);
+}
+.cell.current {
+  background: var(--neutral-0);
+  border-color: var(--neutral-200);
+  color: var(--neutral-700);
+}
+.cell.keep {
+  background: #F0FBF4;
+  border-color: #B7E8C6;
+  color: var(--neutral-900);
+}
+.cell.unchanged.scan,
+.cell.unchanged.current {
+  background: var(--neutral-0);
+  border-color: var(--neutral-200);
+  color: var(--neutral-500);
+}
+.cell.unchanged.keep {
+  background: var(--neutral-50);
+  border-color: var(--neutral-200);
+  color: var(--neutral-500);
+}
+
+.cell .val {
+  font-size: 14px;
+  color: var(--neutral-900);
+  line-height: 22px;
+  word-break: break-word;
+}
+.cell.unchanged .val { color: var(--neutral-500); }
+.cell .val.mono { font-family: var(--font-mono); font-size: 13px; }
+.cell .src {
+  font-size: 11px; color: var(--neutral-500);
+  font-family: var(--font-mono);
+  display: inline-flex; align-items: center; gap: 4px;
+}
+.cell .src .ago { color: var(--neutral-400); }
+
+/* diff highlight */
+.diff-add {
+  background: #DCFCE7;
+  color: #15803D;
+  padding: 0 4px;
+  border-radius: 3px;
+}
+.diff-del {
+  background: var(--color-danger-soft);
+  color: #B91C1C;
+  padding: 0 4px;
+  border-radius: 3px;
+  text-decoration: line-through;
+  text-decoration-color: rgba(185,28,28,0.6);
+}
+.diff-num {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  margin-left: 6px;
+  color: var(--color-success);
+}
+.diff-num.minus { color: var(--color-danger); }
+
+/* Port list */
+.port-list {
+  display: flex; flex-direction: column; gap: 4px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+.port-list .p-line {
+  display: flex; align-items: center; gap: 6px;
+}
+.port-list .p-line .p {
+  min-width: 70px;
+  display: inline-flex; align-items: center; gap: 4px;
+}
+.port-list .p-line .s { color: var(--neutral-500); }
+.port-list .p-line .new {
+  background: #DCFCE7; color: #15803D;
+  padding: 0 4px; border-radius: 3px;
+  font-weight: 500;
+}
+.port-list .p-line .new::before { content: "+ "; font-weight: 700; }
+.port-list .p-line .gone {
+  background: var(--color-danger-soft); color: #B91C1C;
+  padding: 0 4px; border-radius: 3px;
+  text-decoration: line-through;
+  text-decoration-color: rgba(185,28,28,0.6);
+}
+.port-list .p-line .gone::before { content: "− "; font-weight: 700; text-decoration: none; display: inline-block; }
+.port-list .p-line .alert-tri {
+  width: 0; height: 0;
+  border-left: 4px solid transparent; border-right: 4px solid transparent;
+  border-bottom: 6px solid var(--color-alert);
+  margin-right: 2px;
+}
+
+/* keep-cell radios */
+.keep-radios {
+  display: flex; flex-direction: column; gap: 4px;
+  margin-top: 2px;
+}
+.keep-r {
+  position: relative;
+  display: flex; align-items: center; gap: 8px;
+  padding: 5px 8px;
+  border-radius: var(--radius-sm);
+  background: var(--neutral-0);
+  border: 1px solid transparent;
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--neutral-700);
+  transition: background-color .12s, border-color .12s;
+}
+.keep-r:hover { background: var(--neutral-0); border-color: var(--color-primary-200); }
+.keep-r input { position: absolute; opacity: 0; pointer-events: none; }
+.keep-r .ind {
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  border: 1px solid var(--neutral-300);
+  background: var(--neutral-0);
+  display: inline-flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.keep-r.checked {
+  background: var(--neutral-0);
+  border-color: var(--color-primary-500);
+  color: var(--neutral-900);
+  font-weight: 500;
+}
+.keep-r.checked .ind {
+  border-color: var(--color-primary-500);
+  background: var(--color-primary-500);
+}
+.keep-r.checked .ind::after {
+  content: "";
+  width: 5px; height: 5px;
+  border-radius: 50%; background: #fff;
+}
+.keep-r .lbl-text { flex: 1; }
+.keep-r .tag-mini {
+  font-size: 10px;
+  font-family: var(--font-mono);
+  padding: 0 5px; line-height: 14px;
+  border-radius: 3px;
+  background: var(--neutral-100); color: var(--neutral-500);
+}
+.keep-r.keep-scan.checked    { background: #EFF4FF; border-color: #1D4FD4; }
+.keep-r.keep-scan.checked .ind { border-color: #1D4FD4; background: #1D4FD4; }
+.keep-r.keep-current.checked { background: var(--neutral-50); border-color: var(--neutral-500); }
+.keep-r.keep-current.checked .ind { border-color: var(--neutral-500); background: var(--neutral-500); }
+.keep-r.keep-manual.checked  { background: #F0FBF4; border-color: var(--color-success); }
+.keep-r.keep-manual.checked .ind { border-color: var(--color-success); background: var(--color-success); }
+
+.keep-manual-input {
+  margin-top: 6px;
+  display: none;
+}
+.keep-r.keep-manual.checked ~ .keep-manual-input { display: block; }
+.keep-manual-input input,
+.keep-manual-input select {
+  width: 100%;
+  height: 30px;
+  border: 1px solid var(--neutral-300);
+  background: var(--neutral-0);
+  border-radius: var(--radius-sm);
+  padding: 0 8px;
+  font-size: 12px;
+  font-family: var(--font-mono);
+  color: var(--neutral-900);
+  outline: none;
+}
+.keep-manual-input input:focus { border-color: var(--color-success); box-shadow: 0 0 0 2px rgba(22,163,74,0.15); }
+
+/* Footer of expanded card */
+.chg-foot {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: var(--space-3) var(--space-4);
+  border-top: 1px solid var(--neutral-200);
+  background: var(--neutral-0);
+  font-size: var(--fs-caption);
+  color: var(--neutral-500);
+}
+.chg-foot .left { display: flex; align-items: center; gap: 8px; }
+.chg-foot .right { display: flex; align-items: center; gap: 8px; }
+
+/* =========================================================
+   Sticky bottom action bar
+   ========================================================= */
+.action-bar {
+  flex-shrink: 0;
+  height: 64px;
+  background: var(--neutral-0);
+  border-top: 1px solid var(--neutral-200);
+  padding: 0 var(--space-6);
+  display: flex; align-items: center; justify-content: space-between;
+  box-shadow: 0 -4px 12px -4px rgba(15,23,42,0.04);
+  z-index: 5;
+}
+.action-bar .left {
+  display: flex; align-items: center; gap: var(--space-3);
+  font-size: var(--fs-caption);
+  color: var(--neutral-500);
+}
+.action-bar .summary { display: inline-flex; gap: var(--space-3); }
+.action-bar .summary .item {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
+  background: var(--neutral-50);
+  border: 1px solid var(--neutral-200);
+  font-size: 12px;
+  color: var(--neutral-700);
+}
+.action-bar .summary .item b { font-family: var(--font-mono); font-weight: 600; }
+.action-bar .summary .item.new b { color: var(--color-primary-700); }
+.action-bar .summary .item.chg b { color: #B45309; }
+.action-bar .summary .item.miss b { color: var(--neutral-700); }
+.action-bar .right { display: flex; align-items: center; gap: var(--space-3); }
+.action-bar .sep-v { width: 1px; height: 20px; background: var(--neutral-200); }
+</style>
+</head>
+<body>
+
+<div class="app" id="app" data-screen-label="Batch Confirm">
+
+  <!-- ============== Topbar ============== -->
+  <header class="topbar">
+    <div class="brand-zone">
+      <span class="logo" aria-hidden="true"></span>
+      <span class="word">CMDB <em>Lite</em></span>
+    </div>
+    <div class="tb-left">
+      <button class="icon-btn" id="toggleBtn" aria-label="折叠侧边栏">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3 4h12M3 9h12M3 14h12"/></svg>
+      </button>
+      <nav class="crumb">
+        <a>首页</a>
+        <span class="sep">/</span>
+        <a>扫描导入</a>
+        <span class="sep">/</span>
+        <a>待确认批次</a>
+        <span class="sep">/</span>
+        <span class="here">scan_20260518_1430.xml</span>
+      </nav>
+    </div>
+    <div class="tb-spacer"></div>
+    <div class="tb-right">
+      <div class="search" role="button" tabindex="0">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="7" cy="7" r="4.5"/><path d="M10.5 10.5L13.5 13.5"/></svg>
+        <span>搜索主机 / IP / 配置项…</span>
+        <span class="kbd">⌘ K</span>
+      </div>
+      <button class="icon-btn"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7a4 4 0 0 1 8 0v3l1 2H3l1-2V7z"/><path d="M6.5 13.5a1.5 1.5 0 0 0 3 0"/></svg><span class="badge">5</span></button>
+      <div style="width:1px; height:24px; background:var(--neutral-200); margin: 0 6px;"></div>
+      <div class="user">
+        <div class="avatar">ZT</div>
+        <div class="info">
+          <span class="name">张涛</span>
+          <span class="role-badge super"><span class="dot"></span>super_admin</span>
+        </div>
+        <span class="chev"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6.5l4 4 4-4"/></svg></span>
+      </div>
+    </div>
+  </header>
+
+  <!-- ============== Body ============== -->
+  <div class="body-grid">
+
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-scroll">
+        <div class="nav-group">
+          <div class="nav-group-head">资产管理</div>
+          <a class="nav-item"><span class="ico"><svg width="16" height="16" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><rect x="2.5" y="3" width="13" height="4.5" rx="1"/><rect x="2.5" y="10.5" width="13" height="4.5" rx="1"/><circle cx="5" cy="5.25" r=".5" fill="currentColor"/><circle cx="5" cy="12.75" r=".5" fill="currentColor"/></svg></span><span class="label">资产列表</span></a>
+          <a class="nav-item"><span class="ico"><svg width="16" height="16" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M9 3v12M3 9h12"/></svg></span><span class="label">手动新增</span></a>
+          <a class="nav-item"><span class="ico"><svg width="16" height="16" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2.5v8.5M5.5 8L9 11.5 12.5 8"/><path d="M3 13.5v1A1.5 1.5 0 0 0 4.5 16h9a1.5 1.5 0 0 0 1.5-1.5v-1"/></svg></span><span class="label">CSV 导出</span></a>
+        </div>
+        <div class="nav-group">
+          <div class="nav-group-head">扫描导入</div>
+          <a class="nav-item"><span class="ico"><svg width="16" height="16" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11.5v-8M5.5 6L9 2.5 12.5 6"/><path d="M3 13v1.5A1.5 1.5 0 0 0 4.5 16h9a1.5 1.5 0 0 0 1.5-1.5V13"/></svg></span><span class="label">上传报告</span></a>
+          <a class="nav-item"><span class="ico"><svg width="16" height="16" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="9" r="6.5"/><path d="M9 5v4l2.5 1.5"/></svg></span><span class="label">批次历史</span></a>
+          <a class="nav-item active has-badge"><span class="ico"><svg width="16" height="16" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5l6 4 6-4"/><rect x="3" y="4" width="12" height="10" rx="1.25"/></svg></span><span class="label">待确认批次</span><span class="badge">3</span></a>
+        </div>
+        <div class="nav-group">
+          <div class="nav-group-head">拓扑图</div>
+          <a class="nav-item"><span class="ico"><svg width="16" height="16" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="4" r="2"/><circle cx="4" cy="13" r="2"/><circle cx="14" cy="13" r="2"/><path d="M8.2 5.6L5 11.2M9.8 5.6l3.2 5.6M6 13h6"/></svg></span><span class="label">当前拓扑</span></a>
+          <a class="nav-item"><span class="ico"><svg width="16" height="16" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2.75 9a6.25 6.25 0 1 0 1.5-4.1"/><path d="M2.5 3v3h3"/><path d="M9 5.5V9l2.25 1.25"/></svg></span><span class="label">历史版本</span></a>
+        </div>
+        <div class="nav-group">
+          <div class="nav-group-head">安全报表</div>
+          <a class="nav-item"><span class="ico"><svg width="16" height="16" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="6" width="13" height="6" rx="1"/><path d="M5.5 6V4.5M9 6V4.5M12.5 6V4.5M5.5 12v1.5M9 12v1.5M12.5 12v1.5"/></svg></span><span class="label">端口暴露面</span></a>
+          <a class="nav-item"><span class="ico"><svg width="16" height="16" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2L2.5 5v4c0 3.5 2.5 6 6.5 7 4-1 6.5-3.5 6.5-7V5L9 2z"/><path d="M9 6.5v3M9 11.5v.5"/></svg></span><span class="label">危险端口</span></a>
+          <a class="nav-item"><span class="ico"><svg width="16" height="16" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="9" r="6.5" stroke-dasharray="2.5 2"/><path d="M6.5 9a2.5 2.5 0 1 0 5 0 2.5 2.5 0 0 0-5 0z"/></svg></span><span class="label">影子资产</span></a>
+          <a class="nav-item"><span class="ico"><svg width="16" height="16" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 14l4-5 3 3 5-7"/><path d="M11 5h4v4"/></svg></span><span class="label">资产变化</span></a>
+        </div>
+        <div class="nav-group">
+          <div class="nav-group-head">系统管理<span class="role-gate super">super</span></div>
+          <a class="nav-item"><span class="ico"><svg width="16" height="16" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="6.5" cy="6" r="2.25"/><path d="M2.5 14c.5-2.3 2.2-3.75 4-3.75s3.5 1.45 4 3.75"/><circle cx="12.5" cy="7.5" r="1.5"/><path d="M10.5 14c.4-1.7 1.4-2.75 2.5-2.75s2.1 1.05 2.5 2.75"/></svg></span><span class="label">用户管理</span></a>
+          <a class="nav-item"><span class="ico"><svg width="16" height="16" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="9" r="2.25"/><path d="M14.3 11.1l1 .8-1.2 2-1.2-.5a4.5 4.5 0 0 1-1.6.9l-.2 1.3h-2.2l-.2-1.3a4.5 4.5 0 0 1-1.6-.9l-1.2.5-1.2-2 1-.8a4.5 4.5 0 0 1 0-1.8l-1-.8 1.2-2 1.2.5a4.5 4.5 0 0 1 1.6-.9l.2-1.3h2.2l.2 1.3a4.5 4.5 0 0 1 1.6.9l1.2-.5 1.2 2-1 .8a4.5 4.5 0 0 1 0 1.8z"/></svg></span><span class="label">系统配置</span></a>
+        </div>
+      </div>
+      <div class="sidebar-foot">
+        <button class="collapse-btn" onclick="document.getElementById('toggleBtn').click()">
+          <span class="arr"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 4l-4 4 4 4"/></svg></span>
+          <span class="lbl">折叠侧边栏</span>
+        </button>
+      </div>
+    </aside>
+
+    <!-- ============== Main ============== -->
+    <main class="main">
+      <div class="scroll">
+
+        <!-- Page head -->
+        <div class="page-head">
+          <div>
+            <div class="title-row">
+              <h1>扫描批次确认</h1>
+              <span class="file-tag">scan_20260518_1430.xml</span>
+              <span class="status-tag"><span class="dot"></span>待确认</span>
+            </div>
+            <div class="sub">
+              <span><span class="k">上传人</span> <span class="av">ZT</span><span class="v" style="font-family: var(--font-sans); color: var(--neutral-900);">张涛</span></span>
+              <span class="sep">·</span>
+              <span><span class="k">上传时间</span> <span class="v">2026-05-18 14:35:08</span></span>
+              <span class="sep">·</span>
+              <span><span class="k">扫描时间</span> <span class="v">2026-05-18 14:00:12 → 14:28:47</span></span>
+              <span class="sep">·</span>
+              <span><span class="k">扫描源</span> <span class="v">nmap 7.94 · 192.168.0.0/16</span></span>
+              <span class="sep">·</span>
+              <span><span class="k">耗时</span> <span class="v">28分35秒</span></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- KPI cards -->
+        <div class="kpi-row">
+          <div class="kpi total">
+            <div class="ic"><svg width="20" height="20" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><rect x="2.5" y="3" width="13" height="4.5" rx="1"/><rect x="2.5" y="10.5" width="13" height="4.5" rx="1"/><circle cx="5" cy="5.25" r=".75" fill="currentColor"/><circle cx="5" cy="12.75" r=".75" fill="currentColor"/></svg></div>
+            <div class="body">
+              <div class="label">本次扫描主机</div>
+              <div class="num">85<span class="unit">台</span></div>
+              <div class="meta">对比基线：2,468 项资产</div>
+            </div>
+          </div>
+          <div class="kpi new">
+            <div class="ic"><svg width="20" height="20" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M9 3v12M3 9h12"/></svg></div>
+            <div class="body">
+              <div class="label">新发现</div>
+              <div class="num">12<span class="unit">台</span></div>
+              <div class="meta">需补充字段后导入</div>
+            </div>
+          </div>
+          <div class="kpi chg">
+            <div class="ic"><svg width="20" height="20" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8a6 6 0 0 1 11-3"/><path d="M14 2v3h-3"/><path d="M15 10a6 6 0 0 1-11 3"/><path d="M4 16v-3h3"/></svg></div>
+            <div class="body">
+              <div class="label">字段变更</div>
+              <div class="num">23<span class="unit">台</span></div>
+              <div class="meta">含 9 台端口变化、3 处危险端口新增</div>
+            </div>
+          </div>
+          <div class="kpi miss">
+            <div class="ic"><svg width="20" height="20" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="9" cy="9" r="6.5"/><path d="M5.5 9h7"/></svg></div>
+            <div class="body">
+              <div class="label">消失资产</div>
+              <div class="num">5<span class="unit">台</span></div>
+              <div class="meta">最长 1 次未扫到，未到下线阈值</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tabs container -->
+        <div class="tabs-wrap">
+          <div class="tabs">
+            <div class="tab">新发现 <span class="count">12</span></div>
+            <div class="tab t-chg active">变更 <span class="count">23</span></div>
+            <div class="tab t-miss">消失 <span class="count">5</span></div>
+
+            <div class="tab-toolbar">
+              <span>本批进度</span>
+              <span style="color: var(--neutral-900); font-family: var(--font-mono);">8 / 23</span>
+              <span style="display:inline-block; width:80px; height:6px; background: var(--neutral-100); border-radius: 3px; overflow: hidden;">
+                <span style="display:block; width: 34%; height: 100%; background: var(--color-primary-500);"></span>
+              </span>
+            </div>
+          </div>
+
+          <!-- =========== Tab 2 panel =========== -->
+          <div class="panel">
+
+            <!-- Tab toolbar -->
+            <div class="tab2-toolbar">
+              <div class="left">
+                <span class="filter-chip active">全部 <span class="num">23</span></span>
+                <span class="filter-chip">含危险端口 <span class="num">3</span></span>
+                <span class="filter-chip">端口变化 <span class="num">9</span></span>
+                <span class="filter-chip">服务版本变化 <span class="num">14</span></span>
+                <span class="filter-chip">仅基础字段 <span class="num">5</span></span>
+              </div>
+              <div class="spacer"></div>
+
+              <span class="strategy">批量策略：</span>
+              <div class="strategy-buttons">
+                <button class="use-scan">全部使用扫描值</button>
+                <button class="use-current">全部保留当前值</button>
+                <button>智能合并</button>
+              </div>
+              <button class="btn sm">
+                <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4h10M3 8h10M3 12h7"/></svg>
+                展开全部
+              </button>
+            </div>
+
+            <!-- =================================================
+                 Change card #1 — EXPANDED · 核心资产，含危险端口
+                 ================================================= -->
+            <article class="chg-card expanded">
+              <header class="chg-head">
+                <span class="ck checked"></span>
+                <span class="chev">
+                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l4 4-4 4"/></svg>
+                </span>
+                <span class="id">CMDB-001246</span>
+                <span class="host">edge-gw-dmz-01<span class="ip">203.0.113.12 · DMZ</span></span>
+                <span class="pills">
+                  <span class="chg-pill field">3 字段变更</span>
+                  <span class="chg-pill port-add">+ 1 新端口</span>
+                  <span class="chg-pill alert">危险端口 :3389</span>
+                  <span class="chg-pill version">2 个服务版本</span>
+                </span>
+                <span class="meta">最后扫描 2 分钟前</span>
+                <span class="strategy-summary pending"><span class="dot"></span>待选择 (3)</span>
+              </header>
+
+              <div class="chg-body">
+
+                <!-- compare columns header -->
+                <div class="compare-head">
+                  <div class="col"></div>
+                  <div class="col scan"><span class="badge-col">本次扫描</span> 2026-05-18 14:28</div>
+                  <div class="col current"><span class="badge-col">当前资产</span> 上次扫描 2026-05-15 10:00</div>
+                  <div class="col keep"><span class="badge-col">保留策略</span> 选择写入资产的值</div>
+                </div>
+
+                <!-- field: 操作系统 -->
+                <div class="compare-row">
+                  <div class="lbl-cell">
+                    <span class="lbl">操作系统</span>
+                    <span class="lbl-meta">os.name</span>
+                  </div>
+                  <div class="cell scan">
+                    <span class="val">VyOS <span class="diff-add">1.4.0-ROLLING-202604</span></span>
+                    <span class="src">nmap OS detection · 置信度 96%</span>
+                  </div>
+                  <div class="cell current">
+                    <span class="val">VyOS <span class="diff-del">1.3.4</span></span>
+                    <span class="src">手动录入 · <span class="ago">12 天前</span></span>
+                  </div>
+                  <div class="cell keep">
+                    <div class="keep-radios" data-group="os">
+                      <label class="keep-r keep-scan checked"><input type="radio" name="os" checked /><span class="ind"></span><span class="lbl-text">使用扫描值</span><span class="tag-mini">1.4.0-ROLLING</span></label>
+                      <label class="keep-r keep-current"><input type="radio" name="os" /><span class="ind"></span><span class="lbl-text">保留当前值</span><span class="tag-mini">1.3.4</span></label>
+                      <label class="keep-r keep-manual"><input type="radio" name="os" /><span class="ind"></span><span class="lbl-text">手动输入</span></label>
+                      <div class="keep-manual-input"><input type="text" placeholder="例如 VyOS 1.4.0" /></div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- field: 端口列表（重点字段，整块展示） -->
+                <div class="compare-row">
+                  <div class="lbl-cell">
+                    <span class="lbl">端口列表</span>
+                    <span class="lbl-meta">ports[]</span>
+                  </div>
+                  <div class="cell scan">
+                    <div class="port-list">
+                      <div class="p-line"><span class="p">22/TCP</span><span class="s">SSH · OpenSSH 9.2p1</span></div>
+                      <div class="p-line"><span class="p">443/TCP</span><span class="s">HTTPS · nginx 1.26.1</span></div>
+                      <div class="p-line"><span class="p"><span class="alert-tri"></span><span class="new">3389/TCP</span></span><span class="s">ms-wbt-server · 未识别版本</span></div>
+                      <div class="p-line"><span class="p">500/UDP</span><span class="s">IKE</span></div>
+                      <div class="p-line"><span class="p">4500/UDP</span><span class="s">IPsec NAT-T</span></div>
+                    </div>
+                    <span class="src" style="margin-top: 6px;">共 <b style="color: var(--neutral-900);">5</b> 个开放端口<span class="diff-num">+1</span></span>
+                  </div>
+                  <div class="cell current">
+                    <div class="port-list">
+                      <div class="p-line"><span class="p">22/TCP</span><span class="s">SSH · OpenSSH 9.2p1</span></div>
+                      <div class="p-line"><span class="p">443/TCP</span><span class="s">HTTPS · nginx 1.26.1</span></div>
+                      <div class="p-line"><span class="p">500/UDP</span><span class="s">IKE</span></div>
+                      <div class="p-line"><span class="p">4500/UDP</span><span class="s">IPsec NAT-T</span></div>
+                    </div>
+                    <span class="src" style="margin-top: 6px;">共 <b style="color: var(--neutral-700);">4</b> 个开放端口</span>
+                  </div>
+                  <div class="cell keep">
+                    <div class="keep-radios">
+                      <label class="keep-r keep-scan checked"><input type="radio" name="ports" checked /><span class="ind"></span><span class="lbl-text">使用扫描值</span><span class="tag-mini">5 端口</span></label>
+                      <label class="keep-r keep-current"><input type="radio" name="ports" /><span class="ind"></span><span class="lbl-text">保留当前值</span><span class="tag-mini">4 端口</span></label>
+                      <label class="keep-r keep-manual"><input type="radio" name="ports" /><span class="ind"></span><span class="lbl-text">逐端口决定</span><span class="tag-mini">高级</span></label>
+                    </div>
+                    <div style="margin-top: 8px; padding: 8px 10px; background: var(--color-alert-soft); border-radius: 4px; font-size: 11px; color: #C2410C; line-height: 16px; display: flex; gap: 6px;">
+                      <span style="flex-shrink:0; margin-top: 2px;"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="6" cy="6" r="4.5"/><path d="M6 4v3M6 8.5v.1"/></svg></span>
+                      <span>采纳扫描值将引入危险端口 <span style="font-family: var(--font-mono); font-weight: 600;">3389/TCP</span>，建议同步更新 DMZ ACL。</span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- field: nginx 版本 -->
+                <div class="compare-row">
+                  <div class="lbl-cell">
+                    <span class="lbl">服务版本 · nginx</span>
+                    <span class="lbl-meta">ports.443.version</span>
+                  </div>
+                  <div class="cell scan">
+                    <span class="val mono"><span class="diff-add">nginx/1.26.1</span></span>
+                    <span class="src">扫描指纹 · service-version probe</span>
+                  </div>
+                  <div class="cell current">
+                    <span class="val mono"><span class="diff-del">nginx/1.24.0</span></span>
+                    <span class="src">3 天前的版本</span>
+                  </div>
+                  <div class="cell keep">
+                    <div class="keep-radios">
+                      <label class="keep-r keep-scan checked"><input type="radio" name="nginx" checked /><span class="ind"></span><span class="lbl-text">使用扫描值</span><span class="tag-mini">1.26.1</span></label>
+                      <label class="keep-r keep-current"><input type="radio" name="nginx" /><span class="ind"></span><span class="lbl-text">保留当前值</span><span class="tag-mini">1.24.0</span></label>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- field: 不变字段 (主机名) — 折叠/极简显示 -->
+                <div class="compare-row unchanged">
+                  <div class="lbl-cell">
+                    <span class="lbl">主机名</span>
+                    <span class="lbl-meta">hostname · 未变化</span>
+                  </div>
+                  <div class="cell unchanged scan">
+                    <span class="val mono">edge-gw-dmz-01</span>
+                  </div>
+                  <div class="cell unchanged current">
+                    <span class="val mono">edge-gw-dmz-01</span>
+                  </div>
+                  <div class="cell unchanged keep">
+                    <span class="val" style="color: var(--neutral-500); font-size: 12px;">— 无需变更 —</span>
+                  </div>
+                </div>
+
+              </div>
+
+              <div class="chg-foot">
+                <div class="left">
+                  <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6"/><path d="M6.5 6.25C6.5 5.28 7.29 4.5 8.25 4.5S10 5.28 10 6.25c0 .97-1.75 1.25-1.75 2.5"/><circle cx="8" cy="11.25" r=".25" fill="currentColor"/></svg>
+                  此资产标记为 <b style="color: var(--color-danger); font-weight: 600;">核心</b>，变更将记录到操作日志并通知负责人 <span class="av" style="margin-left: 4px;">LM</span>李敏。
+                </div>
+                <div class="right">
+                  <button class="btn-link" style="font-size: 12px;">跳过此资产</button>
+                  <button class="btn-link" style="font-size: 12px;">查看完整 diff</button>
+                  <button class="btn sm primary">应用此资产</button>
+                </div>
+              </div>
+            </article>
+
+            <!-- =================================================
+                 Change card #2 — EXPANDED · 只有版本变更
+                 ================================================= -->
+            <article class="chg-card expanded">
+              <header class="chg-head">
+                <span class="ck checked"></span>
+                <span class="chev">
+                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l4 4-4 4"/></svg>
+                </span>
+                <span class="id">CMDB-001247</span>
+                <span class="host">web-prod-04<span class="ip">192.168.10.24 · 内网</span></span>
+                <span class="pills">
+                  <span class="chg-pill version">服务版本 · 2 处</span>
+                </span>
+                <span class="meta">最后扫描 5 分钟前</span>
+                <span class="strategy-summary"><span class="dot"></span>已选择 (2)</span>
+              </header>
+
+              <div class="chg-body">
+                <div class="compare-head">
+                  <div class="col"></div>
+                  <div class="col scan"><span class="badge-col">本次扫描</span></div>
+                  <div class="col current"><span class="badge-col">当前资产</span></div>
+                  <div class="col keep"><span class="badge-col">保留策略</span></div>
+                </div>
+
+                <div class="compare-row">
+                  <div class="lbl-cell">
+                    <span class="lbl">服务版本 · nginx</span>
+                    <span class="lbl-meta">ports.80/443.version</span>
+                  </div>
+                  <div class="cell scan">
+                    <span class="val mono"><span class="diff-add">nginx/1.26.1</span></span>
+                    <span class="src">80/TCP · 443/TCP 一致</span>
+                  </div>
+                  <div class="cell current">
+                    <span class="val mono"><span class="diff-del">nginx/1.24.0</span></span>
+                    <span class="src">上次扫描值</span>
+                  </div>
+                  <div class="cell keep">
+                    <div class="keep-radios">
+                      <label class="keep-r keep-scan checked"><input type="radio" name="nginx2" checked /><span class="ind"></span><span class="lbl-text">使用扫描值</span><span class="tag-mini">1.26.1</span></label>
+                      <label class="keep-r keep-current"><input type="radio" name="nginx2" /><span class="ind"></span><span class="lbl-text">保留当前值</span><span class="tag-mini">1.24.0</span></label>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="compare-row">
+                  <div class="lbl-cell">
+                    <span class="lbl">服务版本 · node_exporter</span>
+                    <span class="lbl-meta">ports.9100.version</span>
+                  </div>
+                  <div class="cell scan">
+                    <span class="val mono"><span class="diff-add">node_exporter 1.7.0</span></span>
+                  </div>
+                  <div class="cell current">
+                    <span class="val mono"><span class="diff-del">node_exporter 1.6.1</span></span>
+                  </div>
+                  <div class="cell keep">
+                    <div class="keep-radios">
+                      <label class="keep-r keep-scan checked"><input type="radio" name="ne" checked /><span class="ind"></span><span class="lbl-text">使用扫描值</span><span class="tag-mini">1.7.0</span></label>
+                      <label class="keep-r keep-current"><input type="radio" name="ne" /><span class="ind"></span><span class="lbl-text">保留当前值</span><span class="tag-mini">1.6.1</span></label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="chg-foot">
+                <div class="left">已为 2 个字段选定保留策略 · 应用后将记录在变更历史</div>
+                <div class="right">
+                  <button class="btn-link" style="font-size: 12px;">查看完整 diff</button>
+                  <button class="btn sm primary">应用此资产</button>
+                </div>
+              </div>
+            </article>
+
+            <!-- =================================================
+                 Card #3 — COLLAPSED
+                 ================================================= -->
+            <article class="chg-card">
+              <header class="chg-head">
+                <span class="ck checked"></span>
+                <span class="chev"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l4 4-4 4"/></svg></span>
+                <span class="id">CMDB-001244</span>
+                <span class="host">k8s-node-12<span class="ip">10.20.8.112 · 内网</span></span>
+                <span class="pills">
+                  <span class="chg-pill version">1 个服务版本</span>
+                  <span class="chg-pill port-rm">− 1 端口关闭</span>
+                </span>
+                <span class="meta">最后扫描 3 分钟前</span>
+                <span class="strategy-summary"><span class="dot"></span>已选择 (2)</span>
+              </header>
+            </article>
+
+            <!-- =================================================
+                 Card #4 — COLLAPSED · 含危险端口
+                 ================================================= -->
+            <article class="chg-card">
+              <header class="chg-head">
+                <span class="ck checked"></span>
+                <span class="chev"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l4 4-4 4"/></svg></span>
+                <span class="id">CMDB-001240</span>
+                <span class="host">edge-gw-dmz-02<span class="ip">203.0.113.13 · DMZ</span></span>
+                <span class="pills">
+                  <span class="chg-pill port-add">+ 1 新端口</span>
+                  <span class="chg-pill alert">危险端口 :22</span>
+                </span>
+                <span class="meta">最后扫描 6 分钟前</span>
+                <span class="strategy-summary pending"><span class="dot"></span>待选择 (1)</span>
+              </header>
+            </article>
+
+            <!-- =================================================
+                 Card #5 — COLLAPSED
+                 ================================================= -->
+            <article class="chg-card">
+              <header class="chg-head">
+                <span class="ck"></span>
+                <span class="chev"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l4 4-4 4"/></svg></span>
+                <span class="id">CMDB-001238</span>
+                <span class="host">redis-cache-04<span class="ip">10.20.7.18 · 内网</span></span>
+                <span class="pills">
+                  <span class="chg-pill field">2 字段变更</span>
+                </span>
+                <span class="meta">最后扫描 4 分钟前</span>
+                <span class="strategy-summary"><span class="dot"></span>已选择 (2)</span>
+              </header>
+            </article>
+
+            <!-- =================================================
+                 Card #6 — COLLAPSED
+                 ================================================= -->
+            <article class="chg-card">
+              <header class="chg-head">
+                <span class="ck checked"></span>
+                <span class="chev"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l4 4-4 4"/></svg></span>
+                <span class="id">CMDB-001229</span>
+                <span class="host">db-pg-bigdata-01<span class="ip">10.20.5.42 · 管理网</span></span>
+                <span class="pills">
+                  <span class="chg-pill version">2 个服务版本</span>
+                </span>
+                <span class="meta">最后扫描 11 分钟前</span>
+                <span class="strategy-summary"><span class="dot"></span>已选择 (2)</span>
+              </header>
+            </article>
+
+            <!-- =================================================
+                 Card #7 — COLLAPSED
+                 ================================================= -->
+            <article class="chg-card">
+              <header class="chg-head">
+                <span class="ck checked"></span>
+                <span class="chev"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l4 4-4 4"/></svg></span>
+                <span class="id">CMDB-001226</span>
+                <span class="host">app-user-02<span class="ip">192.168.10.55 · 内网</span></span>
+                <span class="pills">
+                  <span class="chg-pill version">1 个服务版本</span>
+                </span>
+                <span class="meta">最后扫描 2 分钟前</span>
+                <span class="strategy-summary"><span class="dot"></span>已选择 (1)</span>
+              </header>
+            </article>
+
+            <!-- =================================================
+                 Card #8 — COLLAPSED
+                 ================================================= -->
+            <article class="chg-card">
+              <header class="chg-head">
+                <span class="ck"></span>
+                <span class="chev"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l4 4-4 4"/></svg></span>
+                <span class="id">CMDB-001225</span>
+                <span class="host">backup-srv-02<span class="ip">10.99.0.7 · 管理网</span></span>
+                <span class="pills">
+                  <span class="chg-pill field">1 字段变更</span>
+                </span>
+                <span class="meta">最后扫描 2 小时前</span>
+                <span class="strategy-summary pending"><span class="dot"></span>待选择 (1)</span>
+              </header>
+            </article>
+
+            <div style="text-align: center; padding: var(--space-3) 0; color: var(--neutral-500); font-size: 12px;">
+              还有 16 项变更资产 · <button class="btn-link" style="font-size: 12px;">展开全部</button>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ============== Sticky action bar ============== -->
+      <div class="action-bar">
+        <div class="left">
+          <span class="summary">
+            <span class="item new">新发现 <b>12</b> · 已确认 <b>0</b></span>
+            <span class="item chg">变更 <b>23</b> · 已确认 <b>8</b></span>
+            <span class="item miss">消失 <b>5</b> · 已处理 <b>0</b></span>
+          </span>
+          <span style="color:var(--neutral-300);">|</span>
+          <span style="font-family: var(--font-mono); color: var(--neutral-700);">总进度 21%</span>
+        </div>
+        <div class="right">
+          <button class="btn ghost-danger">拒绝本批次</button>
+          <button class="btn">
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="10" height="10" rx="1"/><path d="M5 6h4M5 8.5h4M5 11h2"/></svg>
+            暂存稍后处理
+          </button>
+          <div class="sep-v"></div>
+          <button class="btn primary">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5L6.5 12 13 5"/></svg>
+            确认导入（21 项）
+          </button>
+        </div>
+      </div>
+
+    </main>
+  </div>
+</div>
+
+<script>
+  // Sidebar collapse
+  document.getElementById('toggleBtn').addEventListener('click', () => {
+    document.getElementById('app').classList.toggle('collapsed');
+  });
+
+  // Card expand/collapse
+  document.querySelectorAll('.chg-head').forEach(head => {
+    head.addEventListener('click', e => {
+      // ignore clicks on the checkbox itself
+      if (e.target.closest('.ck')) return;
+      head.closest('.chg-card').classList.toggle('expanded');
+    });
+  });
+
+  // Checkboxes
+  document.querySelectorAll('.chg-head .ck').forEach(ck => {
+    ck.addEventListener('click', e => {
+      e.stopPropagation();
+      ck.classList.toggle('checked');
+    });
+  });
+
+  // Keep-strategy radios
+  document.querySelectorAll('.keep-radios').forEach(group => {
+    group.addEventListener('click', e => {
+      const r = e.target.closest('.keep-r');
+      if (!r) return;
+      group.querySelectorAll('.keep-r').forEach(x => {
+        x.classList.toggle('checked', x === r);
+        const input = x.querySelector('input');
+        if (input) input.checked = x === r;
+      });
+    });
+  });
+
+  // Filter chips (active toggle, single-select among the first row)
+  document.querySelectorAll('.tab2-toolbar .filter-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      document.querySelectorAll('.tab2-toolbar .filter-chip').forEach(c => c.classList.remove('active'));
+      chip.classList.add('active');
+    });
+  });
+</script>
+</body>
+</html>

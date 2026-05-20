@@ -1,0 +1,1315 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<title>CMDB Lite · 资产列表</title>
+<meta name="viewport" content="width=1280" />
+<link rel="stylesheet" href="tokens.css" />
+<style>
+html, body { height: 100%; }
+body { min-width: 1280px; overflow: hidden; }
+
+/* =========================================================
+   App shell (same vocabulary as Layout.html)
+   ========================================================= */
+.app {
+  --sidebar-w: 220px;
+  --topbar-h: 56px;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--neutral-50);
+}
+.app.collapsed { --sidebar-w: 60px; }
+
+/* ---------- Topbar ---------- */
+.topbar {
+  flex-shrink: 0;
+  height: var(--topbar-h);
+  background: var(--neutral-0);
+  border-bottom: 1px solid var(--neutral-200);
+  display: flex; align-items: stretch;
+  padding-right: var(--space-6);
+  z-index: 20;
+}
+.brand-zone {
+  width: var(--sidebar-w);
+  display: flex; align-items: center; gap: var(--space-2);
+  padding: 0 var(--space-4);
+  border-right: 1px solid var(--neutral-200);
+  transition: width .18s ease;
+  overflow: hidden;
+}
+.brand-zone .logo {
+  width: 28px; height: 28px;
+  background: var(--color-primary-500);
+  border-radius: var(--radius-md);
+  position: relative;
+  flex-shrink: 0;
+}
+.brand-zone .logo::before, .brand-zone .logo::after {
+  content: ""; position: absolute; background: rgba(255,255,255,0.92); border-radius: 1.5px;
+}
+.brand-zone .logo::before { left: 6px; top: 8px; width: 16px; height: 3px; }
+.brand-zone .logo::after  { left: 6px; top: 16px; width: 10px; height: 3px; }
+.brand-zone .word {
+  font-weight: 600; color: var(--neutral-900);
+  font-size: 16px; letter-spacing: -0.01em; white-space: nowrap;
+}
+.brand-zone .word em { font-style: normal; color: var(--color-primary-500); }
+.app.collapsed .brand-zone .word { display: none; }
+
+.tb-left { display: flex; align-items: center; padding-left: var(--space-3); gap: var(--space-3); }
+.tb-spacer { flex: 1; }
+.tb-right { display: flex; align-items: center; gap: var(--space-2); }
+
+.icon-btn {
+  width: 32px; height: 32px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: var(--radius-md);
+  color: var(--neutral-500); background: transparent;
+  border: 0; cursor: pointer; position: relative;
+  transition: background-color .12s ease, color .12s ease;
+}
+.icon-btn:hover { background: var(--neutral-100); color: var(--neutral-900); }
+.icon-btn .badge {
+  position: absolute; top: 4px; right: 4px;
+  min-width: 14px; height: 14px; padding: 0 3px;
+  border-radius: 7px; background: var(--color-danger); color: #fff;
+  font-size: 10px; line-height: 14px; font-weight: 600;
+  border: 2px solid var(--neutral-0); font-family: var(--font-mono);
+}
+
+/* Breadcrumb */
+.crumb {
+  display: flex; align-items: center; gap: 6px;
+  font-size: var(--fs-body); color: var(--neutral-500);
+}
+.crumb a { color: var(--neutral-500); text-decoration: none; cursor: pointer; }
+.crumb a:hover { color: var(--color-primary-500); }
+.crumb .sep { color: var(--neutral-300); }
+.crumb .here { color: var(--neutral-900); font-weight: 500; }
+
+.search {
+  display: inline-flex; align-items: center; gap: var(--space-2);
+  background: var(--neutral-50); border: 1px solid var(--neutral-200);
+  border-radius: var(--radius-md); padding: 0 10px;
+  height: 32px; width: 260px; color: var(--neutral-500); font-size: 13px; cursor: text;
+}
+.search:hover { background: var(--neutral-100); border-color: var(--neutral-300); }
+.search .kbd {
+  margin-left: auto; font-family: var(--font-mono); font-size: 11px;
+  background: var(--neutral-0); border: 1px solid var(--neutral-200);
+  padding: 1px 5px; border-radius: 3px; color: var(--neutral-500);
+}
+
+.user {
+  display: inline-flex; align-items: center; gap: var(--space-2);
+  padding: 4px 8px 4px 4px; border-radius: var(--radius-md);
+  cursor: pointer; height: 40px;
+  transition: background-color .12s ease;
+}
+.user:hover { background: var(--neutral-100); }
+.user .avatar {
+  width: 32px; height: 32px; border-radius: 50%;
+  background: var(--color-primary-100); color: var(--color-primary-700);
+  font-weight: 600; display: inline-flex; align-items: center; justify-content: center;
+  font-size: 12px; border: 2px solid var(--role-super-admin);
+}
+.user .info { display: flex; flex-direction: column; line-height: 1.2; }
+.user .info .name { color: var(--neutral-900); font-size: 13px; font-weight: 500; }
+.role-badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 11px; line-height: 14px; padding: 1px 6px;
+  border-radius: 3px; font-weight: 500;
+  margin-top: 2px;
+}
+.role-badge.super { background: #FEE7EE; color: var(--role-super-admin); }
+.role-badge .dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+.user .chev { color: var(--neutral-400); margin-left: 2px; }
+
+/* =========================================================
+   Body
+   ========================================================= */
+.body-grid {
+  flex: 1;
+  display: grid;
+  grid-template-columns: var(--sidebar-w) 1fr;
+  min-height: 0;
+}
+
+/* ---------- Sidebar ---------- */
+.sidebar {
+  background: var(--neutral-0);
+  border-right: 1px solid var(--neutral-200);
+  display: flex; flex-direction: column;
+  width: var(--sidebar-w);
+  transition: width .18s ease;
+  overflow: hidden;
+}
+.sidebar-scroll { flex: 1; overflow-y: auto; padding: var(--space-4) 0 var(--space-6); }
+.sidebar-scroll::-webkit-scrollbar { width: 6px; }
+.sidebar-scroll::-webkit-scrollbar-thumb { background: var(--neutral-200); border-radius: 3px; }
+
+.nav-group + .nav-group { margin-top: var(--space-2); }
+.nav-group-head {
+  padding: var(--space-3) var(--space-4) 6px;
+  font-size: 11px; font-family: var(--font-mono);
+  letter-spacing: 0.08em; color: var(--neutral-400);
+  text-transform: uppercase;
+  display: flex; align-items: center; gap: 6px;
+}
+.app.collapsed .nav-group-head { display: none; }
+.role-gate {
+  background: var(--neutral-100); color: var(--neutral-500);
+  padding: 1px 5px; border-radius: 3px; font-size: 10px;
+  text-transform: none; letter-spacing: 0; font-family: var(--font-mono);
+}
+.role-gate.super { background: #FEE7EE; color: var(--role-super-admin); }
+.role-gate.audit { background: #E7ECF3; color: var(--role-auditor); }
+
+.nav-item {
+  position: relative;
+  display: flex; align-items: center; gap: var(--space-3);
+  height: 36px; margin: 1px var(--space-2);
+  padding: 0 10px; border-radius: var(--radius-md);
+  color: var(--neutral-700); font-size: var(--fs-body);
+  cursor: pointer; text-decoration: none; white-space: nowrap;
+  transition: background-color .12s ease, color .12s ease;
+}
+.nav-item .ico {
+  width: 18px; height: 18px; color: var(--neutral-400);
+  flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center;
+}
+.nav-item .label { flex: 1; overflow: hidden; text-overflow: ellipsis; }
+.nav-item .badge {
+  background: var(--color-danger); color: #fff;
+  font-size: 11px; font-weight: 600; padding: 1px 6px;
+  border-radius: 9px; min-width: 18px; text-align: center;
+  font-family: var(--font-mono); line-height: 16px;
+}
+.nav-item:hover { background: var(--color-primary-50); color: var(--neutral-900); }
+.nav-item:hover .ico { color: var(--color-primary-500); }
+.nav-item.active {
+  background: var(--color-primary-50);
+  color: var(--color-primary-700);
+  font-weight: 500;
+}
+.nav-item.active .ico { color: var(--color-primary-500); }
+.nav-item.active::before {
+  content: ""; position: absolute; left: -8px; top: 6px; bottom: 6px;
+  width: 3px; background: var(--color-primary-500); border-radius: 0 2px 2px 0;
+}
+.app.collapsed .nav-item { justify-content: center; padding: 0; margin: 1px 8px; width: calc(var(--sidebar-w) - 16px); }
+.app.collapsed .nav-item .label, .app.collapsed .nav-item .badge { display: none; }
+.app.collapsed .nav-item .ico { color: var(--neutral-500); width: 20px; height: 20px; }
+.app.collapsed .nav-item.has-badge::after {
+  content: ""; position: absolute; top: 6px; right: 8px;
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--color-danger); border: 1.5px solid var(--neutral-0);
+}
+
+.sidebar-foot {
+  border-top: 1px solid var(--neutral-200);
+  padding: 8px;
+}
+.collapse-btn {
+  height: 32px; width: 100%;
+  border: 1px solid var(--neutral-200); background: var(--neutral-0);
+  border-radius: var(--radius-md); color: var(--neutral-500); cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  font-size: 12px; padding: 0 10px;
+  transition: background-color .12s ease, color .12s ease, border-color .12s ease;
+}
+.collapse-btn:hover { background: var(--neutral-50); color: var(--neutral-900); border-color: var(--neutral-300); }
+.collapse-btn .arr { transition: transform .18s ease; display: inline-flex; }
+.app.collapsed .collapse-btn .arr { transform: rotate(180deg); }
+.app.collapsed .collapse-btn .lbl { display: none; }
+
+/* =========================================================
+   Main content
+   ========================================================= */
+.main {
+  min-width: 0;
+  padding: var(--space-6);
+  display: flex; flex-direction: column;
+  gap: var(--space-4);
+  overflow: hidden;
+}
+
+/* Page header */
+.page-head {
+  display: flex; align-items: flex-end; justify-content: space-between;
+  gap: var(--space-4);
+}
+.page-head h1 {
+  margin: 0; font-size: var(--fs-h2); line-height: var(--lh-h2);
+  color: var(--neutral-900); font-weight: 600;
+  display: inline-flex; align-items: baseline; gap: var(--space-3);
+}
+.page-head h1 .count {
+  font-size: 13px; font-weight: 400;
+  color: var(--neutral-500); font-family: var(--font-mono);
+}
+.page-head h1 .count b { color: var(--neutral-900); font-weight: 600; }
+.page-head .meta {
+  margin-top: 6px; font-size: var(--fs-caption);
+  color: var(--neutral-500); font-family: var(--font-mono);
+  display: flex; gap: var(--space-3); flex-wrap: wrap;
+}
+.page-head .meta span { display: inline-flex; align-items: center; gap: 4px; }
+.page-head .meta .d { width: 6px; height: 6px; border-radius: 50%; }
+
+/* Buttons */
+.btn {
+  height: 36px; border-radius: var(--radius-md); padding: 0 14px;
+  font-size: var(--fs-body); border: 1px solid var(--neutral-300);
+  background: var(--neutral-0); color: var(--neutral-700); cursor: pointer;
+  display: inline-flex; align-items: center; gap: 6px;
+  transition: background-color .12s ease, border-color .12s ease, color .12s ease;
+  white-space: nowrap;
+}
+.btn:hover { background: var(--neutral-50); border-color: var(--neutral-400); color: var(--neutral-900); }
+.btn:active { background: var(--neutral-100); }
+.btn.primary { background: var(--color-primary-500); border-color: var(--color-primary-500); color: #fff; }
+.btn.primary:hover { background: var(--color-primary-600); border-color: var(--color-primary-600); }
+.btn.primary:active { background: var(--color-primary-700); }
+.btn.sm { height: 32px; padding: 0 10px; font-size: 13px; }
+.btn-link {
+  background: transparent; border: 0; padding: 0 6px;
+  color: var(--color-primary-500); cursor: pointer; font-size: 13px;
+}
+.btn-link:hover { color: var(--color-primary-700); text-decoration: underline; }
+.btn-link.danger { color: var(--color-danger); }
+.btn-link.danger:hover { color: #B91C1C; }
+.btn-link.muted { color: var(--neutral-400); cursor: not-allowed; }
+
+.actions { display: flex; align-items: center; gap: var(--space-2); }
+
+/* =========================================================
+   Filter card
+   ========================================================= */
+.card {
+  background: var(--neutral-0);
+  border: 1px solid var(--neutral-200);
+  border-radius: var(--radius-lg);
+  flex-shrink: 0;
+}
+.filters { padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-3); }
+
+.filters .row { display: flex; align-items: center; gap: var(--space-3); flex-wrap: nowrap; }
+.filters .row.dropdowns { gap: var(--space-3); flex-wrap: wrap; }
+.filters .row.adv { gap: var(--space-3); flex-wrap: wrap; padding-top: var(--space-3); border-top: 1px dashed var(--neutral-200); }
+
+.filters .row.adv.hidden { display: none; }
+
+.f-search-wrap {
+  position: relative;
+  flex: 1;
+  min-width: 320px;
+  max-width: 560px;
+}
+.f-search-wrap .ico {
+  position: absolute; left: 10px; top: 50%; transform: translateY(-50%);
+  width: 16px; height: 16px; color: var(--neutral-400);
+}
+.f-input {
+  width: 100%; height: 36px;
+  padding: 0 12px 0 34px;
+  border: 1px solid var(--neutral-300);
+  border-radius: var(--radius-md);
+  background: var(--neutral-0);
+  font-size: var(--fs-body); color: var(--neutral-900);
+  outline: none;
+  transition: border-color .12s ease, box-shadow .12s ease;
+}
+.f-input::placeholder { color: var(--neutral-400); }
+.f-input:hover { border-color: var(--neutral-400); }
+.f-input:focus { border-color: var(--color-primary-500); box-shadow: 0 0 0 3px var(--color-primary-100); }
+
+.f-field {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-size: var(--fs-caption); color: var(--neutral-500);
+  white-space: nowrap;
+}
+.f-field .lbl { color: var(--neutral-500); }
+.f-select {
+  height: 32px;
+  min-width: 140px;
+  padding: 0 28px 0 10px;
+  border: 1px solid var(--neutral-300);
+  border-radius: var(--radius-md);
+  background: var(--neutral-0)
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 16 16' fill='none' stroke='%2394A3B8' stroke-width='1.5' stroke-linecap='round'><path d='M4 6.5l4 4 4-4'/></svg>")
+    no-repeat right 8px center;
+  font-size: 13px;
+  color: var(--neutral-900);
+  appearance: none; -webkit-appearance: none;
+  outline: none;
+  cursor: pointer;
+  transition: border-color .12s ease, box-shadow .12s ease;
+}
+.f-select:hover { border-color: var(--neutral-400); }
+.f-select:focus { border-color: var(--color-primary-500); box-shadow: 0 0 0 3px var(--color-primary-100); }
+.f-select.has-value { border-color: var(--color-primary-300); color: var(--color-primary-700); background-color: var(--color-primary-50); }
+
+.f-spacer { flex: 1; }
+
+.f-adv-toggle {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: transparent; border: 0; padding: 0;
+  color: var(--color-primary-500); cursor: pointer; font-size: 13px;
+}
+.f-adv-toggle:hover { color: var(--color-primary-700); }
+.f-adv-toggle .chev { transition: transform .18s ease; display: inline-flex; }
+.f-adv-toggle.open .chev { transform: rotate(180deg); }
+
+.f-range {
+  display: inline-flex; align-items: center; gap: 4px;
+  height: 32px; padding: 0 10px;
+  border: 1px solid var(--neutral-300); border-radius: var(--radius-md);
+  background: var(--neutral-0); cursor: pointer;
+  font-family: var(--font-mono); font-size: 12px; color: var(--neutral-700);
+}
+.f-range:hover { border-color: var(--neutral-400); }
+.f-range .arr { color: var(--neutral-400); margin: 0 4px; }
+.f-range .ico { color: var(--neutral-400); margin-right: 4px; }
+
+/* =========================================================
+   Table card (fills remaining height)
+   ========================================================= */
+.table-card {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.tbl-scroll {
+  flex: 1;
+  overflow: auto;
+  min-height: 0;
+}
+.tbl-scroll::-webkit-scrollbar { width: 10px; height: 10px; }
+.tbl-scroll::-webkit-scrollbar-thumb { background: var(--neutral-200); border-radius: 5px; }
+.tbl-scroll::-webkit-scrollbar-thumb:hover { background: var(--neutral-300); }
+.tbl-scroll::-webkit-scrollbar-track { background: transparent; }
+
+table.tbl {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: var(--fs-body);
+  min-width: 1280px;
+}
+.tbl thead th {
+  position: sticky; top: 0; z-index: 2;
+  text-align: left; font-weight: 600;
+  color: var(--neutral-700);
+  background: #F4F7FB;
+  border-bottom: 1px solid var(--neutral-200);
+  padding: 0 16px;
+  font-size: 13px;
+  height: 40px;
+  white-space: nowrap;
+}
+.tbl thead th::after {
+  /* subtle separator that survives sticky stacking */
+  content: "";
+  position: absolute; left: 0; right: 0; bottom: -1px;
+  height: 1px; background: var(--neutral-200);
+}
+.tbl thead th.sortable { cursor: pointer; user-select: none; }
+.tbl thead th.sortable:hover { color: var(--neutral-900); }
+.tbl thead th .sort {
+  display: inline-flex; vertical-align: middle; margin-left: 4px;
+  color: var(--neutral-300);
+}
+.tbl thead th.sorted .sort.up { color: var(--color-primary-500); }
+.tbl thead th.sorted .sort.down { color: var(--color-primary-500); }
+
+.tbl tbody td {
+  height: 44px;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--neutral-100);
+  color: var(--neutral-700);
+  vertical-align: middle;
+  white-space: nowrap;
+}
+.tbl tbody tr:nth-child(even) td { background: #FBFCFE; }
+.tbl tbody tr:hover td { background: var(--color-primary-50); }
+.tbl tbody tr.selected td { background: #ECF2FE; }
+.tbl tbody tr.selected:hover td { background: #E3EBFD; }
+.tbl tbody tr:last-child td { border-bottom: 0; }
+
+/* Column widths */
+.tbl .col-chk { width: 36px; padding: 0 0 0 16px; }
+.tbl .col-id  { width: 120px; }
+.tbl .col-ip  { width: 130px; }
+.tbl .col-host { width: 150px; }
+.tbl .col-type { width: 90px; }
+.tbl .col-zone { width: 96px; }
+.tbl .col-biz  { width: 130px; }
+.tbl .col-imp  { width: 90px; }
+.tbl .col-stat { width: 96px; }
+.tbl .col-own  { width: 76px; }
+.tbl .col-sync { width: 110px; }
+.tbl .col-act  { width: 150px; text-align: right; padding-right: 16px; }
+
+/* Mono cells */
+.mono { font-family: var(--font-mono); color: var(--neutral-900); font-size: 13px; }
+.mono.muted { color: var(--neutral-500); }
+.id-link { color: var(--color-primary-500); font-family: var(--font-mono); font-size: 13px; cursor: pointer; }
+.id-link:hover { color: var(--color-primary-700); text-decoration: underline; }
+.host { color: var(--neutral-900); font-weight: 500; }
+.host .sub { display: block; font-size: 11px; color: var(--neutral-500); font-family: var(--font-mono); font-weight: 400; margin-top: 1px; }
+
+/* Zone tag */
+.tag-zone {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 12px; line-height: 18px;
+  padding: 1px 8px; border-radius: var(--radius-sm); white-space: nowrap;
+}
+.tag-zone .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.tag-zone.intranet { background: #DBE5FE; color: #1E40AF; }
+.tag-zone.dmz      { background: #FEF3C7; color: #92400E; }
+.tag-zone.office   { background: #CFFAFE; color: #0E7490; }
+.tag-zone.mgmt     { background: #EDE9FE; color: #5B21B6; }
+
+.tag-type {
+  display: inline-flex; align-items: center;
+  font-size: 12px; line-height: 18px;
+  padding: 1px 8px; border-radius: var(--radius-sm);
+  background: var(--neutral-100); color: var(--neutral-700);
+  border: 1px solid var(--neutral-200);
+  white-space: nowrap;
+}
+
+/* Importance */
+.imp {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 13px;
+}
+.imp .glyph {
+  width: 14px; height: 14px;
+  display: inline-flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.imp.core   { color: var(--color-danger); }
+.imp.imp-i  { color: var(--color-warning); }
+.imp.normal { color: var(--neutral-500); }
+.imp .glyph svg { width: 14px; height: 14px; }
+
+/* Status */
+.status { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--neutral-700); }
+.status .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.status.online .dot { background: var(--status-online); box-shadow: 0 0 0 3px rgba(22,163,74,0.16); }
+.status.offline .dot { background: var(--status-offline); }
+.status.decom .dot { background: var(--status-decommissioned); }
+.alert-chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  background: var(--color-alert-soft); color: #C2410C;
+  font-size: 11px; line-height: 16px; padding: 1px 6px;
+  border-radius: 3px; margin-left: 6px; vertical-align: middle;
+}
+.alert-chip::before {
+  content: ""; width: 5px; height: 5px; border-radius: 50%; background: var(--color-alert);
+}
+
+/* Owner avatar mini */
+.owner {
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.owner .av {
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  background: var(--color-primary-100);
+  color: var(--color-primary-700);
+  font-size: 11px; font-weight: 600;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.owner .av.gray { background: var(--neutral-200); color: var(--neutral-700); }
+
+/* Checkbox */
+.ck {
+  width: 16px; height: 16px;
+  border: 1px solid var(--neutral-300);
+  border-radius: 3px; background: var(--neutral-0);
+  display: inline-flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  transition: background-color .12s ease, border-color .12s ease;
+  vertical-align: middle;
+}
+.ck:hover { border-color: var(--neutral-400); }
+.ck.checked { background: var(--color-primary-500); border-color: var(--color-primary-500); }
+.ck.checked::after {
+  content: ""; width: 9px; height: 5px;
+  border-left: 1.5px solid #fff; border-bottom: 1.5px solid #fff;
+  transform: rotate(-45deg) translate(1px, -1px);
+}
+.ck.indet { background: var(--color-primary-500); border-color: var(--color-primary-500); }
+.ck.indet::after {
+  content: ""; width: 8px; height: 0; border-top: 1.5px solid #fff;
+}
+
+/* =========================================================
+   Foot bar (bulk + pagination)
+   ========================================================= */
+.foot-bar {
+  flex-shrink: 0;
+  display: flex; align-items: center; justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  border-top: 1px solid var(--neutral-200);
+  background: var(--neutral-0);
+  font-size: 13px; color: var(--neutral-500);
+}
+.foot-bar .left { display: flex; align-items: center; gap: var(--space-3); }
+.foot-bar .left .sel {
+  color: var(--neutral-900); font-weight: 500;
+}
+.foot-bar .left .sel b { color: var(--color-primary-500); font-family: var(--font-mono); }
+
+.pag { display: inline-flex; align-items: center; gap: 4px; }
+.pg {
+  min-width: 30px; height: 30px; padding: 0 8px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--neutral-200); background: var(--neutral-0);
+  color: var(--neutral-700); cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center; font-size: 13px;
+}
+.pg:hover { border-color: var(--neutral-400); color: var(--neutral-900); }
+.pg.active { background: var(--color-primary-500); border-color: var(--color-primary-500); color: #fff; }
+.pg.disabled { color: var(--neutral-300); cursor: not-allowed; }
+.pg.disabled:hover { border-color: var(--neutral-200); color: var(--neutral-300); }
+
+.pag-size {
+  height: 30px;
+  padding: 0 24px 0 8px;
+  border: 1px solid var(--neutral-200); border-radius: var(--radius-sm);
+  background: var(--neutral-0)
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 16 16' fill='none' stroke='%2394A3B8' stroke-width='1.5' stroke-linecap='round'><path d='M4 6.5l4 4 4-4'/></svg>")
+    no-repeat right 6px center;
+  font-size: 13px; color: var(--neutral-700);
+  appearance: none; -webkit-appearance: none; cursor: pointer;
+}
+.pag-jump {
+  display: inline-flex; align-items: center; gap: 4px;
+  color: var(--neutral-500); font-size: 13px; margin-left: 6px;
+}
+.pag-jump input {
+  width: 50px; height: 30px;
+  border: 1px solid var(--neutral-200); border-radius: var(--radius-sm);
+  background: var(--neutral-0); padding: 0 8px;
+  font-size: 13px; text-align: center; outline: none;
+}
+.pag-jump input:focus { border-color: var(--color-primary-500); }
+
+</style>
+</head>
+<body>
+
+<div class="app" id="app" data-screen-label="Asset List">
+
+  <!-- =====================================================
+       Topbar
+       ===================================================== -->
+  <header class="topbar">
+    <div class="brand-zone">
+      <span class="logo" aria-hidden="true"></span>
+      <span class="word">CMDB <em>Lite</em></span>
+    </div>
+
+    <div class="tb-left">
+      <button class="icon-btn" id="toggleBtn" title="折叠 / 展开侧边栏" aria-label="折叠侧边栏">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3 4h12M3 9h12M3 14h12"/></svg>
+      </button>
+
+      <nav class="crumb" aria-label="breadcrumb">
+        <a>首页</a>
+        <span class="sep">/</span>
+        <a>资产管理</a>
+        <span class="sep">/</span>
+        <span class="here">资产列表</span>
+      </nav>
+    </div>
+
+    <div class="tb-spacer"></div>
+
+    <div class="tb-right">
+      <div class="search" role="button" tabindex="0">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="7" cy="7" r="4.5"/><path d="M10.5 10.5L13.5 13.5"/></svg>
+        <span>搜索主机 / IP / 配置项…</span>
+        <span class="kbd">⌘ K</span>
+      </div>
+      <button class="icon-btn" aria-label="同步状态">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13.5 4.5A6 6 0 0 0 3 6.5"/><path d="M13.5 2.5v3h-3"/><path d="M2.5 11.5A6 6 0 0 0 13 9.5"/><path d="M2.5 13.5v-3h3"/></svg>
+      </button>
+      <button class="icon-btn" aria-label="通知">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7a4 4 0 0 1 8 0v3l1 2H3l1-2V7z"/><path d="M6.5 13.5a1.5 1.5 0 0 0 3 0"/></svg>
+        <span class="badge">5</span>
+      </button>
+      <div style="width:1px; height:24px; background:var(--neutral-200); margin: 0 6px;"></div>
+      <div class="user">
+        <div class="avatar">ZT</div>
+        <div class="info">
+          <span class="name">张涛</span>
+          <span class="role-badge super"><span class="dot"></span>super_admin</span>
+        </div>
+        <span class="chev">
+          <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6.5l4 4 4-4"/></svg>
+        </span>
+      </div>
+    </div>
+  </header>
+
+  <!-- =====================================================
+       Body
+       ===================================================== -->
+  <div class="body-grid">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-scroll">
+
+        <div class="nav-group">
+          <div class="nav-group-head">资产管理</div>
+          <a class="nav-item active">
+            <span class="ico"><svg width="16" height="16" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><rect x="2.5" y="3" width="13" height="4.5" rx="1"/><rect x="2.5" y="10.5" width="13" height="4.5" rx="1"/><circle cx="5" cy="5.25" r=".5" fill="currentColor"/><circle cx="5" cy="12.75" r=".5" fill="currentColor"/></svg></span>
+            <span class="label">资产列表</span>
+          </a>
+          <a class="nav-item">
+            <span class="ico"><svg width="16" height="16" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M9 3v12M3 9h12"/></svg></span>
+            <span class="label">手动新增</span>
+          </a>
+          <a class="nav-item">
+            <span class="ico"><svg width="16" height="16" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2.5v8.5M5.5 8L9 11.5 12.5 8"/><path d="M3 13.5v1A1.5 1.5 0 0 0 4.5 16h9a1.5 1.5 0 0 0 1.5-1.5v-1"/></svg></span>
+            <span class="label">CSV 导出</span>
+          </a>
+        </div>
+
+        <div class="nav-group">
+          <div class="nav-group-head">扫描导入</div>
+          <a class="nav-item">
+            <span class="ico"><svg width="16" height="16" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11.5v-8M5.5 6L9 2.5 12.5 6"/><path d="M3 13v1.5A1.5 1.5 0 0 0 4.5 16h9a1.5 1.5 0 0 0 1.5-1.5V13"/></svg></span>
+            <span class="label">上传报告</span>
+          </a>
+          <a class="nav-item">
+            <span class="ico"><svg width="16" height="16" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="9" r="6.5"/><path d="M9 5v4l2.5 1.5"/></svg></span>
+            <span class="label">批次历史</span>
+          </a>
+          <a class="nav-item has-badge">
+            <span class="ico"><svg width="16" height="16" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5l6 4 6-4"/><rect x="3" y="4" width="12" height="10" rx="1.25"/></svg></span>
+            <span class="label">待确认批次</span>
+            <span class="badge">3</span>
+          </a>
+        </div>
+
+        <div class="nav-group">
+          <div class="nav-group-head">拓扑图</div>
+          <a class="nav-item">
+            <span class="ico"><svg width="16" height="16" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="4" r="2"/><circle cx="4" cy="13" r="2"/><circle cx="14" cy="13" r="2"/><path d="M8.2 5.6L5 11.2M9.8 5.6l3.2 5.6M6 13h6"/></svg></span>
+            <span class="label">当前拓扑</span>
+          </a>
+          <a class="nav-item">
+            <span class="ico"><svg width="16" height="16" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2.75 9a6.25 6.25 0 1 0 1.5-4.1"/><path d="M2.5 3v3h3"/><path d="M9 5.5V9l2.25 1.25"/></svg></span>
+            <span class="label">历史版本</span>
+          </a>
+        </div>
+
+        <div class="nav-group">
+          <div class="nav-group-head">安全报表</div>
+          <a class="nav-item">
+            <span class="ico"><svg width="16" height="16" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="6" width="13" height="6" rx="1"/><path d="M5.5 6V4.5M9 6V4.5M12.5 6V4.5M5.5 12v1.5M9 12v1.5M12.5 12v1.5"/></svg></span>
+            <span class="label">端口暴露面</span>
+          </a>
+          <a class="nav-item">
+            <span class="ico"><svg width="16" height="16" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2L2.5 5v4c0 3.5 2.5 6 6.5 7 4-1 6.5-3.5 6.5-7V5L9 2z"/><path d="M9 6.5v3M9 11.5v.5"/></svg></span>
+            <span class="label">危险端口</span>
+          </a>
+          <a class="nav-item">
+            <span class="ico"><svg width="16" height="16" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="9" r="6.5" stroke-dasharray="2.5 2"/><path d="M6.5 9a2.5 2.5 0 1 0 5 0 2.5 2.5 0 0 0-5 0z"/></svg></span>
+            <span class="label">影子资产</span>
+          </a>
+          <a class="nav-item">
+            <span class="ico"><svg width="16" height="16" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 14l4-5 3 3 5-7"/><path d="M11 5h4v4"/></svg></span>
+            <span class="label">资产变化</span>
+          </a>
+        </div>
+
+        <div class="nav-group">
+          <div class="nav-group-head">系统管理<span class="role-gate super">super</span></div>
+          <a class="nav-item">
+            <span class="ico"><svg width="16" height="16" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="6.5" cy="6" r="2.25"/><path d="M2.5 14c.5-2.3 2.2-3.75 4-3.75s3.5 1.45 4 3.75"/><circle cx="12.5" cy="7.5" r="1.5"/><path d="M10.5 14c.4-1.7 1.4-2.75 2.5-2.75s2.1 1.05 2.5 2.75"/></svg></span>
+            <span class="label">用户管理</span>
+          </a>
+          <a class="nav-item">
+            <span class="ico"><svg width="16" height="16" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="9" r="2.25"/><path d="M14.3 11.1l1 .8-1.2 2-1.2-.5a4.5 4.5 0 0 1-1.6.9l-.2 1.3h-2.2l-.2-1.3a4.5 4.5 0 0 1-1.6-.9l-1.2.5-1.2-2 1-.8a4.5 4.5 0 0 1 0-1.8l-1-.8 1.2-2 1.2.5a4.5 4.5 0 0 1 1.6-.9l.2-1.3h2.2l.2 1.3a4.5 4.5 0 0 1 1.6.9l1.2-.5 1.2 2-1 .8a4.5 4.5 0 0 1 0 1.8z"/></svg></span>
+            <span class="label">系统配置</span>
+          </a>
+        </div>
+
+        <div class="nav-group">
+          <div class="nav-group-head">审计<span class="role-gate audit">audit</span></div>
+          <a class="nav-item">
+            <span class="ico"><svg width="16" height="16" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="2.5" width="11" height="13" rx="1.25"/><path d="M6 6h6M6 9h6M6 12h4"/></svg></span>
+            <span class="label">操作日志</span>
+          </a>
+          <a class="nav-item">
+            <span class="ico"><svg width="16" height="16" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 5.5h11M3.5 9h11M3.5 12.5h7"/><circle cx="14" cy="13" r="1.5"/></svg></span>
+            <span class="label">LLM 调用日志</span>
+          </a>
+          <a class="nav-item">
+            <span class="ico"><svg width="16" height="16" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 3.5h6l3 3v8a1 1 0 0 1-1 1h-8a1 1 0 0 1-1-1V4.5a1 1 0 0 1 1-1z"/><path d="M10 3.5V7h3.5"/><path d="M6.5 11.5l1.75 1.75L11.5 10"/></svg></span>
+            <span class="label">导出审计报告</span>
+          </a>
+        </div>
+
+      </div>
+
+      <div class="sidebar-foot">
+        <button class="collapse-btn" onclick="document.getElementById('toggleBtn').click()">
+          <span class="arr"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 4l-4 4 4 4"/></svg></span>
+          <span class="lbl">折叠侧边栏</span>
+        </button>
+      </div>
+    </aside>
+
+    <!-- =====================================================
+         Main
+         ===================================================== -->
+    <main class="main">
+
+      <!-- Page header -->
+      <div class="page-head">
+        <div>
+          <h1>
+            资产列表
+            <span class="count">共 <b>1,287</b> 项资产</span>
+          </h1>
+          <div class="meta">
+            <span><span class="d" style="background:var(--status-online);"></span>在线 1,142</span>
+            <span><span class="d" style="background:var(--status-offline);"></span>离线 87</span>
+            <span><span class="d" style="background:var(--status-decommissioned);"></span>已下线 58</span>
+            <span style="color:var(--neutral-300);">·</span>
+            <span><span class="d" style="background:var(--color-alert);"></span>含危险端口 24</span>
+            <span style="color:var(--neutral-300);">·</span>
+            <span>最近同步 5 分钟前</span>
+          </div>
+        </div>
+        <div class="actions">
+          <button class="btn">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M8 2.5v11M2.5 8h11"/></svg>
+            手动新增
+          </button>
+          <button class="btn">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2.5v8M4.5 7L8 10.5 11.5 7"/><path d="M2.5 13h11"/></svg>
+            批量导出 CSV
+          </button>
+          <button class="btn primary">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10v2.5A1.5 1.5 0 0 0 4.5 14h7a1.5 1.5 0 0 0 1.5-1.5V10"/><path d="M8 2v8M5 5l3-3 3 3"/></svg>
+            上传 nmap 报告
+          </button>
+        </div>
+      </div>
+
+      <!-- Filters -->
+      <div class="card filters">
+        <!-- Row 1: search + buttons -->
+        <div class="row">
+          <span class="f-search-wrap">
+            <span class="ico">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="7" cy="7" r="4.5"/><path d="M10.5 10.5L13.5 13.5"/></svg>
+            </span>
+            <input class="f-input" type="text" placeholder="搜索 IP / 主机名 / 资产编号 / 备注" />
+          </span>
+          <button class="btn primary sm">
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="7" cy="7" r="4.5"/><path d="M10.5 10.5L13.5 13.5"/></svg>
+            搜索
+          </button>
+          <button class="btn sm">
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 8a5.5 5.5 0 0 1 9.4-3.9"/><path d="M12.5 2.5v3h-3"/><path d="M13.5 8a5.5 5.5 0 0 1-9.4 3.9"/><path d="M3.5 13.5v-3h3"/></svg>
+            重置
+          </button>
+          <span class="f-spacer"></span>
+          <button class="f-adv-toggle" id="advToggle">
+            高级筛选
+            <span class="chev"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6.5l4 4 4-4"/></svg></span>
+          </button>
+        </div>
+
+        <!-- Row 2: dropdown filters -->
+        <div class="row dropdowns">
+          <span class="f-field">
+            <span class="lbl">网络区域</span>
+            <select class="f-select has-value">
+              <option>内网</option><option>全部</option><option>DMZ</option><option>办公网</option><option>管理网</option>
+            </select>
+          </span>
+          <span class="f-field">
+            <span class="lbl">资产类型</span>
+            <select class="f-select">
+              <option>全部类型</option><option>物理服务器</option><option>虚拟机</option><option>网络设备</option><option>容器节点</option><option>存储设备</option>
+            </select>
+          </span>
+          <span class="f-field">
+            <span class="lbl">重要性</span>
+            <select class="f-select">
+              <option>全部</option><option>核心</option><option>重要</option><option>普通</option>
+            </select>
+          </span>
+          <span class="f-field">
+            <span class="lbl">状态</span>
+            <select class="f-select has-value">
+              <option>在线</option><option>全部</option><option>离线</option><option>已下线</option>
+            </select>
+          </span>
+          <span class="f-field">
+            <span class="lbl">业务系统</span>
+            <select class="f-select">
+              <option>全部业务</option><option>订单服务</option><option>支付服务</option><option>用户中心</option><option>内部 OA</option><option>大数据平台</option>
+            </select>
+          </span>
+          <span class="f-field">
+            <span class="lbl">负责人</span>
+            <select class="f-select">
+              <option>全部负责人</option><option>张涛</option><option>李敏</option><option>王晨</option><option>陈昊</option><option>赵宇</option>
+            </select>
+          </span>
+        </div>
+
+        <!-- Row 3: advanced (collapsible, default open for showcase) -->
+        <div class="row adv" id="advRow">
+          <span class="f-field">
+            <span class="lbl">端口包含</span>
+            <input class="f-input" type="text" placeholder="例如 22, 3306, 6379" style="height:32px; width: 220px; font-family: var(--font-mono); font-size: 12px;" />
+          </span>
+          <span class="f-field">
+            <span class="lbl">操作系统</span>
+            <select class="f-select">
+              <option>全部</option><option>Ubuntu 22.04</option><option>CentOS 7</option><option>Debian 12</option><option>Windows Server 2019</option><option>VyOS</option>
+            </select>
+          </span>
+          <span class="f-field">
+            <span class="lbl">最后扫描时间</span>
+            <span class="f-range">
+              <span class="ico"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="3.5" width="11" height="10" rx="1.25"/><path d="M2.5 6.5h11M5.5 2v2M10.5 2v2"/></svg></span>
+              2026-05-11
+              <span class="arr">→</span>
+              2026-05-18
+            </span>
+          </span>
+          <span class="f-spacer"></span>
+          <span style="font-size:12px; color:var(--neutral-500); font-family: var(--font-mono);">已应用 2 个筛选 · 命中 1,287 / 2,468</span>
+        </div>
+      </div>
+
+      <!-- Table -->
+      <div class="card table-card">
+        <div class="tbl-scroll" id="tblScroll">
+          <table class="tbl">
+            <thead>
+              <tr>
+                <th class="col-chk"><span class="ck indet" id="ckAll" role="checkbox" aria-checked="mixed"></span></th>
+                <th class="col-id sortable sorted">资产编号 <span class="sort down"><svg width="10" height="10" viewBox="0 0 12 12" fill="currentColor"><path d="M6 8.5L2 4h8z"/></svg></span></th>
+                <th class="col-ip">IP 地址</th>
+                <th class="col-host">主机名</th>
+                <th class="col-type">资产类型</th>
+                <th class="col-zone">网络区域</th>
+                <th class="col-biz">业务系统</th>
+                <th class="col-imp">重要性</th>
+                <th class="col-stat">状态</th>
+                <th class="col-own">负责人</th>
+                <th class="col-sync sortable">最后扫描 <span class="sort"><svg width="10" height="10" viewBox="0 0 12 12" fill="currentColor"><path d="M6 3.5L2 8h8zM6 8.5L2 4h8z" opacity=".55"/></svg></span></th>
+                <th class="col-act">操作</th>
+              </tr>
+            </thead>
+            <tbody id="tbody">
+              <!-- 1 -->
+              <tr>
+                <td class="col-chk"><span class="ck" data-ck></span></td>
+                <td><span class="id-link">CMDB-001247</span></td>
+                <td><span class="mono">192.168.10.24</span></td>
+                <td><span class="host">web-prod-04<span class="sub">web-prod-04.bjdc.internal</span></span></td>
+                <td><span class="tag-type">虚拟机</span></td>
+                <td><span class="tag-zone intranet"><span class="dot"></span>内网</span></td>
+                <td>订单服务</td>
+                <td><span class="imp core"><span class="glyph"><svg viewBox="0 0 14 14" fill="currentColor"><path d="M7 1l1.7 3.7 4 .5-3 2.8.8 4-3.5-2-3.5 2 .8-4-3-2.8 4-.5z"/></svg></span>核心</span></td>
+                <td><span class="status online"><span class="dot"></span>在线</span></td>
+                <td><span class="owner"><span class="av">ZT</span>张涛</span></td>
+                <td><span class="mono muted">5 分钟前</span></td>
+                <td class="col-act"><button class="btn-link">查看</button><button class="btn-link">编辑</button><button class="btn-link danger">下线</button></td>
+              </tr>
+              <!-- 2 -->
+              <tr class="selected">
+                <td class="col-chk"><span class="ck checked" data-ck></span></td>
+                <td><span class="id-link">CMDB-001246</span></td>
+                <td><span class="mono">203.0.113.12</span></td>
+                <td><span class="host">edge-gw-dmz-01<span class="sub">边缘网关 · 北京一区</span></span></td>
+                <td><span class="tag-type">网络设备</span></td>
+                <td><span class="tag-zone dmz"><span class="dot"></span>DMZ</span></td>
+                <td>边界接入</td>
+                <td><span class="imp core"><span class="glyph"><svg viewBox="0 0 14 14" fill="currentColor"><path d="M7 1l1.7 3.7 4 .5-3 2.8.8 4-3.5-2-3.5 2 .8-4-3-2.8 4-.5z"/></svg></span>核心</span></td>
+                <td><span class="status online"><span class="dot"></span>在线</span><span class="alert-chip">:22</span></td>
+                <td><span class="owner"><span class="av">LM</span>李敏</span></td>
+                <td><span class="mono muted">2 分钟前</span></td>
+                <td class="col-act"><button class="btn-link">查看</button><button class="btn-link">编辑</button><button class="btn-link danger">下线</button></td>
+              </tr>
+              <!-- 3 -->
+              <tr>
+                <td class="col-chk"><span class="ck" data-ck></span></td>
+                <td><span class="id-link">CMDB-001245</span></td>
+                <td><span class="mono">10.20.5.41</span></td>
+                <td><span class="host">db-mysql-02<span class="sub">主从复制 · 从库</span></span></td>
+                <td><span class="tag-type">物理服务器</span></td>
+                <td><span class="tag-zone mgmt"><span class="dot"></span>管理网</span></td>
+                <td>订单服务</td>
+                <td><span class="imp core"><span class="glyph"><svg viewBox="0 0 14 14" fill="currentColor"><path d="M7 1l1.7 3.7 4 .5-3 2.8.8 4-3.5-2-3.5 2 .8-4-3-2.8 4-.5z"/></svg></span>核心</span></td>
+                <td><span class="status offline"><span class="dot"></span>离线</span></td>
+                <td><span class="owner"><span class="av">WC</span>王晨</span></td>
+                <td><span class="mono muted">38 分钟前</span></td>
+                <td class="col-act"><button class="btn-link">查看</button><button class="btn-link">编辑</button><button class="btn-link danger">下线</button></td>
+              </tr>
+              <!-- 4 -->
+              <tr>
+                <td class="col-chk"><span class="ck" data-ck></span></td>
+                <td><span class="id-link">CMDB-001244</span></td>
+                <td><span class="mono">10.20.8.112</span></td>
+                <td><span class="host">k8s-node-12<span class="sub">prod 集群 · worker</span></span></td>
+                <td><span class="tag-type">容器节点</span></td>
+                <td><span class="tag-zone intranet"><span class="dot"></span>内网</span></td>
+                <td>用户中心</td>
+                <td><span class="imp imp-i"><span class="glyph"><svg viewBox="0 0 14 14" fill="currentColor"><path d="M7 1.5L12 7l-5 5.5L2 7z"/></svg></span>重要</span></td>
+                <td><span class="status online"><span class="dot"></span>在线</span></td>
+                <td><span class="owner"><span class="av">CH</span>陈昊</span></td>
+                <td><span class="mono muted">3 分钟前</span></td>
+                <td class="col-act"><button class="btn-link">查看</button><button class="btn-link">编辑</button><button class="btn-link danger">下线</button></td>
+              </tr>
+              <!-- 5 -->
+              <tr>
+                <td class="col-chk"><span class="ck" data-ck></span></td>
+                <td><span class="id-link">CMDB-001242</span></td>
+                <td><span class="mono">172.16.30.108</span></td>
+                <td><span class="host">office-printer-3f<span class="sub">3F 打印机</span></span></td>
+                <td><span class="tag-type">网络设备</span></td>
+                <td><span class="tag-zone office"><span class="dot"></span>办公网</span></td>
+                <td>—</td>
+                <td><span class="imp normal"><span class="glyph"><svg viewBox="0 0 14 14" fill="currentColor"><circle cx="7" cy="7" r="3.5"/></svg></span>普通</span></td>
+                <td><span class="status online"><span class="dot"></span>在线</span></td>
+                <td><span class="owner"><span class="av gray">—</span><span style="color:var(--neutral-400);">未指派</span></span></td>
+                <td><span class="mono muted">1 小时前</span></td>
+                <td class="col-act"><button class="btn-link">查看</button><button class="btn-link">编辑</button><button class="btn-link danger">下线</button></td>
+              </tr>
+              <!-- 6 -->
+              <tr>
+                <td class="col-chk"><span class="ck" data-ck></span></td>
+                <td><span class="id-link">CMDB-001241</span></td>
+                <td><span class="mono">10.99.0.5</span></td>
+                <td><span class="host">jumphost-mgmt-01<span class="sub">堡垒机 · 双因子</span></span></td>
+                <td><span class="tag-type">虚拟机</span></td>
+                <td><span class="tag-zone mgmt"><span class="dot"></span>管理网</span></td>
+                <td>运维平台</td>
+                <td><span class="imp core"><span class="glyph"><svg viewBox="0 0 14 14" fill="currentColor"><path d="M7 1l1.7 3.7 4 .5-3 2.8.8 4-3.5-2-3.5 2 .8-4-3-2.8 4-.5z"/></svg></span>核心</span></td>
+                <td><span class="status online"><span class="dot"></span>在线</span></td>
+                <td><span class="owner"><span class="av">ZT</span>张涛</span></td>
+                <td><span class="mono muted">8 分钟前</span></td>
+                <td class="col-act"><button class="btn-link">查看</button><button class="btn-link">编辑</button><button class="btn-link danger">下线</button></td>
+              </tr>
+              <!-- 7 -->
+              <tr>
+                <td class="col-chk"><span class="ck" data-ck></span></td>
+                <td><span class="id-link">CMDB-001240</span></td>
+                <td><span class="mono">203.0.113.13</span></td>
+                <td><span class="host">edge-gw-dmz-02<span class="sub">边缘网关 · 北京二区</span></span></td>
+                <td><span class="tag-type">网络设备</span></td>
+                <td><span class="tag-zone dmz"><span class="dot"></span>DMZ</span></td>
+                <td>边界接入</td>
+                <td><span class="imp core"><span class="glyph"><svg viewBox="0 0 14 14" fill="currentColor"><path d="M7 1l1.7 3.7 4 .5-3 2.8.8 4-3.5-2-3.5 2 .8-4-3-2.8 4-.5z"/></svg></span>核心</span></td>
+                <td><span class="status online"><span class="dot"></span>在线</span><span class="alert-chip">:3389</span></td>
+                <td><span class="owner"><span class="av">LM</span>李敏</span></td>
+                <td><span class="mono muted">6 分钟前</span></td>
+                <td class="col-act"><button class="btn-link">查看</button><button class="btn-link">编辑</button><button class="btn-link danger">下线</button></td>
+              </tr>
+              <!-- 8 -->
+              <tr>
+                <td class="col-chk"><span class="ck" data-ck></span></td>
+                <td><span class="id-link">CMDB-001238</span></td>
+                <td><span class="mono">10.20.7.18</span></td>
+                <td><span class="host">redis-cache-04<span class="sub">缓存集群 · slave-2</span></span></td>
+                <td><span class="tag-type">虚拟机</span></td>
+                <td><span class="tag-zone intranet"><span class="dot"></span>内网</span></td>
+                <td>订单服务</td>
+                <td><span class="imp imp-i"><span class="glyph"><svg viewBox="0 0 14 14" fill="currentColor"><path d="M7 1.5L12 7l-5 5.5L2 7z"/></svg></span>重要</span></td>
+                <td><span class="status online"><span class="dot"></span>在线</span></td>
+                <td><span class="owner"><span class="av">WC</span>王晨</span></td>
+                <td><span class="mono muted">4 分钟前</span></td>
+                <td class="col-act"><button class="btn-link">查看</button><button class="btn-link">编辑</button><button class="btn-link danger">下线</button></td>
+              </tr>
+              <!-- 9 -->
+              <tr>
+                <td class="col-chk"><span class="ck" data-ck></span></td>
+                <td><span class="id-link">CMDB-001237</span></td>
+                <td><span class="mono">172.16.30.55</span></td>
+                <td><span class="host">office-wifi-ap-2f<span class="sub">无线 AP · 2F-A</span></span></td>
+                <td><span class="tag-type">网络设备</span></td>
+                <td><span class="tag-zone office"><span class="dot"></span>办公网</span></td>
+                <td>—</td>
+                <td><span class="imp normal"><span class="glyph"><svg viewBox="0 0 14 14" fill="currentColor"><circle cx="7" cy="7" r="3.5"/></svg></span>普通</span></td>
+                <td><span class="status online"><span class="dot"></span>在线</span></td>
+                <td><span class="owner"><span class="av">ZY</span>赵宇</span></td>
+                <td><span class="mono muted">12 分钟前</span></td>
+                <td class="col-act"><button class="btn-link">查看</button><button class="btn-link">编辑</button><button class="btn-link danger">下线</button></td>
+              </tr>
+              <!-- 10 -->
+              <tr>
+                <td class="col-chk"><span class="ck" data-ck></span></td>
+                <td><span class="id-link">CMDB-001235</span></td>
+                <td><span class="mono">10.20.5.99</span></td>
+                <td><span class="host">legacy-mail-srv<span class="sub">邮件服务器 · 已退役</span></span></td>
+                <td><span class="tag-type">物理服务器</span></td>
+                <td><span class="tag-zone mgmt"><span class="dot"></span>管理网</span></td>
+                <td>内部 OA</td>
+                <td><span class="imp normal"><span class="glyph"><svg viewBox="0 0 14 14" fill="currentColor"><circle cx="7" cy="7" r="3.5"/></svg></span>普通</span></td>
+                <td><span class="status decom"><span class="dot"></span>已下线</span></td>
+                <td><span class="owner"><span class="av">CH</span>陈昊</span></td>
+                <td><span class="mono muted">12 天前</span></td>
+                <td class="col-act"><button class="btn-link">查看</button><button class="btn-link muted">编辑</button><button class="btn-link muted">下线</button></td>
+              </tr>
+              <!-- 11 -->
+              <tr>
+                <td class="col-chk"><span class="ck" data-ck></span></td>
+                <td><span class="id-link">CMDB-001234</span></td>
+                <td><span class="mono">10.20.8.113</span></td>
+                <td><span class="host">k8s-node-13<span class="sub">prod 集群 · worker</span></span></td>
+                <td><span class="tag-type">容器节点</span></td>
+                <td><span class="tag-zone intranet"><span class="dot"></span>内网</span></td>
+                <td>用户中心</td>
+                <td><span class="imp imp-i"><span class="glyph"><svg viewBox="0 0 14 14" fill="currentColor"><path d="M7 1.5L12 7l-5 5.5L2 7z"/></svg></span>重要</span></td>
+                <td><span class="status online"><span class="dot"></span>在线</span></td>
+                <td><span class="owner"><span class="av">CH</span>陈昊</span></td>
+                <td><span class="mono muted">3 分钟前</span></td>
+                <td class="col-act"><button class="btn-link">查看</button><button class="btn-link">编辑</button><button class="btn-link danger">下线</button></td>
+              </tr>
+              <!-- 12 -->
+              <tr>
+                <td class="col-chk"><span class="ck" data-ck></span></td>
+                <td><span class="id-link">CMDB-001232</span></td>
+                <td><span class="mono">192.168.10.41</span></td>
+                <td><span class="host">app-pay-01<span class="sub">支付网关 · primary</span></span></td>
+                <td><span class="tag-type">虚拟机</span></td>
+                <td><span class="tag-zone intranet"><span class="dot"></span>内网</span></td>
+                <td>支付服务</td>
+                <td><span class="imp core"><span class="glyph"><svg viewBox="0 0 14 14" fill="currentColor"><path d="M7 1l1.7 3.7 4 .5-3 2.8.8 4-3.5-2-3.5 2 .8-4-3-2.8 4-.5z"/></svg></span>核心</span></td>
+                <td><span class="status online"><span class="dot"></span>在线</span></td>
+                <td><span class="owner"><span class="av">ZT</span>张涛</span></td>
+                <td><span class="mono muted">7 分钟前</span></td>
+                <td class="col-act"><button class="btn-link">查看</button><button class="btn-link">编辑</button><button class="btn-link danger">下线</button></td>
+              </tr>
+              <!-- 13 -->
+              <tr>
+                <td class="col-chk"><span class="ck" data-ck></span></td>
+                <td><span class="id-link">CMDB-001230</span></td>
+                <td><span class="mono">203.0.113.14</span></td>
+                <td><span class="host">edge-lb-dmz-01<span class="sub">边缘负载均衡</span></span></td>
+                <td><span class="tag-type">网络设备</span></td>
+                <td><span class="tag-zone dmz"><span class="dot"></span>DMZ</span></td>
+                <td>边界接入</td>
+                <td><span class="imp core"><span class="glyph"><svg viewBox="0 0 14 14" fill="currentColor"><path d="M7 1l1.7 3.7 4 .5-3 2.8.8 4-3.5-2-3.5 2 .8-4-3-2.8 4-.5z"/></svg></span>核心</span></td>
+                <td><span class="status online"><span class="dot"></span>在线</span><span class="alert-chip">:23</span></td>
+                <td><span class="owner"><span class="av">LM</span>李敏</span></td>
+                <td><span class="mono muted">9 分钟前</span></td>
+                <td class="col-act"><button class="btn-link">查看</button><button class="btn-link">编辑</button><button class="btn-link danger">下线</button></td>
+              </tr>
+              <!-- 14 -->
+              <tr>
+                <td class="col-chk"><span class="ck" data-ck></span></td>
+                <td><span class="id-link">CMDB-001229</span></td>
+                <td><span class="mono">10.20.5.42</span></td>
+                <td><span class="host">db-pg-bigdata-01<span class="sub">数仓 · 主库</span></span></td>
+                <td><span class="tag-type">物理服务器</span></td>
+                <td><span class="tag-zone mgmt"><span class="dot"></span>管理网</span></td>
+                <td>大数据平台</td>
+                <td><span class="imp imp-i"><span class="glyph"><svg viewBox="0 0 14 14" fill="currentColor"><path d="M7 1.5L12 7l-5 5.5L2 7z"/></svg></span>重要</span></td>
+                <td><span class="status online"><span class="dot"></span>在线</span></td>
+                <td><span class="owner"><span class="av">WC</span>王晨</span></td>
+                <td><span class="mono muted">11 分钟前</span></td>
+                <td class="col-act"><button class="btn-link">查看</button><button class="btn-link">编辑</button><button class="btn-link danger">下线</button></td>
+              </tr>
+              <!-- 15 -->
+              <tr>
+                <td class="col-chk"><span class="ck" data-ck></span></td>
+                <td><span class="id-link">CMDB-001227</span></td>
+                <td><span class="mono">172.16.30.220</span></td>
+                <td><span class="host">office-nas-01<span class="sub">办公存储 · 主</span></span></td>
+                <td><span class="tag-type">存储设备</span></td>
+                <td><span class="tag-zone office"><span class="dot"></span>办公网</span></td>
+                <td>内部 OA</td>
+                <td><span class="imp normal"><span class="glyph"><svg viewBox="0 0 14 14" fill="currentColor"><circle cx="7" cy="7" r="3.5"/></svg></span>普通</span></td>
+                <td><span class="status online"><span class="dot"></span>在线</span></td>
+                <td><span class="owner"><span class="av">ZY</span>赵宇</span></td>
+                <td><span class="mono muted">20 分钟前</span></td>
+                <td class="col-act"><button class="btn-link">查看</button><button class="btn-link">编辑</button><button class="btn-link danger">下线</button></td>
+              </tr>
+              <!-- 16 -->
+              <tr>
+                <td class="col-chk"><span class="ck" data-ck></span></td>
+                <td><span class="id-link">CMDB-001226</span></td>
+                <td><span class="mono">192.168.10.55</span></td>
+                <td><span class="host">app-user-02<span class="sub">用户中心 · 副本</span></span></td>
+                <td><span class="tag-type">虚拟机</span></td>
+                <td><span class="tag-zone intranet"><span class="dot"></span>内网</span></td>
+                <td>用户中心</td>
+                <td><span class="imp imp-i"><span class="glyph"><svg viewBox="0 0 14 14" fill="currentColor"><path d="M7 1.5L12 7l-5 5.5L2 7z"/></svg></span>重要</span></td>
+                <td><span class="status online"><span class="dot"></span>在线</span></td>
+                <td><span class="owner"><span class="av">CH</span>陈昊</span></td>
+                <td><span class="mono muted">2 分钟前</span></td>
+                <td class="col-act"><button class="btn-link">查看</button><button class="btn-link">编辑</button><button class="btn-link danger">下线</button></td>
+              </tr>
+              <!-- 17 -->
+              <tr>
+                <td class="col-chk"><span class="ck" data-ck></span></td>
+                <td><span class="id-link">CMDB-001225</span></td>
+                <td><span class="mono">10.99.0.7</span></td>
+                <td><span class="host">backup-srv-02<span class="sub">备份服务 · 离线</span></span></td>
+                <td><span class="tag-type">物理服务器</span></td>
+                <td><span class="tag-zone mgmt"><span class="dot"></span>管理网</span></td>
+                <td>运维平台</td>
+                <td><span class="imp normal"><span class="glyph"><svg viewBox="0 0 14 14" fill="currentColor"><circle cx="7" cy="7" r="3.5"/></svg></span>普通</span></td>
+                <td><span class="status offline"><span class="dot"></span>离线</span></td>
+                <td><span class="owner"><span class="av">ZT</span>张涛</span></td>
+                <td><span class="mono muted">2 小时前</span></td>
+                <td class="col-act"><button class="btn-link">查看</button><button class="btn-link">编辑</button><button class="btn-link danger">下线</button></td>
+              </tr>
+              <!-- 18 -->
+              <tr>
+                <td class="col-chk"><span class="ck" data-ck></span></td>
+                <td><span class="id-link">CMDB-001223</span></td>
+                <td><span class="mono">10.20.5.43</span></td>
+                <td><span class="host">db-mongo-shadow-01<span class="sub">影子 DB · 待确认</span></span></td>
+                <td><span class="tag-type">虚拟机</span></td>
+                <td><span class="tag-zone intranet"><span class="dot"></span>内网</span></td>
+                <td>—</td>
+                <td><span class="imp imp-i"><span class="glyph"><svg viewBox="0 0 14 14" fill="currentColor"><path d="M7 1.5L12 7l-5 5.5L2 7z"/></svg></span>重要</span></td>
+                <td><span class="status online"><span class="dot"></span>在线</span><span class="alert-chip">:27017</span></td>
+                <td><span class="owner"><span class="av gray">—</span><span style="color:var(--neutral-400);">未指派</span></span></td>
+                <td><span class="mono muted">15 分钟前</span></td>
+                <td class="col-act"><button class="btn-link">查看</button><button class="btn-link">编辑</button><button class="btn-link danger">下线</button></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Foot: bulk + pagination -->
+        <div class="foot-bar">
+          <div class="left">
+            <span class="sel">已选 <b>1</b> 项</span>
+            <select class="f-select" style="height: 30px; min-width: 140px;">
+              <option>批量操作</option>
+              <option>批量编辑负责人</option>
+              <option>批量修改重要性</option>
+              <option>批量打标签</option>
+              <option>批量下线</option>
+              <option>批量删除</option>
+            </select>
+            <button class="btn sm" style="height:30px;">执行</button>
+            <span style="color:var(--neutral-300);">|</span>
+            <span>共筛选出 <span style="color: var(--neutral-900); font-family: var(--font-mono);">1,287</span> 项</span>
+          </div>
+
+          <div class="pag">
+            <span class="pg disabled" aria-label="上一页">
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 4l-4 4 4 4"/></svg>
+            </span>
+            <span class="pg active">1</span>
+            <span class="pg">2</span>
+            <span class="pg">3</span>
+            <span class="pg">4</span>
+            <span style="color:var(--neutral-300); padding: 0 4px;">…</span>
+            <span class="pg">65</span>
+            <span class="pg" aria-label="下一页">
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l4 4-4 4"/></svg>
+            </span>
+
+            <span style="margin-left: var(--space-3); color: var(--neutral-500);">每页</span>
+            <select class="pag-size" id="pageSize">
+              <option>20</option>
+              <option selected>50</option>
+              <option>100</option>
+              <option>200</option>
+            </select>
+
+            <span class="pag-jump">
+              跳至 <input type="text" value="1" /> 页
+            </span>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+</div>
+
+<script>
+  const app = document.getElementById('app');
+  document.getElementById('toggleBtn').addEventListener('click', () => {
+    app.classList.toggle('collapsed');
+  });
+
+  // Advanced filter toggle
+  const advBtn = document.getElementById('advToggle');
+  const advRow = document.getElementById('advRow');
+  advBtn.classList.add('open'); // default open for showcase
+  advBtn.addEventListener('click', () => {
+    advBtn.classList.toggle('open');
+    advRow.classList.toggle('hidden');
+  });
+
+  // Row checkbox toggling + selection styling
+  function updateSel() {
+    const cks = document.querySelectorAll('#tbody [data-ck]');
+    let n = 0;
+    cks.forEach(ck => {
+      const row = ck.closest('tr');
+      if (ck.classList.contains('checked')) {
+        row.classList.add('selected');
+        n++;
+      } else {
+        row.classList.remove('selected');
+      }
+    });
+    const sel = document.querySelector('.foot-bar .sel b');
+    if (sel) sel.textContent = n;
+
+    const ckAll = document.getElementById('ckAll');
+    ckAll.classList.remove('checked', 'indet');
+    if (n === cks.length) ckAll.classList.add('checked');
+    else if (n > 0) ckAll.classList.add('indet');
+  }
+
+  document.querySelectorAll('#tbody [data-ck]').forEach(ck => {
+    ck.addEventListener('click', () => {
+      ck.classList.toggle('checked');
+      updateSel();
+    });
+  });
+
+  // Select-all checkbox
+  document.getElementById('ckAll').addEventListener('click', () => {
+    const ckAll = document.getElementById('ckAll');
+    const checked = ckAll.classList.contains('checked');
+    document.querySelectorAll('#tbody [data-ck]').forEach(ck => {
+      ck.classList.toggle('checked', !checked);
+    });
+    updateSel();
+  });
+
+  // Pagination demo
+  document.querySelectorAll('.pag .pg').forEach(pg => {
+    pg.addEventListener('click', () => {
+      if (pg.classList.contains('disabled')) return;
+      document.querySelectorAll('.pag .pg').forEach(x => x.classList.remove('active'));
+      if (!pg.querySelector('svg')) pg.classList.add('active');
+    });
+  });
+</script>
+</body>
+</html>
