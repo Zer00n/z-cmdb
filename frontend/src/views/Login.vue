@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /**
  * 登录页
- * 基于 Claude Design 02-login.html 实现
+ * 2026 UI Redesign：双栏（左侧产品介绍 + 右侧登录卡片），保持原有逻辑
  */
 import { ref, reactive } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
@@ -41,25 +41,84 @@ async function handleLogin() {
     }
   })
 }
+
+const features = [
+  { icon: 'CircleCheck', text: '人工兜底的资产准确性' },
+  { icon: 'Lock', text: 'LLM 数据本地脱敏' },
+  { icon: 'Key', text: '三权分立 + 不可变审计' },
+  { icon: 'TrendCharts', text: '端口暴露面与影子资产分析' },
+]
 </script>
 
 <template>
   <div class="login-page">
-    <!-- 背景网格 -->
+    <!-- 背景层：双 radial + 网格 -->
+    <div class="bg-aura" aria-hidden="true" />
     <div class="bg-grid" aria-hidden="true" />
 
-    <main class="login-shell">
-      <div class="login-wrap">
-        <!-- 登录卡片 -->
-        <div class="login-card">
-          <!-- 品牌 -->
-          <div class="brand">
-            <span class="brand-logo" aria-hidden="true" />
-            <span class="brand-name">CMDB <em>Lite</em></span>
-          </div>
-          <p class="subtitle">轻量级资产配置管理系统</p>
+    <!-- 顶部栏：仅展示品牌 -->
+    <header class="login-top">
+      <div class="brand">
+        <span class="brand-logo" aria-hidden="true">
+          <span class="brand-logo-inner" />
+        </span>
+        <span class="brand-name">CMDB <em>Lite</em></span>
+      </div>
+      <span class="top-version">v0.1.0</span>
+    </header>
 
-          <!-- 表单 -->
+    <!-- 主体：左侧介绍 + 右侧登录卡 -->
+    <main class="login-shell">
+      <!-- 左侧：产品介绍 -->
+      <section class="intro">
+        <div class="intro-tag">
+          <span class="intro-tag-dot" />
+          准确性优先 · 中小团队
+        </div>
+        <h1 class="intro-title">
+          把内网资产<br />
+          <em>真正搞清楚</em>
+        </h1>
+        <p class="intro-desc">
+          手动 nmap 扫描 + 人工 review 兜底，确保资产数据可信。
+          内置安全视角报表与可审计的 LLM 拓扑生成。
+        </p>
+
+        <ul class="feature-list">
+          <li v-for="f in features" :key="f.text">
+            <span class="feat-ico">
+              <el-icon size="14"><component :is="f.icon" /></el-icon>
+            </span>
+            <span>{{ f.text }}</span>
+          </li>
+        </ul>
+
+        <div class="intro-stats">
+          <div class="stat">
+            <div class="stat-num">10<span>min</span></div>
+            <div class="stat-label">从 0 到运行</div>
+          </div>
+          <div class="stat-sep" />
+          <div class="stat">
+            <div class="stat-num">3</div>
+            <div class="stat-label">权限角色</div>
+          </div>
+          <div class="stat-sep" />
+          <div class="stat">
+            <div class="stat-num">SQLite</div>
+            <div class="stat-label">单文件部署</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 右侧：登录卡片 -->
+      <section class="login-side">
+        <div class="login-card">
+          <div class="login-card-head">
+            <h2>欢迎回来</h2>
+            <p>请使用账号登录管理控制台</p>
+          </div>
+
           <el-form
             ref="formRef"
             :model="form"
@@ -70,23 +129,29 @@ async function handleLogin() {
             <el-form-item prop="username">
               <el-input
                 v-model="form.username"
-                placeholder="请输入用户名"
+                placeholder="用户名"
                 size="large"
                 autocomplete="username"
-                :prefix-icon="'User'"
-              />
+              >
+                <template #prefix>
+                  <el-icon><User /></el-icon>
+                </template>
+              </el-input>
             </el-form-item>
             <el-form-item prop="password">
               <el-input
                 v-model="form.password"
                 type="password"
-                placeholder="请输入密码"
+                placeholder="密码"
                 size="large"
                 show-password
                 autocomplete="current-password"
-                :prefix-icon="'Lock'"
                 @keyup.enter="handleLogin"
-              />
+              >
+                <template #prefix>
+                  <el-icon><Lock /></el-icon>
+                </template>
+              </el-input>
             </el-form-item>
 
             <el-button
@@ -96,128 +161,310 @@ async function handleLogin() {
               :loading="loading"
               @click="handleLogin"
             >
-              登 录
+              <span>登 录</span>
+              <el-icon style="margin-left: 6px"><Right /></el-icon>
             </el-button>
           </el-form>
 
-          <!-- 帮助提示 -->
           <div class="help-line">
-            <el-icon size="14" color="var(--neutral-400)"><InfoFilled /></el-icon>
-            忘记密码？请联系系统管理员
+            <el-icon size="14"><InfoFilled /></el-icon>
+            忘记密码？请联系系统管理员重置
+          </div>
+
+          <div class="status-chips">
+            <span class="chip">
+              <span class="chip-dot online" />
+              服务正常
+            </span>
+            <span class="chip-sep">·</span>
+            <span class="chip">5 次 / 15 分钟</span>
+            <span class="chip-sep">·</span>
+            <span class="chip">仅企业内网</span>
           </div>
         </div>
-
-        <!-- 状态提示 -->
-        <div class="status-chips">
-          <span class="chip">
-            <span class="chip-dot online" />
-            服务正常
-          </span>
-          <span class="chip-sep">·</span>
-          <span class="chip">登录尝试受限：5 次 / 15 分钟</span>
-          <span class="chip-sep">·</span>
-          <span class="chip">仅限企业内网访问</span>
-        </div>
-      </div>
+      </section>
     </main>
 
     <footer class="login-footer">
-      CMDB Lite v0.1.0
+      CMDB Lite · 内部运维平台
       <span class="sep">·</span>
-      内部运维平台
+      © 2026
     </footer>
   </div>
 </template>
 
 <style scoped>
 .login-page {
+  position: relative;
   min-height: 100vh;
+  min-width: 1280px;
   display: flex;
   flex-direction: column;
-  min-width: 1280px;
-  background:
-    radial-gradient(1200px 600px at 50% -200px, #EEF2FA 0%, transparent 65%),
-    var(--neutral-50);
+  background: var(--surface-canvas);
+  overflow: hidden;
 }
 
+/* ── 背景层 ── */
+.bg-aura {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(900px 500px at 12% 18%, rgba(37, 99, 235, 0.18) 0%, transparent 60%),
+    radial-gradient(720px 480px at 88% 78%, rgba(99, 102, 241, 0.16) 0%, transparent 60%),
+    radial-gradient(1200px 600px at 50% -200px, rgba(99, 102, 241, 0.10) 0%, transparent 65%);
+}
 .bg-grid {
   position: fixed;
   inset: 0;
   pointer-events: none;
-  background-image: radial-gradient(circle at 1px 1px, rgba(15, 23, 42, 0.04) 1px, transparent 0);
+  z-index: 0;
+  background-image: radial-gradient(circle at 1px 1px, rgba(15, 23, 42, 0.05) 1px, transparent 0);
   background-size: 32px 32px;
-  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.6) 0%, rgba(0, 0, 0, 0) 60%);
-  -webkit-mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.6) 0%, rgba(0, 0, 0, 0) 60%);
+  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.55) 0%, rgba(0, 0, 0, 0) 70%);
+  -webkit-mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.55) 0%, rgba(0, 0, 0, 0) 70%);
 }
 
-.login-shell {
-  flex: 1;
+/* ── 顶部 ── */
+.login-top {
+  position: relative;
+  z-index: 1;
+  padding: var(--space-6) var(--space-12);
   display: flex;
   align-items: center;
-  justify-content: center;
-  padding: var(--space-12) var(--space-6);
+  justify-content: space-between;
 }
-
-.login-wrap {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.login-card {
-  width: 420px;
-  background: var(--neutral-0);
-  border: 1px solid var(--neutral-200);
-  border-radius: var(--radius-lg);
-  padding: var(--space-8);
-  box-shadow: var(--shadow-subtle);
-}
-
-/* 品牌 */
 .brand {
   display: flex;
   align-items: center;
-  gap: var(--space-3);
-  margin-bottom: var(--space-2);
+  gap: 10px;
 }
-
 .brand-logo {
   width: 32px;
   height: 32px;
-  border-radius: var(--radius-md);
-  background: var(--color-primary-500);
-  position: relative;
-  flex-shrink: 0;
+  border-radius: 8px;
+  background: var(--accent-gradient);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow:
+    0 4px 12px -2px rgba(37, 99, 235, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25);
 }
-.brand-logo::before,
-.brand-logo::after {
+.brand-logo-inner {
+  width: 16px;
+  height: 16px;
+  position: relative;
+}
+.brand-logo-inner::before,
+.brand-logo-inner::after {
   content: '';
   position: absolute;
-  background: rgba(255, 255, 255, 0.9);
+  background: rgba(255, 255, 255, 0.95);
   border-radius: 1.5px;
 }
-.brand-logo::before { left: 7px; top: 9px; width: 18px; height: 4px; }
-.brand-logo::after  { left: 7px; top: 19px; width: 12px; height: 4px; }
-
+.brand-logo-inner::before { left: 0; top: 1px; width: 16px; height: 4px; }
+.brand-logo-inner::after  { left: 0; top: 11px; width: 11px; height: 4px; }
 .brand-name {
-  font-size: 20px;
-  line-height: 28px;
+  font-size: 18px;
   font-weight: 600;
   color: var(--neutral-900);
   letter-spacing: -0.01em;
 }
 .brand-name em {
   font-style: normal;
-  color: var(--color-primary-500);
+  background: var(--accent-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  font-weight: 700;
 }
-
-.subtitle {
+.top-version {
+  font-family: var(--font-mono);
+  font-size: 12px;
   color: var(--neutral-500);
-  font-size: var(--fs-body);
-  margin: 0 0 var(--space-8);
+  padding: 4px 10px;
+  background: var(--surface-base);
+  border: 1px solid var(--neutral-200);
+  border-radius: 999px;
 }
 
-/* 表单 */
+/* ── 主体双栏 ── */
+.login-shell {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 460px;
+  gap: var(--space-12);
+  align-items: center;
+  padding: 0 var(--space-12) var(--space-8);
+  max-width: 1440px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+/* ── 左侧：产品介绍 ── */
+.intro {
+  max-width: 580px;
+}
+.intro-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: var(--surface-base);
+  border: 1px solid rgba(37, 99, 235, 0.16);
+  color: var(--color-primary-700);
+  font-size: 12.5px;
+  font-weight: 500;
+  margin-bottom: var(--space-6);
+  box-shadow: 0 2px 8px -2px rgba(37, 99, 235, 0.16);
+}
+.intro-tag-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-primary-500);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.16);
+}
+
+.intro-title {
+  margin: 0 0 var(--space-4);
+  font-size: 56px;
+  line-height: 64px;
+  font-weight: 700;
+  color: var(--neutral-900);
+  letter-spacing: -0.025em;
+}
+.intro-title em {
+  font-style: normal;
+  background: linear-gradient(135deg, #2563EB 0%, #6366F1 50%, #8B5CF6 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.intro-desc {
+  margin: 0 0 var(--space-8);
+  font-size: 16px;
+  line-height: 26px;
+  color: var(--neutral-500);
+  max-width: 520px;
+}
+
+.feature-list {
+  list-style: none;
+  margin: 0 0 var(--space-8);
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px var(--space-4);
+}
+.feature-list li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13.5px;
+  color: var(--neutral-700);
+}
+.feat-ico {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  background: var(--color-primary-50);
+  color: var(--color-primary-600);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.intro-stats {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  padding: var(--space-4) var(--space-6);
+  background: var(--surface-base);
+  border: var(--border-base);
+  border-radius: var(--radius-lg);
+  width: fit-content;
+  box-shadow: var(--shadow-subtle);
+}
+.stat-sep {
+  width: 1px;
+  height: 28px;
+  background: var(--neutral-200);
+}
+.stat-num {
+  font-family: var(--font-mono);
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--neutral-900);
+  letter-spacing: -0.02em;
+  display: flex;
+  align-items: baseline;
+  gap: 2px;
+}
+.stat-num span {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--neutral-500);
+}
+.stat-label {
+  font-size: 11px;
+  color: var(--neutral-500);
+  margin-top: 2px;
+  letter-spacing: 0.02em;
+}
+
+/* ── 右侧：登录卡片 ── */
+.login-side {
+  display: flex;
+  justify-content: flex-end;
+}
+.login-card {
+  width: 460px;
+  background: var(--surface-base);
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  border-radius: 16px;
+  padding: var(--space-8);
+  box-shadow:
+    0 24px 48px -16px rgba(15, 23, 42, 0.12),
+    0 8px 16px -8px rgba(15, 23, 42, 0.06);
+  position: relative;
+}
+.login-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.18), rgba(99, 102, 241, 0.04) 50%, transparent);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+.login-card-head {
+  margin-bottom: var(--space-6);
+}
+.login-card-head h2 {
+  margin: 0 0 4px;
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--neutral-900);
+  letter-spacing: -0.01em;
+}
+.login-card-head p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--neutral-500);
+}
+
 .login-form {
   display: flex;
   flex-direction: column;
@@ -226,9 +473,12 @@ async function handleLogin() {
 .login-btn {
   width: 100%;
   margin-top: var(--space-2);
+  height: 48px;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
 }
 
-/* 帮助 */
 .help-line {
   margin-top: var(--space-6);
   padding-top: var(--space-4);
@@ -240,12 +490,11 @@ async function handleLogin() {
   gap: var(--space-2);
 }
 
-/* 状态提示 */
 .status-chips {
-  margin-top: var(--space-6);
+  margin-top: var(--space-4);
   display: flex;
-  gap: var(--space-3);
-  font-size: var(--fs-caption);
+  gap: 10px;
+  font-size: 11px;
   color: var(--neutral-500);
   font-family: var(--font-mono);
   align-items: center;
@@ -260,14 +509,19 @@ async function handleLogin() {
   height: 6px;
   border-radius: 50%;
 }
-.chip-dot.online { background: var(--color-success); }
+.chip-dot.online {
+  background: var(--color-success);
+  box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.18);
+}
 .chip-sep { color: var(--neutral-300); }
 
-/* 页脚 */
+/* ── 页脚 ── */
 .login-footer {
+  position: relative;
+  z-index: 1;
   text-align: center;
-  padding: 0 var(--space-6) var(--space-8);
-  font-size: var(--fs-caption);
+  padding: 0 var(--space-6) var(--space-6);
+  font-size: 12px;
   color: var(--neutral-400);
   font-family: var(--font-mono);
 }

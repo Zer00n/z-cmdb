@@ -1,9 +1,9 @@
 ﻿<script setup lang="ts">
 /**
  * 扫描批次列表页
- * 复用资产列表模板结构
+ * 2026 UI Redesign：升级页头、状态徽标，逻辑保持不变
  */
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { fetchScanBatches, uploadScan, rejectBatch } from '@/api/scan'
@@ -37,7 +37,7 @@ async function handleUpload(file: File) {
   } finally {
     uploading.value = false
   }
-  return false // 阻止 el-upload 默认行为
+  return false
 }
 
 function goConfirm(row: ScanBatch) {
@@ -64,19 +64,36 @@ function statusLabel(s: string): string {
   return map[s] || s
 }
 
-function statusType(s: string): string {
-  const map: Record<string, string> = { pending: 'warning', confirmed: 'success', rejected: 'info' }
-  return map[s] || ''
+function statusBadgeClass(s: string): string {
+  const map: Record<string, string> = {
+    pending: 'is-warning',
+    confirmed: 'is-success',
+    rejected: 'is-neutral',
+  }
+  return map[s] || 'is-neutral'
 }
+
+const pendingCount = computed(() => tableData.value.filter((b) => b.status === 'pending').length)
 
 onMounted(loadData)
 </script>
 
 <template>
-  <div class="scan-list-page">
-    <div class="page-head">
-      <h1>扫描批次</h1>
-      <div class="actions">
+  <div class="ui-page">
+    <div class="ui-page-head">
+      <div>
+        <h1 class="ui-page-title">
+          扫描批次
+          <span class="ui-page-count">共 <b>{{ total }}</b> 项</span>
+        </h1>
+        <p class="ui-page-subtitle">
+          <span v-if="pendingCount > 0" style="color: var(--color-warning); font-weight: 500">
+            ⚠ 有 {{ pendingCount }} 个批次待确认
+          </span>
+          <span v-else>所有批次均已处理</span>
+        </p>
+      </div>
+      <div class="ui-page-actions">
         <router-link to="/help" class="help-link">
           <el-icon><Document /></el-icon>
           nmap 扫描指南
@@ -95,78 +112,78 @@ onMounted(loadData)
       </div>
     </div>
 
-    <div class="table-card">
+    <div class="ui-table-card">
       <el-table v-loading="loading" :data="tableData" stripe style="width: 100%">
-        <el-table-column prop="id" label="ID" width="60" />
-        <el-table-column prop="batch_name" label="文件名" width="250" show-overflow-tooltip />
+        <el-table-column prop="id" label="ID" width="70">
+          <template #default="{ row }">
+            <span class="ui-mono ui-mono-muted">#{{ row.id }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column prop="batch_name" label="文件名" min-width="240" show-overflow-tooltip>
+          <template #default="{ row }">
+            <span style="color: var(--neutral-900); font-weight: 500">{{ row.batch_name }}</span>
+          </template>
+        </el-table-column>
         <el-table-column prop="uploaded_at" label="上传时间" width="160">
           <template #default="{ row }">
-            <span class="mono">{{ formatTime(row.uploaded_at) }}</span>
+            <span class="ui-mono ui-mono-muted">{{ formatTime(row.uploaded_at) }}</span>
           </template>
         </el-table-column>
-        <el-table-column prop="total_hosts" label="主机数" width="80" />
-        <el-table-column prop="new_count" label="新发现" width="80">
+        <el-table-column prop="total_hosts" label="主机数" width="90" align="center">
           <template #default="{ row }">
-            <span v-if="row.new_count > 0" style="color: var(--color-primary-500); font-weight: 500">{{ row.new_count }}</span>
-            <span v-else>0</span>
+            <span class="num-cell">{{ row.total_hosts }}</span>
           </template>
         </el-table-column>
-        <el-table-column prop="changed_count" label="变更" width="80">
+        <el-table-column prop="new_count" label="新发现" width="90" align="center">
           <template #default="{ row }">
-            <span v-if="row.changed_count > 0" style="color: var(--color-warning); font-weight: 500">{{ row.changed_count }}</span>
-            <span v-else>0</span>
+            <span v-if="row.new_count > 0" class="num-cell num-blue">+{{ row.new_count }}</span>
+            <span v-else class="num-cell ui-mono-muted">0</span>
           </template>
         </el-table-column>
-        <el-table-column prop="missing_count" label="消失" width="80">
+        <el-table-column prop="changed_count" label="变更" width="90" align="center">
           <template #default="{ row }">
-            <span v-if="row.missing_count > 0" style="color: var(--neutral-500)">{{ row.missing_count }}</span>
-            <span v-else>0</span>
+            <span v-if="row.changed_count > 0" class="num-cell num-warning">~{{ row.changed_count }}</span>
+            <span v-else class="num-cell ui-mono-muted">0</span>
           </template>
         </el-table-column>
-        <el-table-column prop="status" label="状态" width="100">
+        <el-table-column prop="missing_count" label="消失" width="90" align="center">
           <template #default="{ row }">
-            <el-tag :type="statusType(row.status)" size="small">{{ statusLabel(row.status) }}</el-tag>
+            <span v-if="row.missing_count > 0" class="num-cell num-muted">−{{ row.missing_count }}</span>
+            <span v-else class="num-cell ui-mono-muted">0</span>
           </template>
         </el-table-column>
-        <el-table-column prop="file_size_bytes" label="文件大小" width="100">
+        <el-table-column prop="status" label="状态" width="120">
           <template #default="{ row }">
-            {{ row.file_size_bytes ? (row.file_size_bytes / 1024).toFixed(0) + ' KB' : '-' }}
+            <span class="ui-badge" :class="statusBadgeClass(row.status)">
+              <span class="ui-badge-dot" />
+              {{ statusLabel(row.status) }}
+            </span>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="180" fixed="right">
+        <el-table-column prop="file_size_bytes" label="大小" width="100">
           <template #default="{ row }">
-            <el-button
-              v-if="row.status === 'pending'"
-              link
-              type="primary"
-              size="small"
-              @click="goConfirm(row)"
-            >
+            <span class="ui-mono ui-mono-muted">
+              {{ row.file_size_bytes ? (row.file_size_bytes / 1024).toFixed(0) + ' KB' : '-' }}
+            </span>
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="200" fixed="right">
+          <template #default="{ row }">
+            <el-button v-if="row.status === 'pending'" link type="primary" size="small" @click="goConfirm(row)">
               确认导入
             </el-button>
-            <el-button
-              v-if="row.status === 'pending'"
-              link
-              type="danger"
-              size="small"
-              @click="handleReject(row)"
-            >
+            <el-button v-if="row.status === 'pending'" link type="danger" size="small" @click="handleReject(row)">
               拒绝
             </el-button>
-            <el-button
-              v-if="row.status !== 'pending'"
-              link
-              size="small"
-              @click="goConfirm(row)"
-            >
+            <el-button v-if="row.status !== 'pending'" link size="small" @click="goConfirm(row)">
               查看详情
             </el-button>
           </template>
         </el-table-column>
       </el-table>
 
-      <div class="pagination-bar">
-        <span class="total-info">共 {{ total }} 条</span>
+      <div class="ui-pagination-bar">
+        <span class="ui-pagination-info">共 {{ total }} 条</span>
         <el-pagination
           v-model:current-page="page"
           :total="total"
@@ -180,22 +197,30 @@ onMounted(loadData)
 </template>
 
 <style scoped>
-.scan-list-page { display: flex; flex-direction: column; gap: var(--space-4); }
-.page-head { display: flex; align-items: flex-end; justify-content: space-between; }
-.page-head h1 { margin: 0; font-size: var(--fs-h2); color: var(--neutral-900); font-weight: 600; }
-.actions { display: flex; gap: var(--space-2); align-items: center; }
 .help-link {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
   font-size: 13px;
-  color: var(--color-primary-500);
+  color: var(--color-primary-600);
   text-decoration: none;
-  padding: 0 var(--space-2);
+  padding: 6px 12px;
+  border-radius: var(--radius-md);
+  transition: background-color var(--dur-fast) var(--ease-out),
+              color var(--dur-fast) var(--ease-out);
 }
-.help-link:hover { color: var(--color-primary-700); text-decoration: underline; }
-.table-card { background: var(--neutral-0); border: 1px solid var(--neutral-200); border-radius: var(--radius-lg); overflow: hidden; }
-.mono { font-family: var(--font-mono); font-size: 12px; }
-.pagination-bar { display: flex; align-items: center; justify-content: space-between; padding: var(--space-3) var(--space-4); border-top: 1px solid var(--neutral-200); }
-.total-info { font-size: 13px; color: var(--neutral-500); }
+.help-link:hover {
+  color: var(--color-primary-700);
+  background: var(--color-primary-50);
+}
+
+.num-cell {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--neutral-700);
+}
+.num-blue { color: var(--color-primary-500); }
+.num-warning { color: var(--color-warning); }
+.num-muted { color: var(--neutral-500); }
 </style>

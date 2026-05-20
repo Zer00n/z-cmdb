@@ -1,7 +1,7 @@
 ﻿<script setup lang="ts">
 /**
  * 资产详情页
- * 基于 Claude Design 05-asset-detail.html 实现
+ * 2026 UI Redesign：升级头部 hero 区与信息卡片，业务逻辑保持不变
  */
 import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -64,6 +64,17 @@ function zoneLabel(zone: string): string {
   return map[zone] || zone
 }
 
+function zoneClass(zone: string): string {
+  const map: Record<string, string> = {
+    intranet: 'zone-intranet',
+    dmz: 'zone-dmz',
+    office: 'zone-office',
+    management: 'zone-mgmt',
+    other: 'zone-other',
+  }
+  return map[zone] || 'zone-other'
+}
+
 function typeLabel(t: string): string {
   const map: Record<string, string> = {
     physical: '物理服务器', virtual: '虚拟机', network_device: '网络设备', other: '其他',
@@ -85,24 +96,28 @@ onMounted(loadAsset)
 </script>
 
 <template>
-  <div v-loading="loading" class="asset-detail-page">
+  <div v-loading="loading" class="ui-page">
     <template v-if="asset">
-      <!-- 页头 -->
-      <div class="page-head">
-        <div>
-          <div class="title-row">
-            <span class="id-tag">{{ asset.asset_no }}</span>
-            <h1>{{ asset.hostname || asset.ip_address }}</h1>
+      <!-- Hero 头部 -->
+      <div class="hero-card">
+        <div class="hero-grad" aria-hidden="true" />
+        <div class="hero-main">
+          <div class="hero-meta">
+            <span class="hero-id">{{ asset.asset_no }}</span>
+            <span class="ui-status" :class="'is-' + asset.status">{{ statusLabel(asset.status) }}</span>
           </div>
-          <div class="sub-info">
+          <h1 class="hero-title">{{ asset.hostname || asset.ip_address }}</h1>
+          <div class="hero-sub">
+            <span class="ui-mono">{{ asset.ip_address }}</span>
+            <span class="hero-sep" />
             <span>{{ typeLabel(asset.asset_type) }}</span>
-            <span class="sep">·</span>
+            <span class="hero-sep" />
             <span>{{ asset.business_system }}</span>
-            <span class="sep">·</span>
+            <span class="hero-sep" />
             <span>最后扫描 {{ formatTime(asset.last_seen_at) }}</span>
           </div>
         </div>
-        <div class="actions">
+        <div class="hero-actions">
           <el-button @click="router.push('/assets')">
             <el-icon><ArrowLeft /></el-icon>
             返回列表
@@ -133,43 +148,37 @@ onMounted(loadAsset)
       <!-- 信息卡片 -->
       <div class="info-cards">
         <div class="info-card">
-          <div class="ic-label">状态</div>
+          <div class="ic-label">网络区域</div>
           <div class="ic-value">
-            <span class="status-cell" :class="asset.status">
-              <span class="status-dot" />
-              {{ statusLabel(asset.status) }}
-            </span>
-          </div>
-        </div>
-        <div class="info-card">
-          <div class="ic-label">网络区域 / IP</div>
-          <div class="ic-value">
-            <span class="zone-tag" :class="'zone-' + asset.network_zone.replace('management','mgmt')">
+            <span class="ui-zone" :class="zoneClass(asset.network_zone)">
               {{ zoneLabel(asset.network_zone) }}
             </span>
-            <span class="mono">{{ asset.ip_address }}</span>
           </div>
         </div>
         <div class="info-card">
           <div class="ic-label">重要性</div>
           <div class="ic-value">
-            <span class="imp" :class="asset.importance">{{ importanceLabel(asset.importance) }}</span>
+            <span class="ui-imp" :class="'is-' + asset.importance">{{ importanceLabel(asset.importance) }}</span>
           </div>
         </div>
         <div class="info-card">
           <div class="ic-label">负责人</div>
           <div class="ic-value">{{ asset.owner }}</div>
         </div>
+        <div class="info-card">
+          <div class="ic-label">来源</div>
+          <div class="ic-value">{{ asset.source === 'scan' ? '扫描导入' : '手动录入' }}</div>
+        </div>
       </div>
 
       <!-- Tab 区域 -->
-      <div class="tabs-card">
-        <el-tabs v-model="activeTab">
+      <div class="ui-card">
+        <el-tabs v-model="activeTab" style="padding: 0 var(--space-6)">
           <el-tab-pane label="基本信息" name="basic">
             <div class="field-grid">
-              <div class="field"><span class="lbl">资产编号</span><span class="val mono">{{ asset.asset_no }}</span></div>
-              <div class="field"><span class="lbl">IP 地址</span><span class="val mono">{{ asset.ip_address }}</span></div>
-              <div class="field"><span class="lbl">MAC 地址</span><span class="val mono">{{ asset.mac_address || '-' }}</span></div>
+              <div class="field"><span class="lbl">资产编号</span><span class="val ui-mono">{{ asset.asset_no }}</span></div>
+              <div class="field"><span class="lbl">IP 地址</span><span class="val ui-mono">{{ asset.ip_address }}</span></div>
+              <div class="field"><span class="lbl">MAC 地址</span><span class="val ui-mono">{{ asset.mac_address || '-' }}</span></div>
               <div class="field"><span class="lbl">主机名</span><span class="val">{{ asset.hostname || '-' }}</span></div>
               <div class="field"><span class="lbl">操作系统</span><span class="val">{{ asset.os_info || '-' }}</span></div>
               <div class="field"><span class="lbl">资产类型</span><span class="val">{{ typeLabel(asset.asset_type) }}</span></div>
@@ -181,7 +190,7 @@ onMounted(loadAsset)
               <div class="field"><span class="lbl">磁盘</span><span class="val">{{ asset.disk_gb ? asset.disk_gb + ' GB' : '-' }}</span></div>
               <div class="field"><span class="lbl">采购日期</span><span class="val">{{ asset.purchase_date || '-' }}</span></div>
               <div class="field"><span class="lbl">保修到期</span><span class="val">{{ asset.warranty_expiry || '-' }}</span></div>
-              <div class="field"><span class="lbl">创建时间</span><span class="val mono">{{ formatTime(asset.created_at) }}</span></div>
+              <div class="field"><span class="lbl">创建时间</span><span class="val ui-mono">{{ formatTime(asset.created_at) }}</span></div>
             </div>
             <div v-if="asset.remark" class="remark-block">
               <div class="remark-label">备注</div>
@@ -193,7 +202,7 @@ onMounted(loadAsset)
             <el-table :data="asset.ports" stripe style="width: 100%">
               <el-table-column prop="port_number" label="端口" width="100">
                 <template #default="{ row }">
-                  <span class="mono" style="font-weight: 600">{{ row.port_number }}</span>
+                  <span class="port-chip">{{ row.port_number }}</span>
                 </template>
               </el-table-column>
               <el-table-column prop="protocol" label="协议" width="80">
@@ -203,7 +212,7 @@ onMounted(loadAsset)
               </el-table-column>
               <el-table-column prop="service_name" label="服务" width="140" />
               <el-table-column prop="service_version" label="版本" show-overflow-tooltip />
-              <el-table-column prop="state" label="状态" width="100">
+              <el-table-column prop="state" label="状态" width="110">
                 <template #default="{ row }">
                   <span class="port-state" :class="row.state">
                     <span class="port-dot" />
@@ -211,9 +220,9 @@ onMounted(loadAsset)
                   </span>
                 </template>
               </el-table-column>
-              <el-table-column prop="last_seen_at" label="最后发现" width="160">
+              <el-table-column prop="last_seen_at" label="最后发现" width="170">
                 <template #default="{ row }">
-                  <span class="mono" style="font-size: 12px">{{ formatTime(row.last_seen_at) }}</span>
+                  <span class="ui-mono ui-mono-muted">{{ formatTime(row.last_seen_at) }}</span>
                 </template>
               </el-table-column>
             </el-table>
@@ -225,50 +234,81 @@ onMounted(loadAsset)
 </template>
 
 <style scoped>
-.asset-detail-page {
+/* Hero */
+.hero-card {
+  position: relative;
+  background: var(--surface-base);
+  border: var(--border-base);
+  border-radius: var(--radius-lg);
+  padding: var(--space-6);
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--space-4);
+  overflow: hidden;
+  box-shadow: var(--shadow-subtle);
+}
+.hero-grad {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(420px 280px at 0% 0%, rgba(37, 99, 235, 0.08) 0%, transparent 60%),
+    radial-gradient(360px 220px at 100% 0%, rgba(99, 102, 241, 0.06) 0%, transparent 55%);
+}
+.hero-main {
+  position: relative;
+  z-index: 1;
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
+  gap: 8px;
+  flex: 1;
 }
-
-/* 页头 */
-.page-head {
+.hero-meta {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--space-4);
-}
-.title-row {
-  display: flex;
-  align-items: baseline;
-  gap: var(--space-3);
-}
-.id-tag {
-  font-family: var(--font-mono);
-  font-size: 13px;
-  background: var(--neutral-100);
-  color: var(--neutral-700);
-  border: 1px solid var(--neutral-200);
-  padding: 2px 8px;
-  border-radius: var(--radius-sm);
-}
-.page-head h1 {
-  margin: 0;
-  font-size: var(--fs-h2);
-  line-height: var(--lh-h2);
-  color: var(--neutral-900);
-  font-weight: 600;
-}
-.sub-info {
-  margin-top: 6px;
-  font-size: var(--fs-caption);
-  color: var(--neutral-500);
-  display: flex;
-  gap: var(--space-3);
   align-items: center;
+  gap: var(--space-3);
 }
-.sep { color: var(--neutral-300); }
-.actions { display: flex; align-items: center; gap: var(--space-2); }
+.hero-id {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--color-primary-700);
+  background: var(--color-primary-50);
+  border: 1px solid rgba(37, 99, 235, 0.16);
+  padding: 3px 10px;
+  border-radius: 999px;
+}
+.hero-title {
+  margin: 0;
+  font-size: 28px;
+  line-height: 36px;
+  font-weight: 700;
+  color: var(--neutral-900);
+  letter-spacing: -0.02em;
+}
+.hero-sub {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--neutral-500);
+  flex-wrap: wrap;
+}
+.hero-sep {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--neutral-300);
+}
+.hero-actions {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-shrink: 0;
+}
 
 /* 信息卡片 */
 .info-cards {
@@ -277,18 +317,24 @@ onMounted(loadAsset)
   gap: var(--space-4);
 }
 .info-card {
-  background: var(--neutral-0);
-  border: 1px solid var(--neutral-200);
+  background: var(--surface-base);
+  border: var(--border-base);
   border-radius: var(--radius-lg);
-  padding: var(--space-4);
+  padding: var(--space-4) var(--space-6);
+  box-shadow: var(--shadow-subtle);
+  transition: box-shadow var(--dur-base) var(--ease-out);
+}
+.info-card:hover {
+  box-shadow: var(--shadow-medium);
+  border-color: var(--neutral-300);
 }
 .ic-label {
   font-size: 11px;
   font-family: var(--font-mono);
   color: var(--neutral-400);
-  letter-spacing: 0.06em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  margin-bottom: 6px;
+  margin-bottom: 8px;
 }
 .ic-value {
   font-size: 16px;
@@ -297,36 +343,7 @@ onMounted(loadAsset)
   display: flex;
   align-items: center;
   gap: var(--space-2);
-}
-
-/* 状态 */
-.status-cell { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; }
-.status-dot { width: 8px; height: 8px; border-radius: 50%; }
-.status-cell.online .status-dot { background: var(--status-online); box-shadow: 0 0 0 3px rgba(22,163,74,0.16); }
-.status-cell.offline .status-dot { background: var(--status-offline); }
-.status-cell.decommissioned .status-dot { background: var(--status-decommissioned); }
-
-/* 区域 */
-.zone-tag { font-size: 13px; padding: 2px 8px; border-radius: var(--radius-sm); }
-.zone-intranet { background: #DBE5FE; color: #1E40AF; }
-.zone-dmz { background: #FEF3C7; color: #92400E; }
-.zone-office { background: #CFFAFE; color: #0E7490; }
-.zone-mgmt { background: #EDE9FE; color: #5B21B6; }
-
-/* 重要性 */
-.imp { font-size: 14px; }
-.imp.core { color: var(--color-danger); }
-.imp.important { color: var(--color-warning); }
-.imp.normal { color: var(--neutral-500); }
-
-.mono { font-family: var(--font-mono); font-size: 13px; }
-
-/* Tab 卡片 */
-.tabs-card {
-  background: var(--neutral-0);
-  border: 1px solid var(--neutral-200);
-  border-radius: var(--radius-lg);
-  padding: var(--space-4) var(--space-6);
+  min-height: 24px;
 }
 
 /* 字段网格 */
@@ -334,25 +351,58 @@ onMounted(loadAsset)
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: var(--space-4) var(--space-8);
+  padding: var(--space-2) 0 var(--space-4);
 }
 .field { display: flex; flex-direction: column; gap: 4px; }
-.field .lbl { font-size: var(--fs-caption); color: var(--neutral-500); }
-.field .val { font-size: var(--fs-body); color: var(--neutral-900); }
+.field .lbl {
+  font-size: 11px;
+  color: var(--neutral-400);
+  font-family: var(--font-mono);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.field .val {
+  font-size: var(--fs-body);
+  color: var(--neutral-900);
+}
 
 /* 备注 */
 .remark-block {
-  margin-top: var(--space-6);
-  background: var(--neutral-50);
+  margin-top: var(--space-4);
+  background: var(--surface-sunken);
   border: 1px solid var(--neutral-200);
   border-radius: var(--radius-md);
   padding: var(--space-4);
 }
-.remark-label { font-size: var(--fs-caption); color: var(--neutral-500); margin-bottom: var(--space-2); }
-.remark-content { font-size: var(--fs-body); color: var(--neutral-700); line-height: 22px; }
+.remark-label {
+  font-size: 11px;
+  color: var(--neutral-400);
+  font-family: var(--font-mono);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  margin-bottom: var(--space-2);
+}
+.remark-content {
+  font-size: var(--fs-body);
+  color: var(--neutral-700);
+  line-height: 22px;
+}
 
-/* 端口状态 */
-.port-state { display: inline-flex; align-items: center; gap: 5px; font-size: 13px; }
-.port-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--status-online); }
+/* 端口 chip */
+.port-chip {
+  display: inline-block;
+  padding: 2px 10px;
+  background: var(--surface-sunken);
+  border: 1px solid var(--neutral-200);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--neutral-900);
+}
+
+.port-state { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; }
+.port-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--status-online); flex-shrink: 0; }
 .port-state.closed .port-dot { background: var(--neutral-400); }
 .port-state.filtered .port-dot { background: var(--color-warning); }
 </style>

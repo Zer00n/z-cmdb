@@ -1,19 +1,31 @@
 /**
  * 设计 Token 单一来源
- * 从 Claude Design 01-design-system.html 提取
- * 所有颜色、字号、间距、圆角、阴影均在此定义
- * 组件中禁止硬编码，必须使用 var(--xxx)
+ * 2026-05-20 UI Redesign：扩展 2026 风格 token，保留全部 v1 变量以确保向后兼容
+ *
+ * 命名约定：
+ *   - color-* 主品牌、语义色
+ *   - neutral-* 中性灰阶（slate）
+ *   - surface-* 表面层级（2026 新增，用于多层背景）
+ *   - accent-* 强调渐变（2026 新增，仅用于品牌点缀和关键数字）
+ *   - glow-* 边缘高光（2026 新增）
+ *   - shadow-* 阴影体系
+ *
+ * 组件中禁止硬编码颜色/字号/间距，必须使用 var(--xxx)
  */
 :root {
+  /* ============================================================
+   *  v1 兼容（保留原始克制蓝主色，确保所有旧组件颜色不变）
+   * ============================================================ */
+
   /* ---- 主色梯度（Primary · 克制蓝） ---- */
   --color-primary-50:  #EFF4FF;
   --color-primary-100: #DBE5FE;
   --color-primary-200: #B6CBFD;
   --color-primary-300: #88A8FA;
   --color-primary-400: #5A82F4;
-  --color-primary-500: #2563EB;   /* Primary */
+  --color-primary-500: #2563EB;
   --color-primary-600: #1D4FD4;
-  --color-primary-700: #1E40AF;   /* Hover/Active */
+  --color-primary-700: #1E40AF;
   --color-primary-800: #1E3A8A;
 
   /* ---- 语义色 ---- */
@@ -30,14 +42,14 @@
 
   /* ---- 中性色（Slate 色系） ---- */
   --neutral-0:   #FFFFFF;
-  --neutral-50:  #F8FAFC;   /* 页面背景 */
-  --neutral-100: #F1F5F9;   /* 表格条纹 / hover */
-  --neutral-200: #E2E8F0;   /* 弱边框 / 分隔线 */
-  --neutral-300: #CBD5E1;   /* 标准边框 */
-  --neutral-400: #94A3B8;   /* 占位 / 禁用文字 */
-  --neutral-500: #64748B;   /* 辅助文字 */
-  --neutral-700: #334155;   /* 正文 */
-  --neutral-900: #0F172A;   /* 标题 / 强调 */
+  --neutral-50:  #F8FAFC;
+  --neutral-100: #F1F5F9;
+  --neutral-200: #E2E8F0;
+  --neutral-300: #CBD5E1;
+  --neutral-400: #94A3B8;
+  --neutral-500: #64748B;
+  --neutral-700: #334155;
+  --neutral-900: #0F172A;
 
   /* ---- 间距（8px 网格） ---- */
   --space-1:  4px;
@@ -48,15 +60,10 @@
   --space-8:  32px;
   --space-12: 48px;
 
-  /* ---- 圆角 ---- */
+  /* ---- 圆角（v1 严格不超过 8px） ---- */
   --radius-sm: 4px;
   --radius-md: 6px;
   --radius-lg: 8px;
-
-  /* ---- 阴影（克制） ---- */
-  --shadow-subtle:   0 1px 2px rgba(15, 23, 42, 0.04), 0 1px 1px rgba(15, 23, 42, 0.03);
-  --shadow-medium:   0 4px 8px -2px rgba(15, 23, 42, 0.06), 0 2px 4px -2px rgba(15, 23, 42, 0.04);
-  --shadow-floating: 0 12px 24px -8px rgba(15, 23, 42, 0.12), 0 4px 8px -4px rgba(15, 23, 42, 0.06);
 
   /* ---- 字体 ---- */
   --font-sans: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei",
@@ -93,4 +100,78 @@
   --sidebar-w: 220px;
   --topbar-h: 56px;
   --table-row-h: 44px;
+
+  /* ============================================================
+   *  2026 新增 token（仅用于视觉升级，不破坏旧色彩）
+   * ============================================================ */
+
+  /* ---- Surface 层级（多层背景，营造立体而克制的层次） ---- */
+  --surface-canvas:   #F6F8FC;   /* 应用画布底色（比 neutral-50 略带蓝灰） */
+  --surface-base:     #FFFFFF;   /* 卡片背景 */
+  --surface-raised:   #FFFFFF;   /* 提升层（弹窗、下拉） */
+  --surface-sunken:   #F1F4FA;   /* 凹陷层（输入框、代码块） */
+  --surface-overlay:  rgba(255, 255, 255, 0.78);  /* 半透明顶栏，配合 backdrop-filter */
+
+  /* ---- 数据面板深色背景（仅用于 KPI 大数字、HVV Dashboard 等亮眼场景）---- */
+  --surface-deep:     #0B1220;
+  --surface-deep-2:   #111A2E;
+
+  /* ---- Accent 渐变（仅用于品牌 logo、关键数字、active state 强调，不滥用） ---- */
+  --accent-from:      #2563EB;
+  --accent-to:        #6366F1;
+  --accent-gradient:  linear-gradient(135deg, var(--accent-from) 0%, var(--accent-to) 100%);
+
+  /* 数据高亮渐变（用于 KPI 数字、强调标签） */
+  --accent-data:      linear-gradient(135deg, #1E40AF 0%, #2563EB 50%, #4F46E5 100%);
+
+  /* 风险渐变（仅用于"危险端口"、"高危告警"等关键报表数字） */
+  --accent-risk:      linear-gradient(135deg, #DC2626 0%, #EA580C 100%);
+  --accent-warn:      linear-gradient(135deg, #D97706 0%, #F59E0B 100%);
+  --accent-safe:      linear-gradient(135deg, #16A34A 0%, #10B981 100%);
+
+  /* ---- Glow / Halo（边缘细光，让卡片有"被光照亮"的质感） ---- */
+  --glow-primary:     0 0 0 1px rgba(37, 99, 235, 0.16), 0 0 18px -4px rgba(37, 99, 235, 0.18);
+  --glow-success:     0 0 0 1px rgba(22, 163, 74, 0.18), 0 0 16px -4px rgba(22, 163, 74, 0.16);
+  --glow-danger:      0 0 0 1px rgba(220, 38, 38, 0.18), 0 0 16px -4px rgba(220, 38, 38, 0.16);
+  --glow-warning:     0 0 0 1px rgba(217, 119, 6, 0.18), 0 0 16px -4px rgba(217, 119, 6, 0.16);
+
+  /* ---- 阴影体系（2026 风格：颜色化阴影，更柔但层次更分明） ---- */
+  --shadow-subtle:
+    0 1px 2px rgba(15, 23, 42, 0.04),
+    0 1px 1px rgba(15, 23, 42, 0.03);
+  --shadow-medium:
+    0 4px 8px -2px rgba(15, 23, 42, 0.06),
+    0 2px 4px -2px rgba(15, 23, 42, 0.04);
+  --shadow-floating:
+    0 12px 24px -8px rgba(15, 23, 42, 0.12),
+    0 4px 8px -4px rgba(15, 23, 42, 0.06);
+
+  /* 2026 新增：彩色阴影（仅用于 hover 浮起的关键卡片） */
+  --shadow-blue:
+    0 8px 24px -8px rgba(37, 99, 235, 0.22),
+    0 2px 4px -2px rgba(37, 99, 235, 0.10);
+  --shadow-card-hover:
+    0 18px 36px -12px rgba(15, 23, 42, 0.14),
+    0 4px 8px -4px rgba(15, 23, 42, 0.06);
+
+  /* ---- Focus Ring（统一外部焦点圈） ---- */
+  --ring-primary: 0 0 0 3px rgba(37, 99, 235, 0.18);
+  --ring-danger:  0 0 0 3px rgba(220, 38, 38, 0.18);
+
+  /* ---- 边框 ---- */
+  --border-subtle:   1px solid rgba(15, 23, 42, 0.06);
+  --border-base:     1px solid var(--neutral-200);
+  --border-strong:   1px solid var(--neutral-300);
+
+  /* ---- 动效曲线（统一缓动，提升一致性） ---- */
+  --ease-out:        cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-out-slow:   cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-snap:       cubic-bezier(0.5, 0, 0.2, 1);
+  --dur-fast:   120ms;
+  --dur-base:   200ms;
+  --dur-slow:   320ms;
+
+  /* ---- 字号补充（2026 数据 hero 字号，用于 KPI 大数） ---- */
+  --fs-hero: 36px;   --lh-hero: 44px;
+  --fs-mega: 44px;   --lh-mega: 52px;
 }

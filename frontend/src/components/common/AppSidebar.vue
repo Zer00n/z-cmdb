@@ -1,8 +1,7 @@
 <script setup lang="ts">
 /**
  * 侧边栏导航组件
- * 基于 Claude Design 03-layout.html 侧边栏部分实现
- * 根据用户角色过滤菜单项
+ * 2026 UI Redesign：升级视觉（active 高亮渐变 + tooltip 优化），逻辑保持不变
  */
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
@@ -72,7 +71,6 @@ const navGroups: NavGroup[] = [
   },
 ]
 
-// 过滤有权限的分组和菜单项
 const visibleGroups = computed(() => {
   const role = authStore.role
   if (!role) return []
@@ -116,10 +114,15 @@ function isActive(itemRoute: string) {
             </el-icon>
           </span>
           <span v-if="!props.collapsed" class="nav-label">{{ item.title }}</span>
-          <!-- 折叠态 tooltip -->
           <span v-if="props.collapsed" class="nav-tip">{{ item.title }}</span>
         </router-link>
       </div>
+    </div>
+
+    <!-- 底部版权区 -->
+    <div v-if="!props.collapsed" class="sidebar-foot">
+      <span class="foot-line">CMDB Lite</span>
+      <span class="foot-meta">v0.1.0 · 中小团队 · 准确性优先</span>
     </div>
   </aside>
 </template>
@@ -127,15 +130,15 @@ function isActive(itemRoute: string) {
 <style scoped>
 .sidebar {
   width: 220px;
-  background: var(--neutral-0);
-  border-right: 1px solid var(--neutral-200);
+  background: var(--surface-base);
+  border-right: 1px solid rgba(15, 23, 42, 0.06);
   position: sticky;
   top: var(--topbar-h);
   align-self: start;
   height: calc(100vh - var(--topbar-h));
   display: flex;
   flex-direction: column;
-  transition: width 0.18s ease;
+  transition: width var(--dur-base) var(--ease-out);
   overflow: hidden;
 }
 .sidebar.collapsed {
@@ -154,16 +157,17 @@ function isActive(itemRoute: string) {
 }
 
 .nav-group + .nav-group {
-  margin-top: var(--space-2);
+  margin-top: var(--space-3);
 }
 
 .nav-group-head {
   padding: var(--space-3) var(--space-4) 6px;
-  font-size: 11px;
+  font-size: 10.5px;
   font-family: var(--font-mono);
-  letter-spacing: 0.08em;
+  letter-spacing: 0.1em;
   color: var(--neutral-400);
   text-transform: uppercase;
+  font-weight: 500;
 }
 
 .nav-item {
@@ -179,7 +183,9 @@ function isActive(itemRoute: string) {
   font-size: var(--fs-body);
   cursor: pointer;
   text-decoration: none;
-  transition: background-color 0.12s ease, color 0.12s ease;
+  transition:
+    background-color var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out);
   white-space: nowrap;
 }
 .nav-item:hover {
@@ -190,9 +196,9 @@ function isActive(itemRoute: string) {
   color: var(--color-primary-500);
 }
 .nav-item.active {
-  background: var(--color-primary-50);
+  background: linear-gradient(90deg, rgba(37, 99, 235, 0.10) 0%, rgba(99, 102, 241, 0.06) 100%);
   color: var(--color-primary-700);
-  font-weight: 500;
+  font-weight: 600;
 }
 .nav-item.active .nav-ico {
   color: var(--color-primary-500);
@@ -204,8 +210,9 @@ function isActive(itemRoute: string) {
   top: 6px;
   bottom: 6px;
   width: 3px;
-  background: var(--color-primary-500);
+  background: var(--accent-gradient);
   border-radius: 0 2px 2px 0;
+  box-shadow: 0 0 8px -1px rgba(37, 99, 235, 0.5);
 }
 
 .nav-ico {
@@ -216,12 +223,14 @@ function isActive(itemRoute: string) {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  transition: color var(--dur-fast) var(--ease-out);
 }
 
 .nav-label {
   flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
+  letter-spacing: -0.005em;
 }
 
 /* 折叠态 */
@@ -238,23 +247,46 @@ function isActive(itemRoute: string) {
 /* Tooltip */
 .nav-tip {
   position: absolute;
-  left: calc(100% + 8px);
+  left: calc(100% + 10px);
   top: 50%;
-  transform: translateY(-50%);
+  transform: translateY(-50%) translateX(-4px);
   background: var(--neutral-900);
   color: var(--neutral-0);
   font-size: 12px;
   line-height: 18px;
-  padding: 3px 8px;
+  padding: 4px 10px;
   border-radius: var(--radius-sm);
   white-space: nowrap;
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.12s ease;
+  transition:
+    opacity var(--dur-fast) var(--ease-out),
+    transform var(--dur-fast) var(--ease-out);
   z-index: 50;
-  box-shadow: var(--shadow-medium);
+  box-shadow: var(--shadow-floating);
 }
 .sidebar.collapsed .nav-item:hover .nav-tip {
   opacity: 1;
+  transform: translateY(-50%) translateX(0);
+}
+
+/* 底部 */
+.sidebar-foot {
+  padding: var(--space-4);
+  border-top: 1px solid var(--neutral-200);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.foot-line {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--neutral-700);
+}
+.foot-meta {
+  font-size: 11px;
+  color: var(--neutral-400);
+  font-family: var(--font-mono);
+  letter-spacing: 0.02em;
 }
 </style>

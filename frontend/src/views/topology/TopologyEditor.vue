@@ -154,18 +154,20 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div v-loading="loading" class="topology-page">
+  <div v-loading="loading" class="ui-page topology-page">
     <!-- 页头 -->
-    <div class="page-head">
+    <div class="ui-page-head">
       <div>
-        <h1>网络拓扑图</h1>
-        <p class="sub" v-if="currentTopology">
-          当前版本：{{ currentTopology.version_no }}
-          · 创建于 {{ currentTopology.created_at }}
+        <h1 class="ui-page-title">
+          网络拓扑图
+          <span v-if="currentTopology" class="ui-page-count">{{ currentTopology.version_no }}</span>
+        </h1>
+        <p class="ui-page-subtitle" v-if="currentTopology">
+          当前版本创建于 {{ currentTopology.created_at }} · 共 {{ versions.length }} 个历史版本
         </p>
-        <p class="sub" v-else>暂无拓扑图，请先生成或手动创建</p>
+        <p class="ui-page-subtitle" v-else>暂无拓扑图，请先用 LLM 生成或手动创建</p>
       </div>
-      <div class="actions">
+      <div class="ui-page-actions">
         <el-button :loading="generating" @click="handleGenerate">
           <el-icon><MagicStick /></el-icon>
           LLM 生成
@@ -179,8 +181,15 @@ onBeforeUnmount(() => {
 
     <!-- 主内容区：编辑器 + 版本列表 -->
     <div class="content-grid">
-      <!-- drawio 编辑器区域 -->
+      <!-- drawio 编辑器 -->
       <div class="editor-card">
+        <div class="editor-toolbar">
+          <span class="editor-label">
+            <span class="editor-dot" />
+            drawio · embed.diagrams.net
+          </span>
+          <span class="editor-hint">在编辑器中拖拽节点 · 双击文本编辑 · Ctrl+S 临时保存</span>
+        </div>
         <iframe
           ref="iframeRef"
           :src="DRAWIO_URL"
@@ -191,9 +200,15 @@ onBeforeUnmount(() => {
       </div>
 
       <!-- 版本列表 -->
-      <div class="versions-card">
-        <h3>历史版本</h3>
-        <div v-if="versions.length === 0" class="empty-versions">暂无历史版本</div>
+      <div class="ui-card versions-card">
+        <div class="versions-head">
+          <h3>历史版本</h3>
+          <span class="versions-count">{{ versions.length }}</span>
+        </div>
+        <div v-if="versions.length === 0" class="ui-empty">
+          <div class="ui-empty-title">暂无历史版本</div>
+          <div class="ui-empty-desc">保存后将出现在此</div>
+        </div>
         <div v-else class="version-list">
           <div
             v-for="v in versions"
@@ -202,14 +217,19 @@ onBeforeUnmount(() => {
             :class="{ current: v.is_current }"
           >
             <div class="v-info">
-              <span class="v-no mono">{{ v.version_no }}</span>
+              <div class="v-line-1">
+                <span class="v-no">{{ v.version_no }}</span>
+                <span v-if="v.is_current" class="ui-badge is-success">
+                  <span class="ui-badge-dot" />
+                  当前
+                </span>
+              </div>
               <span class="v-title" v-if="v.title">{{ v.title }}</span>
               <span class="v-time">{{ v.created_at }}</span>
             </div>
             <div class="v-actions">
-              <el-tag v-if="v.is_current" size="small" type="success">当前</el-tag>
               <el-button
-                v-else
+                v-if="!v.is_current"
                 link
                 size="small"
                 type="primary"
@@ -227,92 +247,146 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .topology-page {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
+  height: calc(100vh - var(--topbar-h) - var(--space-12));
 }
-
-.page-head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-}
-.page-head h1 {
-  margin: 0;
-  font-size: var(--fs-h2);
-  color: var(--neutral-900);
-  font-weight: 600;
-}
-.sub { margin-top: 6px; font-size: var(--fs-caption); color: var(--neutral-500); }
-.actions { display: flex; gap: var(--space-2); }
 
 .content-grid {
   display: grid;
-  grid-template-columns: 1fr 280px;
+  grid-template-columns: 1fr 320px;
   gap: var(--space-4);
+  flex: 1;
   min-height: 600px;
 }
 
 /* drawio 编辑器 */
 .editor-card {
-  background: var(--neutral-0);
-  border: 1px solid var(--neutral-200);
+  background: var(--surface-base);
+  border: var(--border-base);
   border-radius: var(--radius-lg);
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  box-shadow: var(--shadow-subtle);
+}
+
+.editor-toolbar {
+  height: 38px;
+  padding: 0 var(--space-4);
+  border-bottom: var(--border-base);
+  background: linear-gradient(180deg, rgba(37, 99, 235, 0.03) 0%, transparent 100%);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+.editor-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--neutral-500);
+  font-weight: 500;
+}
+.editor-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-success);
+  box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.18);
+}
+.editor-hint {
+  font-size: 11.5px;
+  color: var(--neutral-400);
 }
 
 .drawio-iframe {
   width: 100%;
-  height: 100%;
+  flex: 1;
   min-height: 600px;
   border: none;
+  background: var(--surface-sunken);
 }
 
 /* 版本列表 */
 .versions-card {
-  background: var(--neutral-0);
-  border: 1px solid var(--neutral-200);
-  border-radius: var(--radius-lg);
-  padding: var(--space-4);
-  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  overflow: hidden;
 }
-.versions-card h3 {
-  margin: 0 0 var(--space-3);
+.versions-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-4);
+  border-bottom: var(--border-base);
+  flex-shrink: 0;
+}
+.versions-head h3 {
+  margin: 0;
   font-size: var(--fs-h4);
   color: var(--neutral-900);
   font-weight: 600;
 }
-
-.empty-versions {
-  font-size: var(--fs-caption);
-  color: var(--neutral-400);
-  text-align: center;
-  padding: var(--space-6) 0;
+.versions-count {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--neutral-500);
+  background: var(--surface-sunken);
+  padding: 2px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--neutral-200);
 }
 
 .version-list {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
+  padding: var(--space-3);
+  overflow-y: auto;
 }
 .version-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: var(--space-2) var(--space-3);
+  padding: var(--space-3);
   border-radius: var(--radius-md);
   border: 1px solid var(--neutral-200);
+  background: var(--surface-base);
+  transition: border-color var(--dur-fast) var(--ease-out),
+              background-color var(--dur-fast) var(--ease-out);
+}
+.version-item:hover {
+  border-color: var(--neutral-300);
+  background: var(--surface-sunken);
 }
 .version-item.current {
-  background: var(--color-primary-50);
-  border-color: var(--color-primary-200);
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.06), rgba(99, 102, 241, 0.04));
+  border-color: rgba(37, 99, 235, 0.25);
 }
-.v-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.v-no { font-size: 12px; color: var(--neutral-900); font-weight: 500; }
-.v-title { font-size: 12px; color: var(--neutral-500); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.v-time { font-size: 11px; color: var(--neutral-400); font-family: var(--font-mono); }
-
-.mono { font-family: var(--font-mono); }
+.v-info { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.v-line-1 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.v-no {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  color: var(--neutral-900);
+  font-weight: 600;
+}
+.v-title {
+  font-size: 12px;
+  color: var(--neutral-500);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.v-time {
+  font-size: 11px;
+  color: var(--neutral-400);
+  font-family: var(--font-mono);
+}
 </style>

@@ -126,14 +126,12 @@ onMounted(loadConfig)
   <div v-loading="loading" class="settings-page">
     <div class="container">
       <!-- 页头 -->
-      <div class="page-head">
+      <div class="ui-page-head" style="margin-bottom: var(--space-6)">
         <div>
-          <h1>系统配置</h1>
-          <div class="sub">
-            <span>调整运行时参数。配置项立即生效，无需重启服务</span>
-          </div>
+          <h1 class="ui-page-title">系统配置</h1>
+          <p class="ui-page-subtitle">调整运行时参数 · 配置项立即生效，无需重启服务</p>
         </div>
-        <div class="actions">
+        <div class="ui-page-actions">
           <el-button @click="loadConfig">
             <el-icon><Refresh /></el-icon>
             重置
@@ -241,58 +239,40 @@ onMounted(loadConfig)
   max-width: 960px;
 }
 
-/* 页头 */
-.page-head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--space-4);
-  margin-bottom: var(--space-6);
-}
-.page-head h1 {
-  margin: 0;
-  font-size: var(--fs-h2);
-  line-height: var(--lh-h2);
-  color: var(--neutral-900);
-  font-weight: 600;
-}
-.sub {
-  margin-top: 6px;
-  font-size: var(--fs-caption);
-  color: var(--neutral-500);
-}
-.actions {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-}
-
 /* 段卡片 */
 .sec-card {
-  background: var(--neutral-0);
-  border: 1px solid var(--neutral-200);
+  background: var(--surface-base);
+  border: var(--border-base);
   border-radius: var(--radius-lg);
   margin-bottom: var(--space-4);
+  box-shadow: var(--shadow-subtle);
+  transition: box-shadow var(--dur-base) var(--ease-out);
+}
+.sec-card:hover {
+  box-shadow: var(--shadow-medium);
 }
 .sec-head {
   display: flex;
   align-items: center;
   gap: var(--space-3);
   padding: var(--space-4) var(--space-6);
-  border-bottom: 1px solid var(--neutral-200);
+  border-bottom: var(--border-base);
+  background: linear-gradient(180deg, rgba(37, 99, 235, 0.02) 0%, transparent 100%);
 }
 .sec-num {
-  width: 22px;
-  height: 22px;
-  border-radius: var(--radius-sm);
-  background: var(--color-primary-50);
-  color: var(--color-primary-700);
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-md);
+  background: var(--accent-gradient);
+  color: #FFFFFF;
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 12px;
+  font-weight: 600;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  box-shadow: 0 2px 6px -1px rgba(37, 99, 235, 0.4);
 }
 .sec-title {
   font-size: var(--fs-h4);
@@ -300,7 +280,7 @@ onMounted(loadConfig)
   color: var(--neutral-900);
 }
 .sec-desc {
-  font-size: var(--fs-caption);
+  font-size: 12.5px;
   color: var(--neutral-500);
   margin-left: var(--space-2);
 }
@@ -314,6 +294,10 @@ onMounted(loadConfig)
   font-size: 11px;
   color: var(--neutral-400);
   margin-left: var(--space-3);
+  background: var(--surface-sunken);
+  padding: 1px 6px;
+  border-radius: 3px;
+  border: 1px solid var(--neutral-200);
 }
 
 /* 等宽输入框 */
@@ -328,8 +312,8 @@ onMounted(loadConfig)
   align-items: center;
   gap: var(--space-2);
   padding: var(--space-3) var(--space-4);
-  background: var(--neutral-50);
-  border: 1px solid var(--neutral-200);
+  background: linear-gradient(90deg, rgba(37, 99, 235, 0.04) 0%, rgba(99, 102, 241, 0.02) 100%);
+  border: 1px solid rgba(37, 99, 235, 0.12);
   border-radius: var(--radius-md);
   font-size: var(--fs-caption);
   color: var(--neutral-700);
@@ -337,6 +321,6 @@ onMounted(loadConfig)
 }
 .hint-card b {
   font-weight: 600;
-  color: var(--neutral-900);
+  color: var(--color-primary-700);
 }
 </style>
