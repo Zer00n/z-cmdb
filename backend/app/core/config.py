@@ -42,7 +42,7 @@ class Settings(BaseSettings):
 
     # 应用
     APP_ENV: str = "development"
-    APP_TITLE: str = "CMDB Lite"
+    APP_TITLE: str = "Z-CMDB Lite"
     APP_VERSION: str = "0.1.0"
 
     # CORS（开发期允许前端 dev server）

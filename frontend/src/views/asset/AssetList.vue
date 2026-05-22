@@ -6,7 +6,7 @@
 import { ref, reactive, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { fetchAssetList, decommissionAsset, exportAssetsCsv, updateAsset } from '@/api/asset'
+import { fetchAssetList, decommissionAsset, exportAssetsCsv, exportAssetsForThreatHunting, updateAsset } from '@/api/asset'
 import type { AssetListItem, AssetListResponse, AssetQueryParams } from '@/types/asset'
 
 const router = useRouter()
@@ -115,6 +115,26 @@ async function handleExport() {
   URL.revokeObjectURL(url)
 }
 
+async function handleExportThreatHunting() {
+  const blob = await exportAssetsForThreatHunting(query)
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  const today = new Date().toISOString().slice(0, 10).replace(/-/g, '')
+  a.download = `cmdb_threat_hunting_${today}.csv`
+  a.click()
+  URL.revokeObjectURL(url)
+  ElMessage.success('已导出威胁狩猎助手兼容格式，按当前筛选条件导出资产×应用展开行')
+}
+
+function handleExportCommand(command: string) {
+  if (command === 'standard') {
+    handleExport()
+  } else if (command === 'threat-hunting') {
+    handleExportThreatHunting()
+  }
+}
+
 function zoneClass(zone: string): string {
   const map: Record<string, string> = {
     intranet: 'zone-intranet',
@@ -122,6 +142,13 @@ function zoneClass(zone: string): string {
     office: 'zone-office',
     management: 'zone-mgmt',
     other: 'zone-other',
+    aliyun: 'zone-cloud',
+    tencent: 'zone-cloud',
+    huawei: 'zone-cloud',
+    aws: 'zone-cloud',
+    azure: 'zone-cloud',
+    gcp: 'zone-cloud',
+    other_cloud: 'zone-cloud',
   }
   return map[zone] || 'zone-other'
 }
@@ -133,6 +160,13 @@ function zoneLabel(zone: string): string {
     office: '办公网',
     management: '管理网',
     other: '其他',
+    aliyun: '阿里云',
+    tencent: '腾讯云',
+    huawei: '华为云',
+    aws: 'AWS',
+    azure: 'Azure',
+    gcp: 'Google Cloud',
+    other_cloud: '其他云',
   }
   return map[zone] || zone
 }
@@ -151,6 +185,7 @@ function typeLabel(t: string): string {
   const map: Record<string, string> = {
     physical: '物理服务器',
     virtual: '虚拟机',
+    cloud_server: '云服务器',
     network_device: '网络设备',
     other: '其他',
   }
@@ -177,10 +212,19 @@ onMounted(loadData)
         <p class="ui-page-subtitle">本页 {{ tableData.length }} 项 · 在线 {{ onlineCount }} 项</p>
       </div>
       <div class="ui-page-actions">
-        <el-button @click="handleExport">
-          <el-icon><Download /></el-icon>
-          导出 CSV
-        </el-button>
+        <el-dropdown trigger="click" @command="handleExportCommand">
+          <el-button>
+            <el-icon><Download /></el-icon>
+            导出 CSV
+            <el-icon class="el-icon--right"><ArrowDown /></el-icon>
+          </el-button>
+          <template #dropdown>
+            <el-dropdown-menu>
+              <el-dropdown-item command="standard">Z-CMDB 标准格式</el-dropdown-item>
+              <el-dropdown-item command="threat-hunting">威胁狩猎助手格式</el-dropdown-item>
+            </el-dropdown-menu>
+          </template>
+        </el-dropdown>
         <el-button type="primary" @click="goCreate">
           <el-icon><Plus /></el-icon>
           新增资产
@@ -204,16 +248,28 @@ onMounted(loadData)
       </el-input>
 
       <el-select v-model="query.network_zone" placeholder="网络区域" clearable @change="handleSearch" style="width: 140px">
-        <el-option label="内网" value="intranet" />
-        <el-option label="DMZ" value="dmz" />
-        <el-option label="办公网" value="office" />
-        <el-option label="管理网" value="management" />
-        <el-option label="其他" value="other" />
+        <el-option-group label="传统区域">
+          <el-option label="内网" value="intranet" />
+          <el-option label="DMZ" value="dmz" />
+          <el-option label="办公网" value="office" />
+          <el-option label="管理网" value="management" />
+          <el-option label="其他" value="other" />
+        </el-option-group>
+        <el-option-group label="云服务商">
+          <el-option label="阿里云" value="aliyun" />
+          <el-option label="腾讯云" value="tencent" />
+          <el-option label="华为云" value="huawei" />
+          <el-option label="AWS" value="aws" />
+          <el-option label="Azure" value="azure" />
+          <el-option label="Google Cloud" value="gcp" />
+          <el-option label="其他云" value="other_cloud" />
+        </el-option-group>
       </el-select>
 
       <el-select v-model="query.asset_type" placeholder="资产类型" clearable @change="handleSearch" style="width: 140px">
         <el-option label="物理服务器" value="physical" />
         <el-option label="虚拟机" value="virtual" />
+        <el-option label="云服务器" value="cloud_server" />
         <el-option label="网络设备" value="network_device" />
         <el-option label="其他" value="other" />
       </el-select>

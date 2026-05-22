@@ -16,6 +16,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: 'countChange', count: number): void
+  (e: 'portsChanged'): void
 }>()
 
 const loading = ref(false)
@@ -68,6 +69,7 @@ async function handleExport() {
 function handleDialogSuccess() {
   dialogVisible.value = false
   loadApps()
+  emit('portsChanged')
 }
 
 function sourceLabel(source: string): string {

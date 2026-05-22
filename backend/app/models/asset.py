@@ -79,7 +79,7 @@ class Asset(Base):
 
     __table_args__ = (
         CheckConstraint(
-            "asset_type IN ('physical', 'virtual', 'network_device', 'other')",
+            "asset_type IN ('physical', 'virtual', 'network_device', 'other', 'cloud_server')",
             name="ck_assets_type",
         ),
         CheckConstraint(
@@ -87,7 +87,8 @@ class Asset(Base):
             name="ck_assets_importance",
         ),
         CheckConstraint(
-            "network_zone IN ('dmz', 'intranet', 'office', 'management', 'other')",
+            "network_zone IN ('dmz', 'intranet', 'office', 'management', 'other', "
+            "'aliyun', 'tencent', 'huawei', 'aws', 'azure', 'gcp', 'other_cloud')",
             name="ck_assets_zone",
         ),
         CheckConstraint(

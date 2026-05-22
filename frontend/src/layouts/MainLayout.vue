@@ -76,7 +76,7 @@ const roleLabel = computed(() => {
         <span class="brand-logo" aria-hidden="true">
           <span class="brand-logo-inner" />
         </span>
-        <span v-if="!collapsed" class="brand-word">CMDB <em>Lite</em></span>
+        <span v-if="!collapsed" class="brand-word">Z-CMDB <em>Lite</em></span>
       </div>
 
       <!-- 左：折叠按钮 + 面包屑 -->

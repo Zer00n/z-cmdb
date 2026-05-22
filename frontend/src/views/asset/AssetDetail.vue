@@ -62,6 +62,8 @@ function formatTime(t: string | null): string {
 function zoneLabel(zone: string): string {
   const map: Record<string, string> = {
     intranet: '内网', dmz: 'DMZ', office: '办公网', management: '管理网', other: '其他',
+    aliyun: '阿里云', tencent: '腾讯云', huawei: '华为云',
+    aws: 'AWS', azure: 'Azure', gcp: 'Google Cloud', other_cloud: '其他云',
   }
   return map[zone] || zone
 }
@@ -73,13 +75,21 @@ function zoneClass(zone: string): string {
     office: 'zone-office',
     management: 'zone-mgmt',
     other: 'zone-other',
+    aliyun: 'zone-cloud',
+    tencent: 'zone-cloud',
+    huawei: 'zone-cloud',
+    aws: 'zone-cloud',
+    azure: 'zone-cloud',
+    gcp: 'zone-cloud',
+    other_cloud: 'zone-cloud',
   }
   return map[zone] || 'zone-other'
 }
 
 function typeLabel(t: string): string {
   const map: Record<string, string> = {
-    physical: '物理服务器', virtual: '虚拟机', network_device: '网络设备', other: '其他',
+    physical: '物理服务器', virtual: '虚拟机', cloud_server: '云服务器',
+    network_device: '网络设备', other: '其他',
   }
   return map[t] || t
 }
@@ -231,10 +241,13 @@ onMounted(loadAsset)
           </el-tab-pane>
 
           <el-tab-pane :label="`应用 (${appCount})`" name="apps">
-            <AppServiceTable
-              :asset-id="assetId"
-              @count-change="(n: number) => appCount = n"
-            />
+            <div class="apps-pane">
+              <AppServiceTable
+                :asset-id="assetId"
+                @count-change="(n: number) => appCount = n"
+                @ports-changed="loadAsset"
+              />
+            </div>
           </el-tab-pane>
         </el-tabs>
       </div>
@@ -353,6 +366,11 @@ onMounted(loadAsset)
   align-items: center;
   gap: var(--space-2);
   min-height: 24px;
+}
+
+/* 应用 Tab 顶部留白：与基本信息/端口的视觉间距对齐 */
+.apps-pane {
+  padding-top: var(--space-4);
 }
 
 /* 字段网格 */

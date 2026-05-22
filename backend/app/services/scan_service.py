@@ -342,7 +342,7 @@ def confirm_batch(
     """
     确认导入批次：
     - 新发现资产入库
-    - 变更资产更新端口
+    - 变更资产更新端口 + 同步应用清单
     - MISSING 资产 missing_count + 1
     - RESTORED 资产 missing_count 归零
     """
@@ -352,6 +352,8 @@ def confirm_batch(
 
     # 获取差异数据（重新解析快照项）
     from sqlalchemy import select
+    from app.repositories import asset_app_repo
+
     items = list(db.scalars(
         select(ScanSnapshotItem).where(ScanSnapshotItem.scan_batch_id == batch_id)
     ).all())
@@ -363,6 +365,33 @@ def confirm_batch(
 
     now = datetime.now(timezone.utc)
 
+    def _sync_ports_and_apps(asset: Asset, host_items: list[ScanSnapshotItem]) -> None:
+        """将扫描快照的端口和服务信息同步写入 asset_ports 和 asset_apps。"""
+        for item in host_items:
+            if item.port_number is None:
+                continue
+            # 同步端口
+            asset_repo.upsert_port(
+                db, asset.id,
+                item.port_number, item.protocol or "tcp",
+                item.service_name, item.service_version,
+            )
+            # 同步应用：service_name 有值才写入
+            if item.service_name:
+                # 从 service_version banner 中提取版本号（取第一个空格前的词）
+                version: str | None = None
+                if item.service_version:
+                    version = item.service_version.split()[0] if item.service_version.strip() else None
+                asset_app_repo.upsert_app(
+                    db,
+                    asset_id=asset.id,
+                    name=item.service_name,
+                    version=version,
+                    source="scan",
+                    port=item.port_number,
+                    protocol=item.protocol or "tcp",
+                )
+
     # 处理各类差异
     for ip, host_items in hosts_by_ip.items():
         first = host_items[0]
@@ -370,35 +399,20 @@ def confirm_batch(
 
         if diff_type == "new":
             # 新资产：需要 new_assets_data 提供补充字段
-            # 简化处理：如果没有提供补充数据，跳过
             if new_assets_data:
                 asset_data = next(
                     (d for d in new_assets_data if d.get("ip_address") == ip), None
                 )
                 if asset_data:
                     asset = asset_repo.create_asset(db, **asset_data, source="scan")
-                    # 更新端口
-                    for item in host_items:
-                        if item.port_number is not None:
-                            asset_repo.upsert_port(
-                                db, asset.id,
-                                item.port_number, item.protocol or "tcp",
-                                item.service_name, item.service_version,
-                            )
+                    _sync_ports_and_apps(asset, host_items)
                     asset.last_seen_at = now
                     asset.last_scan_batch_id = batch.id
 
         elif diff_type == "changed" or diff_type == "restored":
-            # 更新端口
             asset = asset_repo.get_by_ip(db, ip)
             if asset:
-                for item in host_items:
-                    if item.port_number is not None:
-                        asset_repo.upsert_port(
-                            db, asset.id,
-                            item.port_number, item.protocol or "tcp",
-                            item.service_name, item.service_version,
-                        )
+                _sync_ports_and_apps(asset, host_items)
                 asset.last_seen_at = now
                 asset.last_scan_batch_id = batch.id
                 if diff_type == "restored":

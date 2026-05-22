@@ -2,9 +2,11 @@
  * 资产相关 TypeScript 类型定义
  */
 
-export type AssetType = 'physical' | 'virtual' | 'network_device' | 'other'
+export type AssetType = 'physical' | 'virtual' | 'network_device' | 'other' | 'cloud_server'
 export type Importance = 'core' | 'important' | 'normal'
-export type NetworkZone = 'dmz' | 'intranet' | 'office' | 'management' | 'other'
+export type NetworkZone =
+  | 'dmz' | 'intranet' | 'office' | 'management' | 'other'
+  | 'aliyun' | 'tencent' | 'huawei' | 'aws' | 'azure' | 'gcp' | 'other_cloud'
 export type AssetStatus = 'online' | 'offline' | 'decommissioned'
 export type AssetSource = 'scan' | 'manual'
 

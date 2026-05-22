@@ -42,3 +42,15 @@ export function exportAssetsCsv(params?: AssetQueryParams): Promise<Blob> {
     responseType: 'blob',
   })
 }
+
+/** 导出资产+应用为威胁狩猎助手兼容 CSV */
+export function exportAssetsForThreatHunting(params?: AssetQueryParams & {
+  skip_empty_apps?: boolean
+  include_decommissioned?: boolean
+  default_environment?: string
+}): Promise<Blob> {
+  return request.get('/api/assets/export-threat-hunting', {
+    params,
+    responseType: 'blob',
+  })
+}

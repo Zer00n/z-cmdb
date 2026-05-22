@@ -33,7 +33,7 @@ def list_apps(db: Session, asset_id: int) -> AssetAppListResponse:
 
 
 def create_app(db: Session, asset_id: int, data: AssetAppCreate, created_by: int | None = None) -> AssetAppRead:
-    """新增应用"""
+    """新增应用，若填写了端口则同步写入 asset_ports"""
     # 确认资产存在
     asset_repo.get_by_id(db, asset_id)
     app = asset_app_repo.create(
@@ -49,12 +49,23 @@ def create_app(db: Session, asset_id: int, data: AssetAppCreate, created_by: int
         config_path=data.config_path,
         notes=data.notes,
     )
+    # 同步端口：若应用填写了端口，写入 asset_ports 表
+    if data.port:
+        asset_repo.upsert_port(
+            db,
+            asset_id=asset_id,
+            port_number=data.port,
+            protocol=data.protocol or "tcp",
+            service_name=data.name,
+            service_version=data.version,
+            state="open",
+        )
     db.commit()
     return AssetAppRead.model_validate(app)
 
 
 def update_app(db: Session, asset_id: int, app_id: int, data: AssetAppUpdate) -> AssetAppRead:
-    """更新应用"""
+    """更新应用，若端口有变化则同步更新 asset_ports"""
     # 确认资产存在
     asset_repo.get_by_id(db, asset_id)
     app = asset_app_repo.get_by_id(db, app_id)
@@ -63,8 +74,26 @@ def update_app(db: Session, asset_id: int, app_id: int, data: AssetAppUpdate) ->
         from app.core.exceptions import NotFoundError
         raise NotFoundError(f"资产 {asset_id} 下不存在应用 {app_id}")
 
+    old_port = app.port
+    old_protocol = app.protocol or "tcp"
+
     update_data = data.model_dump(exclude_none=True)
     asset_app_repo.update(db, app, **update_data)
+
+    new_port = app.port
+    new_protocol = app.protocol or "tcp"
+
+    # 同步端口：新端口写入/更新 asset_ports
+    if new_port:
+        asset_repo.upsert_port(
+            db,
+            asset_id=asset_id,
+            port_number=new_port,
+            protocol=new_protocol,
+            service_name=app.name,
+            service_version=app.version,
+            state="open",
+        )
     db.commit()
     return AssetAppRead.model_validate(app)
 

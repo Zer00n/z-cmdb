@@ -32,26 +32,63 @@ class OpenAIProvider(LLMProvider):
     """OpenAI / DeepSeek / 智谱（兼容 OpenAI API 格式）"""
 
     def call(self, prompt: str, system_prompt: str = "") -> str:
-        try:
-            import httpx
-            headers = {
-                "Authorization": f"Bearer {self.api_key}",
-                "Content-Type": "application/json",
-            }
-            messages = []
-            if system_prompt:
-                messages.append({"role": "system", "content": system_prompt})
-            messages.append({"role": "user", "content": prompt})
+        import httpx
 
-            body = {"model": self.model, "messages": messages, "temperature": 0.3}
-            url = f"{self.base_url.rstrip('/')}/chat/completions"
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
+        }
+        messages = []
+        if system_prompt:
+            messages.append({"role": "system", "content": system_prompt})
+        messages.append({"role": "user", "content": prompt})
 
-            resp = httpx.post(url, json=body, headers=headers, timeout=300)
-            resp.raise_for_status()
-            data = resp.json()
-            return data["choices"][0]["message"]["content"]
-        except Exception as exc:
-            raise LLMCallError(f"OpenAI API 调用失败: {exc}") from exc
+        body = {"model": self.model, "messages": messages, "temperature": 0.3, "max_tokens": 8192}
+        url = f"{self.base_url.rstrip('/')}/chat/completions"
+
+        last_exc: Exception | None = None
+        for attempt in range(3):
+            try:
+                resp = httpx.post(url, json=body, headers=headers, timeout=300)
+                # 5xx 服务端错误也重试
+                if resp.status_code >= 500:
+                    last_exc = Exception(f"HTTP {resp.status_code}: {resp.text[:200]}")
+                    logger.warning(
+                        "OpenAI API server error, retrying",
+                        extra={"attempt": attempt + 1, "status": resp.status_code},
+                    )
+                    time.sleep(2 ** attempt)
+                    continue
+                resp.raise_for_status()
+                data = resp.json()
+                msg = data["choices"][0]["message"]
+                # 推理模型（如 deepseek-reasoner/v4-flash）content 可能为空，
+                # 真正的回答在 reasoning_content 里
+                content = msg.get("content") or ""
+                reasoning = msg.get("reasoning_content") or ""
+                result = content if content.strip() else reasoning
+                if not result.strip():
+                    raise ValueError("LLM 返回了空响应（content 和 reasoning_content 均为空）")
+                return result
+            except (httpx.RemoteProtocolError, httpx.ReadTimeout, httpx.ConnectTimeout) as exc:
+                last_exc = exc
+                logger.warning(
+                    "OpenAI API transient error, retrying",
+                    extra={"attempt": attempt + 1, "error": str(exc)},
+                )
+                time.sleep(2 ** attempt)
+            except (ValueError, KeyError) as exc:
+                # JSON 解析失败或响应结构异常（如免费模型截断响应）
+                last_exc = exc
+                logger.warning(
+                    "OpenAI API response parse error, retrying",
+                    extra={"attempt": attempt + 1, "error": str(exc)},
+                )
+                time.sleep(2 ** attempt)
+            except Exception as exc:
+                raise LLMCallError(f"OpenAI API 调用失败: {exc}") from exc
+
+        raise LLMCallError(f"OpenAI API 调用失败（重试3次）: {last_exc}") from last_exc
 
 
 class ClaudeProvider(LLMProvider):

@@ -51,7 +51,54 @@ def create(db: Session, asset_id: int, created_by: int | None = None, **kwargs) 
         raise
     logger.info(
         "asset_app created",
-        extra={"app_id": app.id, "asset_id": asset_id, "name": app.name},
+        extra={"app_id": app.id, "asset_id": asset_id, "app_name": app.name},
+    )
+    return app
+
+
+def upsert_app(
+    db: Session,
+    asset_id: int,
+    name: str,
+    version: str | None = None,
+    source: str = "scan",
+    created_by: int | None = None,
+    **kwargs,
+) -> AssetApp:
+    """
+    插入或更新应用记录（幂等）。
+    以 (asset_id, name, version) 为唯一键：
+    - 存在则更新 source / 其他字段，并将 status 恢复为 active
+    - 不存在则新建
+    """
+    stmt = select(AssetApp).where(
+        AssetApp.asset_id == asset_id,
+        AssetApp.name == name,
+        AssetApp.version == version,
+    )
+    app = db.scalar(stmt)
+    if app is None:
+        app = AssetApp(
+            asset_id=asset_id,
+            name=name,
+            version=version,
+            source=source,
+            status="active",
+            created_by=created_by,
+            **kwargs,
+        )
+        db.add(app)
+    else:
+        # 更新可变字段
+        app.source = source
+        app.status = "active"
+        for key, value in kwargs.items():
+            if hasattr(app, key) and value is not None:
+                setattr(app, key, value)
+    db.flush()
+    logger.info(
+        "asset_app upserted",
+        extra={"asset_id": asset_id, "app_name": name, "source": source},
     )
     return app
 
@@ -147,3 +194,22 @@ def count_by_asset(db: Session, asset_id: int) -> int:
         .where(AssetApp.asset_id == asset_id, AssetApp.status == "active")
     )
     return db.scalar(stmt) or 0
+
+
+def list_apps_for_assets(db: Session, asset_ids: list[int]) -> dict[int, list[AssetApp]]:
+    """
+    批量查询多个资产的 active 应用，返回 {asset_id: [AssetApp, ...]}。
+    避免 N+1 查询问题。
+    """
+    if not asset_ids:
+        return {}
+    stmt = (
+        select(AssetApp)
+        .where(AssetApp.asset_id.in_(asset_ids), AssetApp.status == "active")
+        .order_by(AssetApp.asset_id, AssetApp.name, AssetApp.version)
+    )
+    apps = list(db.scalars(stmt).all())
+    result: dict[int, list[AssetApp]] = {aid: [] for aid in asset_ids}
+    for app in apps:
+        result.setdefault(app.asset_id, []).append(app)
+    return result

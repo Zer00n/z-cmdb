@@ -121,7 +121,7 @@ function isActive(itemRoute: string) {
 
     <!-- 底部版权区 -->
     <div v-if="!props.collapsed" class="sidebar-foot">
-      <span class="foot-line">CMDB Lite</span>
+      <span class="foot-line">Z-CMDB Lite</span>
       <span class="foot-meta">v0.1.0 · 中小团队 · 准确性优先</span>
     </div>
   </aside>
