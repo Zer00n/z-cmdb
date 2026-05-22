@@ -62,7 +62,7 @@ const features = [
         <span class="brand-logo" aria-hidden="true">
           <span class="brand-logo-inner" />
         </span>
-        <span class="brand-name">CMDB <em>Lite</em></span>
+        <span class="brand-name">Z-CMDB <em>Lite</em></span>
       </div>
       <span class="top-version">v0.1.0</span>
     </header>
@@ -186,7 +186,7 @@ const features = [
     </main>
 
     <footer class="login-footer">
-      CMDB Lite · 内部运维平台
+      Z-CMDB Lite · 内部运维平台
       <span class="sep">·</span>
       © 2026
     </footer>

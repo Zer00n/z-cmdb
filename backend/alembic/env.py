@@ -23,6 +23,7 @@ from app.models.audit import AuditLog  # noqa: F401
 from app.models.config import SystemConfig  # noqa: F401
 from app.models.topology import Topology  # noqa: F401
 from app.models.llm_log import LlmCallLog  # noqa: F401
+from app.models.asset_app import AssetApp  # noqa: F401
 
 config = context.config
 

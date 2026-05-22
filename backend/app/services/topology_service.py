@@ -74,9 +74,9 @@ def generate_topology(
         actual_base_url = "http://localhost:11434"
         actual_model = get_config_value(db, "llm_model", "qwen2.5")
 
-    # 构造资产数据（含端口）
+    # 构造资产数据（含端口），限制最多 20 个避免推理模型 token 耗尽
     asset_data = []
-    for a in assets:
+    for a in assets[:20]:
         ports = asset_repo.get_ports_by_asset(db, a.id)
         asset_data.append({
             "ip_address": a.ip_address,
@@ -95,89 +95,19 @@ def generate_topology(
     # 脱敏
     sanitized, mapping = sanitize_service.sanitize_assets(asset_data)
 
-    # 构造 prompt
-    system_prompt = """你是一个专业的网络拓扑图生成助手。根据资产信息生成符合 drawio 标准格式的网络拓扑图，要求布局清晰、视觉美观。
+    # 精简 system_prompt（推理模型自带推理能力，不需要冗长指令）
+    system_prompt = (
+        "你是网络拓扑图生成助手。根据资产 JSON 生成 drawio XML。"
+        "要求：①按 zone 字段用 swimlane 分组 ②节点用 rounded 矩形 ③importance=core 加红色边框"
+        "④直接输出 <mxfile>...</mxfile>，不加任何解释或 markdown 代码块。"
+    )
 
-## 输出格式（严格遵守）
-返回完整的 drawio XML，包含 <mxfile> 根元素。结构如下：
-
-<mxfile host="app.diagrams.net">
-  <diagram name="Network Topology" id="topology">
-    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="1200" math="0" shadow="0">
-      <root>
-        <mxCell id="0"/>
-        <mxCell id="1" parent="0"/>
-        <!-- 区域容器（swimlane） -->
-        <!-- 资产节点 -->
-        <!-- 连线 -->
-      </root>
-    </mxGraphModel>
-  </diagram>
-</mxfile>
-
-## 视觉规范
-
-### 1. 区域分组（用 swimlane 容器）
-不同 zone 用不同颜色的 swimlane 包裹，垂直并列布局：
-- intranet: 蓝色 fillColor=#DBE5FE strokeColor=#1E40AF
-- dmz: 橙色 fillColor=#FEF3C7 strokeColor=#92400E
-- office: 青色 fillColor=#CFFAFE strokeColor=#0E7490
-- management: 紫色 fillColor=#EDE9FE strokeColor=#5B21B6
-- other: 灰色 fillColor=#F3F4F6 strokeColor=#6B7280
-
-swimlane 节点 style 模板：
-style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=30;horizontalStack=0;resizeParent=0;resizeParentMax=0;collapsible=0;swimlaneFillColor=#ffffff;fillColor=#DBE5FE;strokeColor=#1E40AF;fontColor=#1E40AF;fontSize=13;"
-
-### 2. 资产节点形状
-不同 asset_type 用不同形状（drawio 内置 shape）：
-- physical (物理服务器): shape=mscae/server, fillColor=#0078D4, fontColor=#FFFFFF
-- virtual (虚拟机): shape=mscae/virtual_machine, fillColor=#0078D4, fontColor=#FFFFFF
-- network_device (网络设备): shape=mscae/router, fillColor=#107C10, fontColor=#FFFFFF
-- other: shape=ellipse, fillColor=#737373, fontColor=#FFFFFF
-
-如果 importance=core，节点边框加粗为 strokeColor=#DC2626 strokeWidth=3。
-
-简化示例 style（可直接使用）：
-- 物理/虚拟: "rounded=1;whiteSpace=wrap;html=1;fillColor=#DBE5FE;strokeColor=#1E40AF;fontColor=#1E40AF;fontSize=12;"
-- 网络设备: "shape=mxgraph.cisco.routers.router;html=1;fillColor=#107C10;strokeColor=#0B5A0B;fontColor=#FFFFFF;fontSize=12;"
-- 核心资产边框: 在 style 后追加 "strokeColor=#DC2626;strokeWidth=3;"
-
-### 3. 节点尺寸与布局
-- 节点宽 120 高 60
-- swimlane 容器宽至少 400，高根据子节点数量自适应（每行 3 个，间距 30）
-- 不同 swimlane 之间留 60px 间距
-- 节点 label 显示资产 ID + 服务大类（如 HOST_A_001\\nweb）
-
-### 4. 节点 label 格式
-使用换行展示多行信息：value="HOST_A_001&#10;ssh, http"
-不要显示真实 IP 或主机名（脱敏数据）。
-
-### 5. 连线规则
-- 同一 group 内的节点用细线连接（strokeWidth=1）
-- 跨 group 但 service_hint 互补的（如 web→db）用粗线带箭头（strokeWidth=2;endArrow=classic）
-- 连线 style: "edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;"
-
-## 关键要求
-1. 必须返回完整的 <mxfile>...</mxfile>，不要包含任何解释文字
-2. 不要使用 markdown 代码块包裹
-3. 每个节点必须有 vertex="1" parent 属性
-4. 每个连线必须有 edge="1" source/target 属性
-5. swimlane 子节点的 parent 指向 swimlane 的 id
-6. mxGeometry 必须包含 x, y, width, height 属性"""
-
-    prompt = f"""以下是脱敏后的资产信息，请按上述视觉规范生成精美的网络拓扑图。
-
-资产数据：
-{json.dumps(sanitized, ensure_ascii=False, indent=2)}
-
-请按以下步骤思考：
-1. 按 zone 分组，每个 zone 一个 swimlane 容器
-2. 每个节点放入对应的 swimlane，节点 label 包含 id 和 service_hint
-3. importance=core 的节点用红色加粗边框突出
-4. 同 group 节点用细线连接，跨 group 的服务关系用箭头
-5. 整体水平布局，swimlane 自左向右排列
-
-直接输出完整的 <mxfile>...</mxfile> XML，无任何额外文字。"""
+    prompt = (
+        f"资产数据（共 {len(sanitized)} 个）：\n"
+        f"{json.dumps(sanitized, ensure_ascii=False, indent=2)}\n\n"
+        "生成 drawio 网络拓扑图 XML。按 zone 分 swimlane，节点显示 id 和 service_hint，"
+        "core 资产红色边框。直接输出完整 <mxfile>...</mxfile>。"
+    )
 
     logger.info(
         "topology generation: calling LLM",
@@ -223,6 +153,17 @@ style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayo
         start = response.index("<mxGraphModel")
         end = response.index("</mxGraphModel>") + len("</mxGraphModel>")
         response = response[start:end]
+    else:
+        # LLM 未返回有效 XML，记录原始响应并抛出友好错误
+        logger.error(
+            "topology LLM response is not valid drawio XML",
+            extra={"response_preview": response[:300]},
+        )
+        raise ValidationError(
+            f"LLM 未返回有效的 drawio XML（模型：{actual_model}）。"
+            "请尝试更换模型，或检查 prompt 是否被截断。"
+            f"模型原始回复（前200字）：{response[:200]}"
+        )
 
     # 去掉 XML 声明（drawio embed 不需要）
     if response.startswith("<?xml"):

@@ -110,7 +110,7 @@ def export_audit_report_pdf(
 
     # 标题
     pdf.set_font("Helvetica", "B", 16)
-    pdf.cell(0, 10, "CMDB Lite Audit Report", ln=True, align="C")
+    pdf.cell(0, 10, "Z-CMDB Lite Audit Report", ln=True, align="C")
     pdf.set_font("Helvetica", "", 10)
     pdf.cell(0, 8, f"Total records: {len(logs)}", ln=True, align="C")
     pdf.ln(5)

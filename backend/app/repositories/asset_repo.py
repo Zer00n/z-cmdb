@@ -52,15 +52,29 @@ def list_assets(db: Session, params: AssetQueryParams) -> tuple[list[Asset], int
     filters = []
     if params.search:
         kw = f"%{params.search}%"
-        filters.append(
-            or_(
-                Asset.ip_address.like(kw),
-                Asset.hostname.like(kw),
-                Asset.asset_no.like(kw),
-                Asset.remark.like(kw),
-                Asset.owner.like(kw),
-            )
+        # v2.5: 搜索范围扩展到 business_system + 应用名/版本
+        from sqlalchemy import exists
+        from app.models.asset_app import AssetApp
+
+        asset_match = or_(
+            Asset.ip_address.like(kw),
+            Asset.hostname.like(kw),
+            Asset.asset_no.like(kw),
+            Asset.remark.like(kw),
+            Asset.owner.like(kw),
+            Asset.business_system.like(kw),  # v2.5 新增
         )
+
+        app_match = exists().where(
+            AssetApp.asset_id == Asset.id,
+            AssetApp.status == "active",
+            or_(
+                AssetApp.name.like(kw),
+                AssetApp.version.like(kw),
+            ),
+        )
+
+        filters.append(or_(asset_match, app_match))
     if params.asset_type:
         filters.append(Asset.asset_type == params.asset_type)
     if params.network_zone:

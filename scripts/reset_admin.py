@@ -18,7 +18,7 @@ def main():
     from app.services.auth_service import generate_initial_password
 
     print("=" * 50)
-    print("  CMDB Lite 管理员密码重置")
+    print("  Z-CMDB Lite 管理员密码重置")
     print("=" * 50)
 
     with SessionLocal() as db:

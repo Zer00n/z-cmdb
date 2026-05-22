@@ -167,3 +167,237 @@ def bulk_update(db: Session, asset_ids: list[int], updates: dict) -> int:
     result = db.execute(stmt)
     db.flush()
     return result.rowcount  # type: ignore[return-value]
+
+
+# ── 威胁狩猎助手兼容导出 ─────────────────────────────────────
+
+# 品牌字典：product name → vendor
+_VENDOR_DICT: dict[str, str] = {
+    "mysql": "Oracle",
+    "mariadb": "MariaDB Foundation",
+    "postgresql": "PostgreSQL Global Development Group",
+    "postgres": "PostgreSQL Global Development Group",
+    "mssql": "Microsoft",
+    "sqlserver": "Microsoft",
+    "oracle": "Oracle",
+    "redis": "Redis Ltd",
+    "mongodb": "MongoDB Inc",
+    "nginx": "nginx",
+    "apache": "Apache Software Foundation",
+    "httpd": "Apache Software Foundation",
+    "tomcat": "Apache Software Foundation",
+    "iis": "Microsoft",
+    "openssh": "OpenBSD",
+    "sshd": "OpenBSD",
+    "docker": "Docker Inc",
+    "elasticsearch": "Elastic",
+    "kibana": "Elastic",
+    "rabbitmq": "VMware",
+    "kafka": "Apache Software Foundation",
+    "zookeeper": "Apache Software Foundation",
+    "jenkins": "Jenkins",
+    "gitlab": "GitLab Inc",
+    "vsftpd": "vsftpd",
+    "proftpd": "ProFTPD",
+    "postfix": "Postfix",
+    "dovecot": "Dovecot",
+    "haproxy": "HAProxy Technologies",
+    "memcached": "Memcached",
+}
+
+# OS 双词品牌白名单（匹配时优先取两个词作为 os_name）
+_OS_MULTI_WORD_PREFIXES = [
+    "Windows Server",
+    "Red Hat",
+    "Rocky Linux",
+    "Alma Linux",
+    "AlmaLinux",
+    "Oracle Linux",
+    "SUSE Linux",
+    "openSUSE Leap",
+    "Amazon Linux",
+    "Mac OS",
+    "macOS",
+]
+
+
+def _split_os(os_info: str | None) -> tuple[str, str]:
+    """
+    将 os_info 拆分为 (os_name, os_version)。
+    示例：
+      'Ubuntu 22.04 LTS' → ('Ubuntu', '22.04 LTS')
+      'Windows Server 2019' → ('Windows Server', '2019')
+      None → ('', '')
+    """
+    if not os_info:
+        return ("", "")
+    os_info = os_info.strip()
+
+    # 尝试多词品牌匹配
+    for prefix in _OS_MULTI_WORD_PREFIXES:
+        if os_info.lower().startswith(prefix.lower()):
+            rest = os_info[len(prefix):].strip()
+            return (prefix, rest)
+
+    # 单词品牌：第一个空格前为名
+    parts = os_info.split(None, 1)
+    if len(parts) == 1:
+        return (parts[0], "")
+    return (parts[0], parts[1])
+
+
+def _map_criticality(importance: str) -> str:
+    """importance → criticality 映射"""
+    mapping = {"core": "high", "important": "medium", "normal": "low"}
+    return mapping.get(importance, "low")
+
+
+def _map_exposure(network_zone: str) -> str:
+    """network_zone → exposure_scope 映射"""
+    mapping = {
+        "dmz": "public",
+        "intranet": "internal",
+        "office": "office",
+        "management": "internal",
+        "other": "internal",
+    }
+    return mapping.get(network_zone, "internal")
+
+
+def _resolve_vendor(product_name: str | None) -> str:
+    """根据 product 名查字典，未命中则返回 product 名本身"""
+    if not product_name:
+        return ""
+    key = product_name.lower().strip()
+    return _VENDOR_DICT.get(key, product_name)
+
+
+def _resolve_environment(business_system: str, default: str = "prod") -> str:
+    """
+    从 business_system 名称启发式推断 environment。
+    前缀匹配：dev-/test-/staging-/uat- → 对应环境；否则返回默认值。
+    """
+    bs_lower = business_system.lower() if business_system else ""
+    for prefix, env in [
+        ("dev-", "dev"), ("dev_", "dev"),
+        ("test-", "test"), ("test_", "test"),
+        ("staging-", "staging"), ("staging_", "staging"),
+        ("uat-", "staging"), ("uat_", "staging"),
+        ("pre-", "staging"), ("pre_", "staging"),
+    ]:
+        if bs_lower.startswith(prefix):
+            return env
+    return default
+
+
+def _build_tags(asset: Asset) -> str:
+    """拼接 tags 字段：asset_type, network_zone, business_system, importance"""
+    parts = [
+        asset.asset_type or "",
+        asset.network_zone or "",
+        asset.business_system or "",
+        asset.importance or "",
+    ]
+    return ",".join(p for p in parts if p)
+
+
+def export_assets_threat_hunting_csv(
+    db: Session,
+    params: AssetQueryParams,
+    *,
+    skip_empty_apps: bool = False,
+    include_decommissioned: bool = False,
+    default_environment: str = "prod",
+) -> tuple[str, int]:
+    """
+    导出资产+应用为威胁狩猎助手兼容 CSV。
+    返回 (csv_string, row_count)。
+    """
+    from app.repositories import asset_app_repo
+
+    # 拉全量资产（不分页）
+    params_all = params.model_copy(update={"page": 1, "page_size": 10000})
+    if not include_decommissioned:
+        # 强制排除已下线
+        params_all = params_all.model_copy(update={"status": "online"}) if not params_all.status else params_all
+        # 如果用户指定了 status 筛选，尊重用户选择；否则排除 decommissioned
+        # 实际逻辑：如果 status 未指定，我们不设 status 过滤但在结果中排除 decommissioned
+    assets, _ = asset_repo.list_assets(db, params_all)
+
+    # 排除 decommissioned（如果未通过 params 过滤）
+    if not include_decommissioned:
+        assets = [a for a in assets if a.status != "decommissioned"]
+
+    # 批量拉应用
+    asset_ids = [a.id for a in assets]
+    apps_map = asset_app_repo.list_apps_for_assets(db, asset_ids)
+
+    output = io.StringIO()
+    writer = csv.writer(output, quoting=csv.QUOTE_MINIMAL)
+
+    # 表头
+    writer.writerow([
+        "ip", "hostname", "os_name", "os_version", "environment",
+        "criticality", "owner", "tags", "product", "version",
+        "vendor", "port", "protocol", "exposure_scope", "notes",
+    ])
+
+    row_count = 0
+    for asset in assets:
+        os_name, os_version = _split_os(asset.os_info)
+        environment = _resolve_environment(asset.business_system, default_environment)
+        criticality = _map_criticality(asset.importance)
+        tags = _build_tags(asset)
+        exposure_scope = _map_exposure(asset.network_zone)
+        asset_notes = (asset.remark or "").replace("\n", " ").replace("\r", "")
+
+        apps = apps_map.get(asset.id, [])
+
+        if not apps:
+            if skip_empty_apps:
+                continue
+            # 输出一行空 product
+            writer.writerow([
+                asset.ip_address,
+                asset.hostname or "",
+                os_name,
+                os_version,
+                environment,
+                criticality,
+                asset.owner or "",
+                tags,
+                "",  # product
+                "",  # version
+                "",  # vendor
+                "",  # port
+                "",  # protocol
+                exposure_scope,
+                asset_notes,
+            ])
+            row_count += 1
+        else:
+            for app in apps:
+                app_notes = (app.notes or "").replace("\n", " ").replace("\r", "")
+                combined_notes = "; ".join(n for n in [asset_notes, app_notes] if n)
+                port_str = str(app.port) if app.port else ""
+                protocol_str = app.protocol or ""
+                writer.writerow([
+                    asset.ip_address,
+                    asset.hostname or "",
+                    os_name,
+                    os_version,
+                    environment,
+                    criticality,
+                    asset.owner or "",
+                    tags,
+                    app.name or "",
+                    app.version or "",
+                    _resolve_vendor(app.name),
+                    port_str,
+                    protocol_str,
+                    exposure_scope,
+                    combined_notes,
+                ])
+                row_count += 1
+
+    return output.getvalue(), row_count

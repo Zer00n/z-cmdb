@@ -90,6 +90,58 @@ def export_assets(
     )
 
 
+@router.get("/export-threat-hunting")
+def export_assets_threat_hunting(
+    search: str | None = None,
+    asset_type: str | None = None,
+    network_zone: str | None = None,
+    importance: str | None = None,
+    status: str | None = None,
+    business_system: str | None = None,
+    owner: str | None = None,
+    source: str | None = None,
+    skip_empty_apps: bool = False,
+    include_decommissioned: bool = False,
+    default_environment: str = "prod",
+    request: Request = None,
+    _current_user: AnyUser = None,
+    db: Session = Depends(get_db),
+) -> Response:
+    """导出资产+应用为威胁狩猎助手兼容 CSV"""
+    from datetime import date
+
+    params = AssetQueryParams(
+        page=1,
+        page_size=10000,
+        search=search,
+        asset_type=asset_type,  # type: ignore[arg-type]
+        network_zone=network_zone,  # type: ignore[arg-type]
+        importance=importance,  # type: ignore[arg-type]
+        status=status,  # type: ignore[arg-type]
+        business_system=business_system,
+        owner=owner,
+        source=source,  # type: ignore[arg-type]
+    )
+    csv_content, row_count = asset_service.export_assets_threat_hunting_csv(
+        db, params,
+        skip_empty_apps=skip_empty_apps,
+        include_decommissioned=include_decommissioned,
+        default_environment=default_environment,
+    )
+    audit_service.log_from_request(
+        db, request, action_type="EXPORT", user=_current_user,  # type: ignore[arg-type]
+        target_type="asset",
+        details={"format": "csv", "template": "threat_hunting", "row_count": row_count},
+    )
+    db.commit()
+    filename = f"cmdb_threat_hunting_{date.today().strftime('%Y%m%d')}.csv"
+    return Response(
+        content=csv_content.encode("utf-8-sig"),  # BOM for Excel
+        media_type="text/csv",
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
+    )
+
+
 @router.get("/{asset_id}", response_model=AssetRead)
 def get_asset(
     asset_id: int,

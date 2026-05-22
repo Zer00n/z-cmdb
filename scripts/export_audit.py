@@ -13,7 +13,7 @@ sys.path.insert(0, str(backend_dir))
 
 
 def main():
-    parser = argparse.ArgumentParser(description="导出 CMDB Lite 审计日志")
+    parser = argparse.ArgumentParser(description="导出 Z-CMDB Lite 审计日志")
     parser.add_argument(
         "--output", "-o",
         default="audit_report.csv",

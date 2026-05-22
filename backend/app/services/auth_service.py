@@ -149,7 +149,7 @@ def ensure_initial_admin(db: Session) -> None:
 
     # 初始密码只打印到 stdout，不写入结构化日志（避免日志收集系统记录）
     print(f"\n{'='*60}")
-    print(f"  CMDB Lite 首次启动，已创建初始管理员账号：")
+    print(f"  Z-CMDB Lite 首次启动，已创建初始管理员账号：")
     print(f"  用户名: admin")
     print(f"  密  码: {initial_password}")
     print(f"  请登录后立即修改密码！")

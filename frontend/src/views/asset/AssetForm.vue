@@ -4,11 +4,13 @@
  * 基于 Claude Design 06-asset-form.html 实现
  * 路由 /assets/create 为新增，/assets/:id/edit 为编辑
  */
-import { ref, reactive, onMounted, computed } from 'vue'
+import { ref, reactive, onMounted, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
 import { createAsset, fetchAsset, updateAsset } from '@/api/asset'
 import type { AssetCreateRequest, AssetUpdateRequest } from '@/types/asset'
+import { osOptionGroups } from '@/constants/os-options'
+import { getOsFieldMode, filterVisibleOsGroups } from './os-policy'
 
 const route = useRoute()
 const router = useRouter()
@@ -59,6 +61,45 @@ const rules: FormRules = {
   importance: [{ required: true, message: '请选择重要性', trigger: 'change' }],
   network_zone: [{ required: true, message: '请选择网络区域', trigger: 'change' }],
 }
+
+const osFieldMode = computed(() => getOsFieldMode(form.asset_type))
+const visibleOsGroups = computed(() => filterVisibleOsGroups(form.asset_type, osOptionGroups))
+
+/** 是否为云服务器模式 */
+const isCloudServer = computed(() => form.asset_type === 'cloud_server')
+
+/** 网络区域选项：云服务器时显示云服务商，其他类型显示传统区域 */
+const networkZoneOptions = computed(() => {
+  if (isCloudServer.value) {
+    return [
+      { label: '阿里云', value: 'aliyun' },
+      { label: '腾讯云', value: 'tencent' },
+      { label: '华为云', value: 'huawei' },
+      { label: 'AWS', value: 'aws' },
+      { label: 'Azure', value: 'azure' },
+      { label: 'Google Cloud', value: 'gcp' },
+      { label: '其他云', value: 'other_cloud' },
+    ]
+  }
+  return [
+    { label: '内网', value: 'intranet' },
+    { label: 'DMZ', value: 'dmz' },
+    { label: '办公网', value: 'office' },
+    { label: '管理网', value: 'management' },
+    { label: '其他', value: 'other' },
+  ]
+})
+
+/** 切换资产类型时，若网络区域与当前选项集不匹配则重置为默认值 */
+watch(
+  () => form.asset_type,
+  (newType) => {
+    const validValues = networkZoneOptions.value.map((o) => o.value)
+    if (!validValues.includes(form.network_zone as string)) {
+      form.network_zone = newType === 'cloud_server' ? 'aliyun' : 'intranet'
+    }
+  },
+)
 
 // 编辑模式：加载已有数据
 async function loadAsset() {
@@ -194,6 +235,7 @@ onMounted(loadAsset)
               <el-radio-group v-model="form.asset_type">
                 <el-radio-button value="physical">物理服务器</el-radio-button>
                 <el-radio-button value="virtual">虚拟机</el-radio-button>
+                <el-radio-button value="cloud_server">云服务器</el-radio-button>
                 <el-radio-button value="network_device">网络设备</el-radio-button>
                 <el-radio-button value="other">其他</el-radio-button>
               </el-radio-group>
@@ -201,16 +243,46 @@ onMounted(loadAsset)
 
             <el-form-item label="网络区域" prop="network_zone">
               <el-select v-model="form.network_zone" style="width: 360px">
-                <el-option label="内网" value="intranet" />
-                <el-option label="DMZ" value="dmz" />
-                <el-option label="办公网" value="office" />
-                <el-option label="管理网" value="management" />
-                <el-option label="其他" value="other" />
+                <el-option
+                  v-for="opt in networkZoneOptions"
+                  :key="opt.value"
+                  :label="opt.label"
+                  :value="opt.value"
+                />
               </el-select>
+              <span v-if="isCloudServer" class="zone-hint">选择云服务商所在平台</span>
             </el-form-item>
 
             <el-form-item label="操作系统">
-              <el-input v-model="form.os_info" placeholder="例如 Ubuntu 22.04 LTS" style="width: 360px" />
+              <el-select
+                v-if="osFieldMode === 'select'"
+                v-model="form.os_info"
+                placeholder="选择或输入操作系统（支持自定义）"
+                style="width: 360px"
+                filterable
+                allow-create
+                clearable
+                default-first-option
+              >
+                <el-option-group
+                  v-for="group in visibleOsGroups"
+                  :key="group.label"
+                  :label="group.label"
+                >
+                  <el-option
+                    v-for="opt in group.options"
+                    :key="opt.value"
+                    :label="opt.label"
+                    :value="opt.value"
+                  />
+                </el-option-group>
+              </el-select>
+              <el-input
+                v-else
+                v-model="form.os_info"
+                placeholder="请输入操作系统名称（如自研系统、定制 OS 等）"
+                style="width: 360px"
+              />
             </el-form-item>
           </div>
         </div>
@@ -362,5 +434,12 @@ onMounted(loadAsset)
 :deep(.mono-input .el-input__inner) {
   font-family: var(--font-mono);
   font-size: 13px;
+}
+
+/* 云服务商提示文字 */
+.zone-hint {
+  margin-left: var(--space-3);
+  font-size: 12px;
+  color: var(--neutral-400);
 }
 </style>

@@ -23,9 +23,12 @@ class AssetPortRead(BaseModel):
 
 # ── 资产请求 Schema ──────────────────────────────────────────
 
-AssetType = Literal["physical", "virtual", "network_device", "other"]
+AssetType = Literal["physical", "virtual", "network_device", "other", "cloud_server"]
 Importance = Literal["core", "important", "normal"]
-NetworkZone = Literal["dmz", "intranet", "office", "management", "other"]
+NetworkZone = Literal[
+    "dmz", "intranet", "office", "management", "other",
+    "aliyun", "tencent", "huawei", "aws", "azure", "gcp", "other_cloud",
+]
 AssetStatus = Literal["online", "offline", "decommissioned"]
 AssetSource = Literal["scan", "manual"]
 

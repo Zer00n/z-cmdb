@@ -1,0 +1,167 @@
+<script setup lang="ts">
+/**
+ * 应用服务清单表格组件
+ * 用于资产详情页"应用"Tab
+ */
+import { ref, onMounted } from 'vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { fetchAssetApps, deleteAssetApp, exportAssetAppsCsv } from '@/api/asset-app'
+import { getCategoryLabel } from '@/constants/app-categories'
+import type { AssetApp } from '@/types/asset-app'
+import AppServiceDialog from './AppServiceDialog.vue'
+
+const props = defineProps<{
+  assetId: number
+}>()
+
+const emit = defineEmits<{
+  (e: 'countChange', count: number): void
+  (e: 'portsChanged'): void
+}>()
+
+const loading = ref(false)
+const apps = ref<AssetApp[]>([])
+const dialogVisible = ref(false)
+const editingApp = ref<AssetApp | null>(null)
+
+async function loadApps() {
+  loading.value = true
+  try {
+    const res = await fetchAssetApps(props.assetId)
+    apps.value = res.items
+    emit('countChange', res.total)
+  } finally {
+    loading.value = false
+  }
+}
+
+function handleCreate() {
+  editingApp.value = null
+  dialogVisible.value = true
+}
+
+function handleEdit(app: AssetApp) {
+  editingApp.value = app
+  dialogVisible.value = true
+}
+
+async function handleDelete(app: AssetApp) {
+  await ElMessageBox.confirm(
+    `确认删除应用「${app.name}${app.version ? ' ' + app.version : ''}」？`,
+    '删除确认',
+    { confirmButtonText: '确认删除', cancelButtonText: '取消', type: 'warning' }
+  )
+  await deleteAssetApp(props.assetId, app.id)
+  ElMessage.success('应用已删除')
+  loadApps()
+}
+
+async function handleExport() {
+  const blob = await exportAssetAppsCsv(props.assetId)
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `asset_${props.assetId}_apps.csv`
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
+function handleDialogSuccess() {
+  dialogVisible.value = false
+  loadApps()
+  emit('portsChanged')
+}
+
+function sourceLabel(source: string): string {
+  return source === 'scan' ? '扫描' : '手动'
+}
+
+onMounted(loadApps)
+</script>
+
+<template>
+  <div class="app-service-table">
+    <div class="app-toolbar">
+      <el-button type="primary" size="small" @click="handleCreate">
+        <el-icon><Plus /></el-icon>
+        新增应用
+      </el-button>
+      <el-button size="small" @click="handleExport" :disabled="apps.length === 0">
+        <el-icon><Download /></el-icon>
+        导出 CSV
+      </el-button>
+    </div>
+
+    <el-table v-loading="loading" :data="apps" stripe style="width: 100%">
+      <el-table-column prop="name" label="名称" width="140">
+        <template #default="{ row }">
+          <span style="font-weight: 600; color: var(--neutral-900)">{{ row.name }}</span>
+        </template>
+      </el-table-column>
+
+      <el-table-column prop="version" label="版本" width="110">
+        <template #default="{ row }">
+          <span class="ui-mono">{{ row.version || '-' }}</span>
+        </template>
+      </el-table-column>
+
+      <el-table-column prop="category" label="大类" width="160" show-overflow-tooltip>
+        <template #default="{ row }">
+          <span>{{ getCategoryLabel(row.category) }}</span>
+        </template>
+      </el-table-column>
+
+      <el-table-column prop="port" label="端口" width="90">
+        <template #default="{ row }">
+          <span v-if="row.port" class="ui-mono">{{ row.port }}/{{ row.protocol || 'tcp' }}</span>
+          <span v-else class="ui-mono-muted">-</span>
+        </template>
+      </el-table-column>
+
+      <el-table-column prop="source" label="来源" width="80">
+        <template #default="{ row }">
+          <el-tag size="small" :type="row.source === 'scan' ? 'success' : 'info'" effect="plain">
+            {{ sourceLabel(row.source) }}
+          </el-tag>
+        </template>
+      </el-table-column>
+
+      <el-table-column prop="notes" label="备注" show-overflow-tooltip />
+
+      <el-table-column label="操作" width="120" fixed="right">
+        <template #default="{ row }">
+          <el-button link type="primary" size="small" @click="handleEdit(row)">编辑</el-button>
+          <el-button link type="danger" size="small" @click="handleDelete(row)">删除</el-button>
+        </template>
+      </el-table-column>
+    </el-table>
+
+    <div v-if="apps.length === 0 && !loading" class="app-empty">
+      <p>暂无应用记录</p>
+      <el-button type="primary" size="small" @click="handleCreate">添加第一个应用</el-button>
+    </div>
+
+    <AppServiceDialog
+      v-model:visible="dialogVisible"
+      :asset-id="props.assetId"
+      :editing="editingApp"
+      @success="handleDialogSuccess"
+    />
+  </div>
+</template>
+
+<style scoped>
+.app-toolbar {
+  display: flex;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+.app-empty {
+  text-align: center;
+  padding: var(--space-8) 0;
+  color: var(--neutral-400);
+}
+.app-empty p {
+  margin-bottom: var(--space-3);
+}
+</style>
