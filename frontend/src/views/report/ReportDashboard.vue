@@ -2,8 +2,9 @@
 /**
  * 安全报表 Dashboard
  * 2026 UI Redesign：升级 KPI hero、按区域分布的可视化、配色升级，逻辑保持不变
+ * v2.1：危险端口告警支持多字段筛选 + 分页
  */
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { fetchPortExposure, fetchDangerousPorts, fetchShadowAssets } from '@/api/report'
 import type { PortExposureData, DangerousPortsData, ShadowAssetsData } from '@/types/report'
 
@@ -11,6 +12,65 @@ const loading = ref(true)
 const portExposure = ref<PortExposureData | null>(null)
 const dangerousPorts = ref<DangerousPortsData | null>(null)
 const shadowAssets = ref<ShadowAssetsData | null>(null)
+
+// ── 危险端口筛选 & 分页 ──────────────────────────────────────
+const dpFilter = ref({
+  asset_no: '',
+  ip_address: '',
+  port_number: '',
+  service_name: '',
+  network_zone: '',
+  severity: '',
+  hostname: '',
+})
+const dpPage = ref(1)
+const dpPageSize = ref(20)
+
+// 重置分页到第一页（筛选条件变化时触发）
+watch(dpFilter, () => { dpPage.value = 1 }, { deep: true })
+
+const ZONE_OPTIONS = [
+  { label: '全部区域', value: '' },
+  { label: '内网', value: 'intranet' },
+  { label: 'DMZ', value: 'dmz' },
+  { label: '办公网', value: 'office' },
+  { label: '管理网', value: 'management' },
+  { label: '其他', value: 'other' },
+]
+
+const SEVERITY_OPTIONS = [
+  { label: '全部严重性', value: '' },
+  { label: '高危', value: 'high' },
+  { label: '中危', value: 'medium' },
+]
+
+/** 经过筛选后的全量告警 */
+const dpFiltered = computed(() => {
+  const all = dangerousPorts.value?.alerts ?? []
+  const f = dpFilter.value
+  return all.filter(a => {
+    if (f.asset_no && !a.asset_no.toLowerCase().includes(f.asset_no.toLowerCase())) return false
+    if (f.ip_address && a.ip_address !== f.ip_address.trim()) return false
+    if (f.port_number && String(a.port_number) !== f.port_number.trim()) return false
+    if (f.service_name && !(a.service_name ?? '').toLowerCase().includes(f.service_name.toLowerCase())) return false
+    if (f.network_zone && a.network_zone !== f.network_zone) return false
+    if (f.severity && a.severity !== f.severity) return false
+    if (f.hostname && !(a.hostname ?? '').toLowerCase().includes(f.hostname.toLowerCase())) return false
+    return true
+  })
+})
+
+/** 当前页数据 */
+const dpPageData = computed(() => {
+  const start = (dpPage.value - 1) * dpPageSize.value
+  return dpFiltered.value.slice(start, start + dpPageSize.value)
+})
+
+function resetDpFilter() {
+  dpFilter.value = { asset_no: '', ip_address: '', port_number: '', service_name: '', network_zone: '', severity: '', hostname: '' }
+  dpPage.value = 1
+}
+// ────────────────────────────────────────────────────────────
 
 async function loadData() {
   loading.value = true
@@ -197,11 +257,88 @@ onMounted(loadData)
         <h3 class="ui-card-title">
           <span class="title-dot dot-red" />
           危险端口告警
-          <span class="ui-page-count">共 <b>{{ dangerousPorts.total }}</b> 项</span>
+          <span class="ui-page-count">
+            共 <b>{{ dpFiltered.length }}</b> 项
+            <template v-if="dpFiltered.length !== dangerousPorts.total">
+              （全部 {{ dangerousPorts.total }} 项）
+            </template>
+          </span>
         </h3>
-        <span class="card-meta">仅显示前 20 条</span>
+        <el-button
+          v-if="Object.values(dpFilter).some(v => v !== '')"
+          size="small"
+          text
+          @click="resetDpFilter"
+        >
+          清除筛选
+        </el-button>
       </div>
-      <el-table :data="dangerousPorts.alerts.slice(0, 20)" stripe style="width: 100%">
+
+      <!-- 筛选栏 -->
+      <div class="dp-filter-bar">
+        <el-input
+          v-model="dpFilter.asset_no"
+          placeholder="资产编号"
+          clearable
+          size="small"
+          class="dp-filter-input"
+        />
+        <el-input
+          v-model="dpFilter.ip_address"
+          placeholder="IP 地址"
+          clearable
+          size="small"
+          class="dp-filter-input"
+        />
+        <el-input
+          v-model="dpFilter.hostname"
+          placeholder="主机名"
+          clearable
+          size="small"
+          class="dp-filter-input"
+        />
+        <el-input
+          v-model="dpFilter.port_number"
+          placeholder="端口号"
+          clearable
+          size="small"
+          class="dp-filter-input dp-filter-input--sm"
+        />
+        <el-input
+          v-model="dpFilter.service_name"
+          placeholder="服务"
+          clearable
+          size="small"
+          class="dp-filter-input dp-filter-input--sm"
+        />
+        <el-select
+          v-model="dpFilter.network_zone"
+          size="small"
+          class="dp-filter-input dp-filter-input--sm"
+        >
+          <el-option
+            v-for="opt in ZONE_OPTIONS"
+            :key="opt.value"
+            :label="opt.label"
+            :value="opt.value"
+          />
+        </el-select>
+        <el-select
+          v-model="dpFilter.severity"
+          size="small"
+          class="dp-filter-input dp-filter-input--sm"
+        >
+          <el-option
+            v-for="opt in SEVERITY_OPTIONS"
+            :key="opt.value"
+            :label="opt.label"
+            :value="opt.value"
+          />
+        </el-select>
+      </div>
+
+      <!-- 表格 -->
+      <el-table :data="dpPageData" stripe style="width: 100%">
         <el-table-column prop="asset_no" label="资产编号" width="160">
           <template #default="{ row }">
             <span class="ui-mono">{{ row.asset_no }}</span>
@@ -235,6 +372,19 @@ onMounted(loadData)
         </el-table-column>
         <el-table-column prop="hostname" label="主机名" show-overflow-tooltip />
       </el-table>
+
+      <!-- 分页 -->
+      <div class="dp-pagination">
+        <el-pagination
+          v-model:current-page="dpPage"
+          v-model:page-size="dpPageSize"
+          :total="dpFiltered.length"
+          :page-sizes="[20, 50, 100]"
+          layout="total, sizes, prev, pager, next, jumper"
+          background
+          small
+        />
+      </div>
     </div>
 
     <!-- 影子资产 -->
@@ -411,5 +561,29 @@ onMounted(loadData)
   font-weight: 600;
   color: var(--neutral-700);
   letter-spacing: 0.02em;
+}
+
+/* 危险端口筛选栏 */
+.dp-filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: var(--space-3) var(--space-6);
+  border-bottom: 1px solid var(--neutral-100);
+  background: var(--surface-sunken);
+}
+.dp-filter-input {
+  width: 160px;
+}
+.dp-filter-input--sm {
+  width: 120px;
+}
+
+/* 分页区域 */
+.dp-pagination {
+  display: flex;
+  justify-content: flex-end;
+  padding: var(--space-3) var(--space-6);
+  border-top: 1px solid var(--neutral-100);
 }
 </style>
