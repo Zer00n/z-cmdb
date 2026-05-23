@@ -106,3 +106,6 @@ frontend/src/design/
 
 # ── pyproject.toml（本地开发工具配置，非项目依赖）────────────
 pyproject.toml
+
+# ── Tests（本地保留，不对外发布）─────────────────────────────
+backend/tests/
