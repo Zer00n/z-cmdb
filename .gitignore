@@ -71,8 +71,8 @@ backend/data/
 backend/uploads/
 
 # ── Secrets ──────────────────────────────────────────────────
-secrets/
-!secrets/*.example
+secrets/*.txt
+!secrets/*.txt.example
 
 # ── Logs ─────────────────────────────────────────────────────
 *.log
