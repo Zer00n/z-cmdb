@@ -1,74 +1,30 @@
 /**
- * 资产总览状态管理（静态，无轮询）
+ * 资产总览状态管理
  */
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import { getSummary, getLayout, saveLayout, saveDefaultLayout } from '@/api/dashboard'
-import type { DashboardSummary, DashboardConfig, DrillTarget } from '@/types/dashboard'
-import { PANELS } from '@/components/dashboard/registry'
-import router from '@/router'
-
-const DEFAULT_CONFIG: DashboardConfig = {
-  panels: PANELS.map(p => ({ id: p.id, visible: true })),
-  refreshIntervalSec: 0,
-  filters: {},
-  theme: 'light',
-}
+import { getSummary } from '@/api/dashboard'
+import type { DashboardSummary } from '@/types/dashboard'
 
 export const useDashboardStore = defineStore('dashboard', () => {
   const summary = ref<DashboardSummary | null>(null)
-  const config = ref<DashboardConfig>({ ...DEFAULT_CONFIG })
   const loading = ref(false)
 
-  async function fetchSummary() {
+  /**
+   * 拉取聚合数据
+   * @param force true 时绕过后端缓存（仅「刷新数据」按钮使用）
+   */
+  async function fetchSummary(force = false) {
     loading.value = true
     try {
-      summary.value = await getSummary(true)
+      summary.value = await getSummary(force)
     } catch (e) {
+      // HTTP 错误已由 request 拦截器统一提示，这里仅记录
       console.error('[dashboard] fetchSummary failed', e)
     } finally {
       loading.value = false
     }
   }
 
-  async function loadConfig() {
-    try {
-      const cfg = await getLayout()
-      if (cfg && cfg.panels?.length) {
-        config.value = cfg
-      }
-    } catch {
-      // 接口不存在或出错时使用默认配置
-    }
-  }
-
-  async function saveConfig() {
-    try {
-      await saveLayout(config.value)
-    } catch (e) {
-      console.error('[dashboard] saveConfig failed', e)
-    }
-  }
-
-  async function saveConfigAsDefault() {
-    try {
-      await saveDefaultLayout(config.value)
-    } catch (e) {
-      console.error('[dashboard] saveConfigAsDefault failed', e)
-    }
-  }
-
-  function drillTo(target: DrillTarget) {
-    router.push({ path: target.route, query: target.query })
-  }
-
-  function resetConfig() {
-    config.value = { ...DEFAULT_CONFIG, panels: DEFAULT_CONFIG.panels.map(p => ({ ...p })) }
-  }
-
-  return {
-    summary, config, loading,
-    fetchSummary, loadConfig, saveConfig, saveConfigAsDefault,
-    drillTo, resetConfig,
-  }
+  return { summary, loading, fetchSummary }
 })

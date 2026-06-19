@@ -115,28 +115,3 @@ export interface DashboardSummary {
   zone_topology: ZoneTopologyData
   activity: ActivityItem[]
 }
-
-/** 面板定义（注册表用） */
-export interface PanelDef {
-  id: string
-  title: string
-  dataKey: keyof DashboardSummary
-  defaultLayout: { x: number; y: number; w: number; h: number }
-  minW: number
-  minH: number
-  roles?: string[]
-}
-
-/** 大屏配置 */
-export interface DashboardConfig {
-  panels: { id: string; visible: boolean }[]
-  refreshIntervalSec: number
-  filters: { zone?: string[]; timeRange?: string }
-  theme: 'dark' | 'light'
-}
-
-/** 钻取目标 */
-export interface DrillTarget {
-  route: string
-  query: Record<string, string>
-}

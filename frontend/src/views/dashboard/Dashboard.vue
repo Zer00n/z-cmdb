@@ -1,15 +1,18 @@
 <script setup lang="ts">
 /**
- * 资产总览 — 严格对齐 Asset Overview.html 设计稿
+ * 资产总览 — 对齐 Asset Overview 设计稿
  */
-import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
+import { ref, computed, shallowRef, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { useEventListener, useDebounceFn, usePreferredReducedMotion } from '@vueuse/core'
 import { useDashboardStore } from '@/stores/dashboard'
 import * as echarts from 'echarts/core'
 import { GraphChart, PieChart, BarChart } from 'echarts/charts'
 import { TooltipComponent, LegendComponent, GridComponent } from 'echarts/components'
 import { CanvasRenderer } from 'echarts/renderers'
-import type { DashboardSummary, KpiData, DangerousPortItem } from '@/types/dashboard'
+import type { DashboardSummary, KpiData } from '@/types/dashboard'
+import { ZONE_COLORS, TYPE_COLORS, IMP_COLORS, OS_COLORS, DANGEROUS_PORTS, zoneLabel } from '@/constants/dashboard'
+import KpiIcon from '@/components/dashboard/KpiIcon.vue'
 
 echarts.use([GraphChart, PieChart, BarChart, TooltipComponent, LegendComponent, GridComponent, CanvasRenderer])
 
@@ -17,6 +20,8 @@ const router = useRouter()
 const store = useDashboardStore()
 const summary = computed(() => store.summary)
 const kpi = computed(() => summary.value?.kpi)
+
+const reducedMotion = usePreferredReducedMotion() // 'no-preference' | 'reduce'
 
 // ── KPI 定义 ───────────────────────────────────────────────
 interface KpiDef {
@@ -44,7 +49,8 @@ const KPI_DEFS: KpiDef[] = [
 const kpiNumRefs = ref<HTMLElement[]>([])
 function setKpiRef(el: any, idx: number) { if (el) kpiNumRefs.value[idx] = el }
 function animateCounter(el: HTMLElement, target: number, suffix: string) {
-  if (target === 0) { el.textContent = '0' + suffix; return }
+  // 尊重「减少动态效果」或目标为 0：直接落位
+  if (reducedMotion.value === 'reduce' || target === 0) { el.textContent = target + suffix; return }
   const duration = 900, startTime = performance.now()
   function step(now: number) {
     const progress = Math.min((now - startTime) / duration, 1)
@@ -82,32 +88,21 @@ const dangerousPorts = computed(() => summary.value?.dangerous_ports || [])
 const highCount = computed(() => dangerousPorts.value.filter(d => d.severity === 'high').length)
 const medCount = computed(() => dangerousPorts.value.filter(d => d.severity === 'medium').length)
 
-function zoneLabel(z: string) {
-  const m: Record<string, string> = { dmz: 'DMZ', intranet: '内网', office: '办公网', management: '管理网', aliyun: '阿里云', tencent: '腾讯云', huawei: '华为云', aws: 'AWS', azure: 'Azure', gcp: 'GCP', other_cloud: '其他云', other: '其他' }
-  return m[z] || z
-}
-
-// ── ECharts 实例 ───────────────────────────────────────────
-let chartTopo: echarts.ECharts | null = null
-let chartDist: echarts.ECharts | null = null
-let chartPortBar: echarts.ECharts | null = null
-let chartPortZone: echarts.ECharts | null = null
-
-const ZONE_COLORS: Record<string, string> = {
-  intranet: '#2563EB', office: '#0E7490', dmz: '#B45309', management: '#6D28D9',
-  aliyun: '#EA580C', tencent: '#0891B2', huawei: '#CF0A2C', aws: '#FF9900',
-  azure: '#0078D4', gcp: '#4285F4', other_cloud: '#94A3B8', other: '#94A3B8',
-}
-const TYPE_COLORS = ['#2563EB', '#0E7490', '#EA580C', '#6D28D9', '#94A3B8']
-const IMP_COLORS = ['#DC2626', '#D97706', '#94A3B8']
-const OS_COLORS = ['#2563EB', '#0E7490', '#94A3B8']
+// ── ECharts 实例（shallowRef：实例无需深响应式） ────────────
+const chartTopoEl = ref<HTMLElement>()
+const chartDistEl = ref<HTMLElement>()
+const chartPortBarEl = ref<HTMLElement>()
+const chartPortZoneEl = ref<HTMLElement>()
+const chartTopo = shallowRef<echarts.ECharts | null>(null)
+const chartDist = shallowRef<echarts.ECharts | null>(null)
+const chartPortBar = shallowRef<echarts.ECharts | null>(null)
+const chartPortZone = shallowRef<echarts.ECharts | null>(null)
 
 const TOOLTIP = { backgroundColor: '#fff', borderColor: '#E2E8F0', borderWidth: 1, textStyle: { color: '#334155', fontSize: 12 } }
 
 function renderTopo() {
-  const el = document.getElementById('chart-topo')
-  if (!el || !summary.value) return
-  if (!chartTopo) chartTopo = echarts.init(el)
+  if (!chartTopoEl.value || !summary.value) return
+  if (!chartTopo.value) chartTopo.value = echarts.init(chartTopoEl.value)
   const zones = summary.value.zone_topology.zones
   const hubValue = zones.reduce((s, z) => s + z.asset_count, 0)
   const nodes = [
@@ -119,7 +114,7 @@ function renderTopo() {
     })),
   ]
   const edges = zones.map(z => ({ source: 'hub', target: z.zone }))
-  chartTopo.setOption({
+  chartTopo.value.setOption({
     backgroundColor: 'transparent', animation: true, animationDuration: 1200,
     tooltip: { ...TOOLTIP, trigger: 'item', formatter: (p: any) => p.dataType === 'node' ? `<b>${p.data.name}</b><br/>资产数：${p.data.value}` : '' },
     series: [{
@@ -134,9 +129,8 @@ function renderTopo() {
 }
 
 function renderDist() {
-  const el = document.getElementById('chart-dist')
-  if (!el || !summary.value) return
-  if (!chartDist) chartDist = echarts.init(el)
+  if (!chartDistEl.value || !summary.value) return
+  if (!chartDist.value) chartDist.value = echarts.init(chartDistEl.value)
   const raw = summary.value.asset_distribution[distTab.value] || []
   const palette = distTab.value === 'by_zone' ? [] : distTab.value === 'by_type' ? TYPE_COLORS : distTab.value === 'by_importance' ? IMP_COLORS : OS_COLORS
   const data = raw.map((item, i) => ({
@@ -144,7 +138,7 @@ function renderDist() {
     itemStyle: { color: distTab.value === 'by_zone' ? (ZONE_COLORS[item.label] || '#94A3B8') : palette[i % palette.length] },
   }))
   const total = data.reduce((s, d) => s + d.value, 0)
-  chartDist.setOption({
+  chartDist.value.setOption({
     backgroundColor: 'transparent', animation: true, animationDuration: 700,
     tooltip: { ...TOOLTIP, trigger: 'item', formatter: '{b}：{c} ({d}%)' },
     legend: { orient: 'vertical', right: 24, top: 'center', itemWidth: 10, itemHeight: 10, icon: 'roundRect', textStyle: { color: '#334155', fontSize: 12 }, itemGap: 10 },
@@ -158,12 +152,10 @@ function renderDist() {
 }
 
 function renderPortBar() {
-  const el = document.getElementById('chart-port-bar')
-  if (!el || !summary.value) return
-  if (!chartPortBar) chartPortBar = echarts.init(el)
-  const DANGEROUS_PORTS = new Set([21, 22, 23, 135, 139, 445, 1433, 1521, 2375, 3306, 3389, 5432, 5984, 6379, 8080, 8888, 9200, 11211, 27017])
+  if (!chartPortBarEl.value || !summary.value) return
+  if (!chartPortBar.value) chartPortBar.value = echarts.init(chartPortBarEl.value)
   const ports = (summary.value.port_exposure.top_ports || []).slice(0, 10)
-  chartPortBar.setOption({
+  chartPortBar.value.setOption({
     backgroundColor: 'transparent', animation: true, animationDuration: 900,
     grid: { left: 56, right: 20, top: 8, bottom: 8, containLabel: false },
     tooltip: { ...TOOLTIP, trigger: 'axis', axisPointer: { type: 'none' }, formatter: (p: any) => { const d = ports[p[0].dataIndex]; const badge = DANGEROUS_PORTS.has(d.port) ? ' <span style="color:#DC2626;font-weight:600;">危险</span>' : ''; return `端口 ${d.port}${badge}<br/>开放数：${d.count}` } },
@@ -174,12 +166,11 @@ function renderPortBar() {
 }
 
 function renderPortZone() {
-  const el = document.getElementById('chart-port-zone')
-  if (!el || !summary.value) return
-  if (!chartPortZone) chartPortZone = echarts.init(el)
+  if (!chartPortZoneEl.value || !summary.value) return
+  if (!chartPortZone.value) chartPortZone.value = echarts.init(chartPortZoneEl.value)
   const zones = summary.value.port_exposure.by_zone || []
   const data = zones.map(z => ({ value: z.port_count, name: z.zone, itemStyle: { color: ZONE_COLORS[z.zone] || '#94A3B8' } }))
-  chartPortZone.setOption({
+  chartPortZone.value.setOption({
     backgroundColor: 'transparent', animation: true, animationDuration: 900,
     tooltip: { ...TOOLTIP, trigger: 'item', formatter: '{b}：{d}%' },
     legend: { orient: 'vertical', right: 16, top: 'center', itemWidth: 8, itemHeight: 8, icon: 'roundRect', textStyle: { color: '#334155', fontSize: 11 }, itemGap: 8 },
@@ -194,36 +185,50 @@ function renderPortZone() {
 function renderAllCharts() { renderTopo(); renderDist(); renderPortBar(); renderPortZone() }
 
 watch(distTab, () => nextTick(renderDist))
-watch(summary, () => nextTick(renderAllCharts), { deep: true })
+// summary 整体替换，浅比较即可触发；无需 deep
+watch(summary, () => nextTick(renderAllCharts))
 
-// 危险端口自动滚动
+// ── 危险端口自动滚动（页面不可见 / reduce 时自动停） ────────
 const alertListRef = ref<HTMLElement>()
 const alertScrolling = ref(true)
 let alertRaf = 0
+let alertStartTimer: ReturnType<typeof setTimeout> | undefined
 function startAlertScroll() {
+  if (reducedMotion.value === 'reduce') return
   function step() {
-    if (!alertScrolling.value || !alertListRef.value) { alertRaf = requestAnimationFrame(step); return }
-    const el = alertListRef.value
-    el.scrollTop += 0.5
-    if (el.scrollTop + el.clientHeight >= el.scrollHeight - 2) el.scrollTop = 0
+    if (alertScrolling.value && alertListRef.value && document.visibilityState === 'visible') {
+      const el = alertListRef.value
+      el.scrollTop += 0.5
+      if (el.scrollTop + el.clientHeight >= el.scrollHeight - 2) el.scrollTop = 0
+    }
     alertRaf = requestAnimationFrame(step)
   }
-  setTimeout(() => { alertRaf = requestAnimationFrame(step) }, 2000)
+  alertStartTimer = setTimeout(() => { alertRaf = requestAnimationFrame(step) }, 2000)
 }
 
+// resize 防抖（监听器由 vueuse 在组件卸载时自动清理）
+const handleResize = useDebounceFn(() => {
+  chartTopo.value?.resize()
+  chartDist.value?.resize()
+  chartPortBar.value?.resize()
+  chartPortZone.value?.resize()
+}, 150)
+useEventListener(window, 'resize', handleResize)
+
 onMounted(async () => {
-  await store.fetchSummary()
+  await store.fetchSummary() // 首次走缓存（force=false）
   await nextTick()
   renderAllCharts()
   startAlertScroll()
-  window.addEventListener('resize', handleResize)
 })
 onUnmounted(() => {
-  window.removeEventListener('resize', handleResize)
   cancelAnimationFrame(alertRaf)
-  chartTopo?.dispose(); chartDist?.dispose(); chartPortBar?.dispose(); chartPortZone?.dispose()
+  if (alertStartTimer) clearTimeout(alertStartTimer)
+  chartTopo.value?.dispose()
+  chartDist.value?.dispose()
+  chartPortBar.value?.dispose()
+  chartPortZone.value?.dispose()
 })
-function handleResize() { [chartTopo, chartDist, chartPortBar, chartPortZone].forEach(c => c?.resize()) }
 </script>
 
 <template>
@@ -237,136 +242,139 @@ function handleResize() { [chartTopo, chartDist, chartPortBar, chartPortZone].fo
           数据更新于 <span class="ts">{{ new Date(summary.generated_at).toLocaleString('zh-CN') }}</span>
         </div>
       </div>
-      <button class="btn-refresh" :disabled="store.loading || undefined" @click="store.fetchSummary()">
+      <button class="btn-refresh" :disabled="store.loading || undefined" @click="store.fetchSummary(true)">
         <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13.5 2.5v4h-4"/><path d="M2.5 13.5v-4h4"/><path d="M13.5 6.5A5.5 5.5 0 0 0 3.8 3.8"/><path d="M2.5 9.5a5.5 5.5 0 0 0 9.7 2.7"/></svg>
         刷新数据
       </button>
     </div>
 
-    <!-- KPI 行 -->
-    <div class="kpi-row" v-if="kpi">
-      <div
-        v-for="(def, i) in KPI_DEFS"
-        :key="def.key"
-        :class="['kpi', def.cssClass]"
-        @click="handleKpiClick(def)"
-      >
-        <div class="kpi-icon">
-          <svg v-if="def.key==='total'" width="15" height="15" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="14" height="5" rx="1.5"/><rect x="2" y="10" width="14" height="5" rx="1.5"/><circle cx="4.5" cy="5.5" r=".8" fill="currentColor" stroke="none"/><circle cx="4.5" cy="12.5" r=".8" fill="currentColor" stroke="none"/></svg>
-          <svg v-else-if="def.key==='online'" width="15" height="15" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="9" r="7"/><path d="M5.5 9l2.5 2.5 4.5-5"/></svg>
-          <svg v-else-if="def.key==='offline'" width="15" height="15" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="9" r="7"/><path d="M9 5.5v4"/><circle cx="9" cy="12.5" r=".8" fill="currentColor" stroke="none"/></svg>
-          <svg v-else-if="def.key==='decom'" width="15" height="15" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="9" r="7"/><path d="M5.5 9h7"/></svg>
-          <svg v-else-if="def.key==='danger'" width="15" height="15" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2L2 14h14L9 2z"/><path d="M9 7v3.5"/><circle cx="9" cy="12.5" r=".8" fill="currentColor" stroke="none"/></svg>
-          <svg v-else-if="def.key==='shadow'" width="15" height="15" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="9" r="7"/><path d="M9 5v4l3 3"/><path d="M4 4l10 10" stroke-dasharray="2 2"/></svg>
-          <svg v-else-if="def.key==='changes'" width="15" height="15" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="6" height="6" rx="1"/><rect x="10" y="2" width="6" height="6" rx="1"/><rect x="2" y="10" width="6" height="6" rx="1"/><rect x="10" y="10" width="6" height="6" rx="1"/></svg>
-          <svg v-else-if="def.key==='coverage'" width="15" height="15" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="9" r="7"/><path d="M9 2a7 7 0 0 1 0 14"/><path d="M5 5.5C6.2 4.2 8 3.5 9 3.5"/></svg>
-        </div>
-        <div class="kpi-num" :ref="(el) => setKpiRef(el, i)">0{{ def.suffix }}</div>
-        <div class="kpi-label">{{ def.label }}</div>
+    <!-- 加载骨架（summary 未就绪） -->
+    <template v-if="!summary">
+      <div class="kpi-row">
+        <div v-for="i in 8" :key="i" class="kpi kpi-sk"><div class="sk sk-icon" /><div class="sk sk-num" /><div class="sk sk-lbl" /></div>
       </div>
-    </div>
+      <div class="grid-2"><div class="card card-sk" /><div class="card card-sk" /></div>
+      <div class="grid-2"><div class="card card-sk" /><div class="card card-sk" /></div>
+    </template>
 
-    <!-- Row 2: 网络区域拓扑 | 资产分布 -->
-    <div class="grid-2">
-      <div class="card">
-        <div class="card-head">
-          <div class="ttl">
-            <span class="ttl-ico">
-              <svg width="14" height="14" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="4" r="2"/><circle cx="3.5" cy="14" r="2"/><circle cx="14.5" cy="14" r="2"/><path d="M9 6v3.5M9 9.5L3.5 12M9 9.5L14.5 12"/></svg>
-            </span>
-            网络区域拓扑
-            <span class="ttl-meta">force-directed</span>
-          </div>
-        </div>
-        <div id="chart-topo" class="chart-box" style="height:340px;"></div>
-      </div>
-
-      <div class="card" style="display:flex;flex-direction:column;">
-        <div class="card-head">
-          <div class="ttl">
-            <span class="ttl-ico">
-              <svg width="14" height="14" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="9" r="7"/><path d="M9 2a7 7 0 0 1 7 7H9V2z" fill="currentColor" fill-opacity=".12"/></svg>
-            </span>
-            资产分布
-          </div>
-        </div>
-        <div class="tab-bar">
-          <button v-for="tab in distTabs" :key="tab.key" :class="['tab-btn', { active: distTab === tab.key }]" @click="distTab = tab.key">{{ tab.label }}</button>
-        </div>
-        <div id="chart-dist" class="chart-box" style="height:296px;"></div>
-      </div>
-    </div>
-
-    <!-- Row 3: 端口暴露面 | 危险端口告警 -->
-    <div class="grid-2">
-      <div class="card">
-        <div class="card-head">
-          <div class="ttl">
-            <span class="ttl-ico" style="background:rgba(220,38,38,0.08); color:#DC2626;">
-              <svg width="14" height="14" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="12" height="12" rx="2"/><path d="M9 6v6M6 9h6"/></svg>
-            </span>
-            端口暴露面
-          </div>
-          <div class="tools"><button class="tool-btn">Top 10</button></div>
-        </div>
-        <div class="port-split">
-          <div>
-            <div class="split-label">开放端口 Top 10</div>
-            <div id="chart-port-bar" style="height:288px;"></div>
-          </div>
-          <div class="ps-divider"></div>
-          <div>
-            <div class="split-label">按区域分布</div>
-            <div id="chart-port-zone" style="height:288px;"></div>
-          </div>
+    <!-- 内容 -->
+    <template v-else>
+      <!-- KPI 行 -->
+      <div class="kpi-row" v-if="kpi">
+        <div
+          v-for="(def, i) in KPI_DEFS"
+          :key="def.key"
+          :class="['kpi', def.cssClass, { clickable: def.route }]"
+          @click="handleKpiClick(def)"
+        >
+          <div class="kpi-icon"><KpiIcon :name="def.key" /></div>
+          <div class="kpi-num" :ref="(el) => setKpiRef(el, i)">0{{ def.suffix }}</div>
+          <div class="kpi-label">{{ def.label }}</div>
         </div>
       </div>
 
-      <div class="card" style="display:flex; flex-direction:column;">
-        <div class="card-head">
-          <div class="ttl">
-            <span class="ttl-ico" style="background:rgba(220,38,38,0.08); color:#DC2626;">
-              <svg width="14" height="14" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2L2 14h14L9 2z"/><path d="M9 7v3.5"/><circle cx="9" cy="12.5" r=".8" fill="currentColor" stroke="none"/></svg>
-            </span>
-            危险端口告警
+      <!-- Row 2: 网络区域拓扑 | 资产分布 -->
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-head">
+            <div class="ttl">
+              <span class="ttl-ico">
+                <svg width="14" height="14" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="4" r="2"/><circle cx="3.5" cy="14" r="2"/><circle cx="14.5" cy="14" r="2"/><path d="M9 6v3.5M9 9.5L3.5 12M9 9.5L14.5 12"/></svg>
+              </span>
+              网络区域拓扑
+              <span class="ttl-meta">force-directed</span>
+            </div>
           </div>
-          <div class="sev-counts">
-            <span class="sev-tag h">高危 {{ highCount }}</span>
-            <span class="sev-tag m">中危 {{ medCount }}</span>
+          <div ref="chartTopoEl" class="chart-box" style="height:340px;"></div>
+        </div>
+
+        <div class="card" style="display:flex;flex-direction:column;">
+          <div class="card-head">
+            <div class="ttl">
+              <span class="ttl-ico">
+                <svg width="14" height="14" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="9" r="7"/><path d="M9 2a7 7 0 0 1 7 7H9V2z" fill="currentColor" fill-opacity=".12"/></svg>
+              </span>
+              资产分布
+            </div>
+          </div>
+          <div class="tab-bar">
+            <button v-for="tab in distTabs" :key="tab.key" :class="['tab-btn', { active: distTab === tab.key }]" @click="distTab = tab.key">{{ tab.label }}</button>
+          </div>
+          <div ref="chartDistEl" class="chart-box" style="height:296px;"></div>
+        </div>
+      </div>
+
+      <!-- Row 3: 端口暴露面 | 危险端口告警 -->
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-head">
+            <div class="ttl">
+              <span class="ttl-ico" style="background:rgba(220,38,38,0.08); color:#DC2626;">
+                <svg width="14" height="14" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="12" height="12" rx="2"/><path d="M9 6v6M6 9h6"/></svg>
+              </span>
+              端口暴露面
+            </div>
+            <div class="tools"><button class="tool-btn">Top 10</button></div>
+          </div>
+          <div class="port-split">
+            <div>
+              <div class="split-label">开放端口 Top 10</div>
+              <div ref="chartPortBarEl" style="height:288px;"></div>
+            </div>
+            <div class="ps-divider"></div>
+            <div>
+              <div class="split-label">按区域分布</div>
+              <div ref="chartPortZoneEl" style="height:288px;"></div>
+            </div>
           </div>
         </div>
-        <div class="alert-thead">
-          <div style="width:3px; flex-shrink:0;"></div>
-          <div class="th-ip">IP</div>
-          <div class="th-port">端口</div>
-          <div class="th-svc">服务</div>
-          <div class="th-zone">区域</div>
-          <div class="th-lvl">级别</div>
-        </div>
-        <div class="alert-table-wrap" style="flex:1;">
-          <ul
-            ref="alertListRef"
-            class="alert-list"
-            @mouseenter="alertScrolling = false"
-            @mouseleave="alertScrolling = true"
-          >
-            <li
-              v-for="(item, i) in dangerousPorts"
-              :key="i"
-              :class="['alert-row', item.severity === 'high' ? 'high' : 'med']"
+
+        <div class="card" style="display:flex; flex-direction:column;">
+          <div class="card-head">
+            <div class="ttl">
+              <span class="ttl-ico" style="background:rgba(220,38,38,0.08); color:#DC2626;">
+                <svg width="14" height="14" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2L2 14h14L9 2z"/><path d="M9 7v3.5"/><circle cx="9" cy="12.5" r=".8" fill="currentColor" stroke="none"/></svg>
+              </span>
+              危险端口告警
+            </div>
+            <div class="sev-counts">
+              <span class="sev-tag h">高危 {{ highCount }}</span>
+              <span class="sev-tag m">中危 {{ medCount }}</span>
+            </div>
+          </div>
+          <div class="alert-thead">
+            <div style="width:3px; flex-shrink:0;"></div>
+            <div class="th-ip">IP</div>
+            <div class="th-port">端口</div>
+            <div class="th-svc">服务</div>
+            <div class="th-zone">区域</div>
+            <div class="th-lvl">级别</div>
+          </div>
+          <div class="alert-table-wrap" style="flex:1;">
+            <ul
+              ref="alertListRef"
+              class="alert-list"
+              @mouseenter="alertScrolling = false"
+              @mouseleave="alertScrolling = true"
             >
-              <div class="sev-bar"></div>
-              <div class="ip">{{ item.ip_address }}</div>
-              <div class="port">{{ item.port_number }}/{{ item.protocol }}</div>
-              <div class="svc">{{ item.service_name || '-' }}</div>
-              <div class="zone">{{ zoneLabel(item.network_zone) }}</div>
-              <div class="lvl">{{ item.severity === 'high' ? '🔴 高危' : '🟠 中危' }}</div>
-            </li>
-            <li v-if="!dangerousPorts.length" class="alert-row" style="justify-content:center; color:var(--neutral-400);">暂无危险端口</li>
-          </ul>
+              <li
+                v-for="item in dangerousPorts"
+                :key="`${item.asset_id}-${item.port_number}-${item.protocol}`"
+                :class="['alert-row', item.severity === 'high' ? 'high' : 'med']"
+              >
+                <div class="sev-bar"></div>
+                <div class="ip">{{ item.ip_address }}</div>
+                <div class="port">{{ item.port_number }}/{{ item.protocol }}</div>
+                <div class="svc">{{ item.service_name || '-' }}</div>
+                <div class="zone">{{ zoneLabel(item.network_zone) }}</div>
+                <div class="lvl">{{ item.severity === 'high' ? '🔴 高危' : '🟠 中危' }}</div>
+              </li>
+              <li v-if="!dangerousPorts.length" class="alert-row" style="justify-content:center; color:var(--neutral-400);">暂无危险端口</li>
+            </ul>
+          </div>
         </div>
       </div>
-    </div>
+    </template>
   </div>
 </template>
 
@@ -384,6 +392,7 @@ function handleResize() { [chartTopo, chartDist, chartPortBar, chartPortZone].fo
   font-size: 13px; font-weight: 500; cursor: pointer; transition: background 0.12s;
 }
 .btn-refresh:hover { background: var(--color-primary-600, #1D4ED8); }
+.btn-refresh:disabled { opacity: .6; cursor: not-allowed; }
 
 /* KPI 行 */
 .kpi-row { display: grid; grid-template-columns: repeat(8, 1fr); gap: var(--space-3, 12px); margin-bottom: var(--space-5, 20px); }
@@ -396,6 +405,9 @@ function handleResize() { [chartTopo, chartDist, chartPortBar, chartPortZone].fo
 .kpi .kpi-icon { width: 30px; height: 30px; border-radius: var(--radius-md, 6px); background: var(--kpi-icon-bg, #F1F5F9); color: var(--kpi-accent, #64748B); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .kpi .kpi-num { font-family: var(--font-mono, monospace); font-weight: 700; font-size: 28px; line-height: 1; letter-spacing: -0.03em; color: var(--kpi-accent, #0F172A); margin-top: 4px; }
 .kpi .kpi-label { font-size: 12px; color: var(--neutral-500, #64748B); font-weight: 500; white-space: nowrap; }
+/* 可点击 KPI：指针 + hover 反馈 */
+.kpi.clickable { cursor: pointer; transition: border-color 0.15s, transform 0.15s, box-shadow 0.15s; }
+.kpi.clickable:hover { border-color: var(--kpi-accent, #2563EB); transform: translateY(-2px); box-shadow: 0 8px 18px -10px rgba(15, 23, 42, 0.22); }
 .kpi.kpi-neutral  { --kpi-accent: #2563EB; --kpi-icon-bg: rgba(37,99,235,0.06); }
 .kpi.kpi-success  { --kpi-accent: #16A34A; --kpi-icon-bg: rgba(22,163,74,0.06); }
 .kpi.kpi-warning  { --kpi-accent: #D97706; --kpi-icon-bg: rgba(217,119,6,0.06); }
@@ -450,4 +462,32 @@ function handleResize() { [chartTopo, chartDist, chartPortBar, chartPortZone].fo
 .alert-row.high .lvl { background: rgba(220,38,38,0.08); color: #DC2626; } .alert-row.med .lvl { background: rgba(234,88,12,0.08); color: #EA580C; }
 @keyframes rowPulse { 0%,100%{ background: transparent; } 50%{ background: rgba(220,38,38,0.04); } }
 .alert-row.high { animation: rowPulse 3s ease-in-out infinite; } .alert-row.high:hover { animation: none; background: var(--neutral-50, #F8FAFC); }
+
+/* 加载骨架 */
+@keyframes skShimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+.kpi-sk { gap: 8px; }
+.sk {
+  background: linear-gradient(90deg, var(--neutral-100, #F1F5F9) 25%, var(--neutral-50, #F8FAFC) 37%, var(--neutral-100, #F1F5F9) 63%);
+  background-size: 200% 100%; animation: skShimmer 1.4s ease infinite; border-radius: 4px;
+}
+.sk-icon { width: 30px; height: 30px; border-radius: var(--radius-md, 6px); }
+.sk-num { width: 60%; height: 28px; margin-top: 4px; }
+.sk-lbl { width: 40%; height: 12px; border-radius: 3px; }
+.card-sk { height: 380px; border: 1px solid var(--neutral-200, #E2E8F0); border-radius: var(--radius-lg, 10px); }
+
+/* 响应式断点 */
+@media (max-width: 1280px) {
+  .kpi-row { grid-template-columns: repeat(4, 1fr); }
+}
+@media (max-width: 768px) {
+  .kpi-row { grid-template-columns: repeat(2, 1fr); }
+  .grid-2, .port-split { grid-template-columns: 1fr; }
+  .port-split .ps-divider { display: none; }
+}
+
+/* 无障碍：尊重「减少动态效果」 */
+@media (prefers-reduced-motion: reduce) {
+  .alert-row.high { animation: none; }
+  .sk { animation: none; }
+}
 </style>
