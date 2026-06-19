@@ -31,6 +31,12 @@ const authStore = useAuthStore()
 
 const navGroups: NavGroup[] = [
   {
+    title: '资产总览',
+    items: [
+      { title: '资产总览', route: '/dashboard', icon: 'Odometer' },
+    ],
+  },
+  {
     title: '资产管理',
     items: [
       { title: '资产列表', route: '/assets', icon: 'Monitor' },

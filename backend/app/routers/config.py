@@ -30,7 +30,21 @@ DEFAULT_CONFIGS = {
     "llm_model": {"value": "", "description": "LLM 模型名称"},
     "llm_base_url": {"value": "", "description": "LLM API 地址（Ollama 等自定义地址）"},
     "llm_route_core_to_local": {"value": "true", "description": "核心资产是否路由到本地 LLM"},
+    "llm_ollama_model": {"value": "qwen2.5", "description": "本地 Ollama 模型名称（路由到本地时使用）"},
     "llm_cloud_enabled": {"value": "true", "description": "是否允许使用云端 LLM（super_admin 可全局禁用）"},
+    # 大屏配置
+    "dashboard_refresh_seconds": {"value": "30", "description": "大屏自动刷新间隔（秒）"},
+    "dashboard_list_limit": {"value": "50", "description": "大屏各滚动列表返回上限"},
+    "dangerous_ports_list": {
+        "value": '[21,22,23,135,139,445,1433,1521,2375,3306,3389,5432,5984,6379,8080,8888,9200,11211,27017]',
+        "description": "危险端口清单（JSON 数组）",
+    },
+    "dangerous_zones": {
+        'value': '["dmz","office"]',
+        "description": "高危区域（JSON 数组，暴露在这些区域的危险端口为 high）",
+    },
+    "shadow_offline_days": {"value": "30", "description": "长期离线判定天数"},
+    "dashboard_default_layout": {"value": "", "description": "大屏全局默认布局 JSON"},
 }
 
 
@@ -90,10 +104,13 @@ def update_config(
         if cfg is None:
             # 只允许修改已存在的配置项
             continue
-        # 敏感字段加密存储
         str_value = str(value) if value is not None else ""
-        if "api_key" in key and str_value:
-            str_value = encrypt_value(str_value)
+        # 敏感字段：跳过掩码值（防止把 **** 当真实值存入）
+        if "api_key" in key:
+            if "****" in str_value:
+                continue  # 掩码值，不更新
+            if str_value:
+                str_value = encrypt_value(str_value)
         cfg.value = str_value
         cfg.updated_at = datetime.now(timezone.utc)
         cfg.updated_by = current_user.id if current_user else None  # type: ignore[union-attr]

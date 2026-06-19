@@ -35,7 +35,7 @@ const groups = [
     num: '03',
     title: 'LLM 配置',
     desc: '拓扑图生成所用的大语言模型配置',
-    keys: ['llm_provider', 'llm_model', 'llm_base_url', 'llm_api_key', 'llm_cloud_enabled', 'llm_route_core_to_local'],
+    keys: ['llm_provider', 'llm_base_url', 'llm_api_key', 'llm_model', 'llm_ollama_model', 'llm_cloud_enabled', 'llm_route_core_to_local'],
   },
 ]
 
@@ -46,9 +46,10 @@ const labelMap: Record<string, string> = {
   asset_no_prefix: '资产编号前缀',
   session_timeout_minutes: 'Session 超时 (分钟)',
   llm_provider: 'LLM 提供方',
-  llm_api_key: 'LLM API Key',
-  llm_model: 'LLM 模型名称',
-  llm_base_url: 'LLM API 地址',
+  llm_api_key: 'API Key',
+  llm_model: '模型名称',
+  llm_base_url: 'API 地址',
+  llm_ollama_model: '本地模型名称',
   llm_route_core_to_local: '核心资产路由本地',
   llm_cloud_enabled: '允许使用云端 LLM',
 }
@@ -59,10 +60,10 @@ const placeholderMap: Record<string, string> = {
   upload_max_size_mb: '默认 50',
   asset_no_prefix: '默认 CMDB',
   session_timeout_minutes: '默认 30',
-  llm_provider: 'deepseek / openrouter / ollama',
-  llm_api_key: '加密存储',
-  llm_model: '例如 gpt-4o / claude-3-5-sonnet / qwen2.5',
-  llm_base_url: 'Ollama 自定义地址或代理地址',
+  llm_api_key: '加密存储，留空则不更新',
+  llm_model: '例如 deepseek-chat / gpt-4o / claude-3-5-sonnet',
+  llm_base_url: '例如 https://api.deepseek.com/v1',
+  llm_ollama_model: '默认 qwen2.5',
 }
 
 // 布尔类型配置项（渲染为开关而非输入框）
@@ -70,6 +71,12 @@ const booleanKeys = new Set(['llm_cloud_enabled', 'llm_route_core_to_local'])
 
 // 数字类型配置项（渲染为数字输入框）
 const numberKeys = new Set(['missing_threshold', 'upload_max_size_mb', 'session_timeout_minutes'])
+
+// LLM 提供方为「本地」时隐藏 URL 和 Key
+const isCustomProvider = computed(() => {
+  const p = config.value['llm_provider']?.value || ''
+  return p !== 'ollama' && p !== ''
+})
 
 function isPasswordKey(key: string): boolean {
   return key.includes('api_key')
@@ -157,65 +164,86 @@ onMounted(loadConfig)
           </div>
           <div class="sec-body">
             <template v-for="key in group.keys" :key="key">
-              <el-form-item v-if="config[key]" :label="getLabel(key)">
-                <!-- 布尔开关 -->
-                <template v-if="booleanKeys.has(key)">
-                  <el-switch
-                    :model-value="getBoolValue(key)"
-                    @update:model-value="(v: boolean) => setBoolValue(key, v)"
-                  />
-                  <span class="config-key">{{ key }}</span>
-                </template>
+              <!-- LLM 相关字段条件渲染 -->
+              <template v-if="group.num === '03'">
+                <!-- 自定义模式下隐藏本地模型字段；本地模式下隐藏 URL/Key/模型字段 -->
+                <template v-if="
+                  (key === 'llm_ollama_model' && isCustomProvider) ||
+                  ((key === 'llm_base_url' || key === 'llm_api_key' || key === 'llm_model') && !isCustomProvider)
+                " />
+                <el-form-item v-else-if="config[key]" :label="getLabel(key)">
+                  <!-- 提供方下拉 -->
+                  <template v-if="key === 'llm_provider'">
+                    <el-select
+                      v-model="config[key].value"
+                      style="width: 240px"
+                    >
+                      <el-option label="自定义" value="openrouter" />
+                      <el-option label="本地 (Ollama)" value="ollama" />
+                    </el-select>
+                    <span class="config-key">{{ key }}</span>
+                  </template>
+                  <!-- 布尔开关 -->
+                  <template v-else-if="booleanKeys.has(key)">
+                    <el-switch
+                      :model-value="getBoolValue(key)"
+                      @update:model-value="(v: boolean) => setBoolValue(key, v)"
+                    />
+                    <span class="config-key">{{ key }}</span>
+                  </template>
+                  <!-- 密码输入 -->
+                  <template v-else-if="isPasswordKey(key)">
+                    <el-input
+                      v-model="config[key].value"
+                      type="password"
+                      show-password
+                      :placeholder="getPlaceholder(key)"
+                      style="width: 360px"
+                    />
+                    <span class="config-key">{{ key }}</span>
+                  </template>
+                  <!-- 普通文本 -->
+                  <template v-else>
+                    <el-input
+                      v-model="config[key].value"
+                      :placeholder="getPlaceholder(key)"
+                      style="width: 360px"
+                      :class="{ 'mono-input': key === 'llm_base_url' || key === 'llm_model' || key === 'llm_ollama_model' }"
+                    />
+                    <span class="config-key">{{ key }}</span>
+                  </template>
+                </el-form-item>
+              </template>
 
-                <!-- 数字输入 -->
-                <template v-else-if="numberKeys.has(key)">
-                  <el-input
-                    v-model="config[key].value"
-                    type="number"
-                    :placeholder="getPlaceholder(key)"
-                    style="width: 240px"
-                  />
-                  <span class="config-key">{{ key }}</span>
-                </template>
-
-                <!-- LLM provider 下拉 -->
-                <template v-else-if="key === 'llm_provider'">
-                  <el-select
-                    v-model="config[key].value"
-                    :placeholder="getPlaceholder(key)"
-                    clearable
-                    style="width: 240px"
-                  >
-                    <el-option label="DeepSeek" value="deepseek" />
-                    <el-option label="OpenRouter" value="openrouter" />
-                    <el-option label="Ollama (本地)" value="ollama" />
-                  </el-select>
-                  <span class="config-key">{{ key }}</span>
-                </template>
-
-                <!-- 密码输入 -->
-                <template v-else-if="isPasswordKey(key)">
-                  <el-input
-                    v-model="config[key].value"
-                    type="password"
-                    show-password
-                    :placeholder="getPlaceholder(key)"
-                    style="width: 360px"
-                  />
-                  <span class="config-key">{{ key }}</span>
-                </template>
-
-                <!-- 普通文本 -->
-                <template v-else>
-                  <el-input
-                    v-model="config[key].value"
-                    :placeholder="getPlaceholder(key)"
-                    style="width: 360px"
-                    :class="{ 'mono-input': key === 'llm_base_url' || key === 'asset_no_prefix' }"
-                  />
-                  <span class="config-key">{{ key }}</span>
-                </template>
-              </el-form-item>
+              <!-- 非 LLM 配置项（原逻辑） -->
+              <template v-else>
+                <el-form-item v-if="config[key]" :label="getLabel(key)">
+                  <template v-if="booleanKeys.has(key)">
+                    <el-switch
+                      :model-value="getBoolValue(key)"
+                      @update:model-value="(v: boolean) => setBoolValue(key, v)"
+                    />
+                    <span class="config-key">{{ key }}</span>
+                  </template>
+                  <template v-else-if="numberKeys.has(key)">
+                    <el-input
+                      v-model="config[key].value"
+                      type="number"
+                      :placeholder="getPlaceholder(key)"
+                      style="width: 240px"
+                    />
+                    <span class="config-key">{{ key }}</span>
+                  </template>
+                  <template v-else>
+                    <el-input
+                      v-model="config[key].value"
+                      :placeholder="getPlaceholder(key)"
+                      style="width: 360px"
+                    />
+                    <span class="config-key">{{ key }}</span>
+                  </template>
+                </el-form-item>
+              </template>
             </template>
           </div>
         </div>

@@ -2,6 +2,8 @@
 系统配置读取服务
 从 system_configs 表读取运行时可调配置项
 """
+import json
+
 from sqlalchemy.orm import Session
 
 from app.models.config import SystemConfig
@@ -49,3 +51,47 @@ def has_auditor_user(db: Session) -> bool:
         )
     ) or 0
     return count > 0
+
+
+# ── 大屏配置 ──────────────────────────────────────────────────
+
+DEFAULT_DANGEROUS_PORTS = [21, 22, 23, 135, 139, 445, 1433, 1521, 2375,
+                           3306, 3389, 5432, 5984, 6379, 8080, 8888, 9200, 11211, 27017]
+DEFAULT_DANGEROUS_ZONES = ["dmz", "office"]
+
+
+def get_dashboard_refresh_seconds(db: Session) -> int:
+    """大屏自动刷新间隔（默认 30 秒）"""
+    return get_config_int(db, "dashboard_refresh_seconds", 30)
+
+
+def get_dashboard_list_limit(db: Session) -> int:
+    """大屏各滚动列表返回上限（默认 50）"""
+    return get_config_int(db, "dashboard_list_limit", 50)
+
+
+def get_dangerous_ports_list(db: Session) -> set[int]:
+    """危险端口清单，从 JSON 配置读取，回退内置默认"""
+    raw = get_config_value(db, "dangerous_ports_list", "")
+    if raw:
+        try:
+            return set(json.loads(raw))
+        except (json.JSONDecodeError, TypeError):
+            pass
+    return set(DEFAULT_DANGEROUS_PORTS)
+
+
+def get_dangerous_zones(db: Session) -> set[str]:
+    """高危区域，从 JSON 配置读取，回退内置默认"""
+    raw = get_config_value(db, "dangerous_zones", "")
+    if raw:
+        try:
+            return set(json.loads(raw))
+        except (json.JSONDecodeError, TypeError):
+            pass
+    return set(DEFAULT_DANGEROUS_ZONES)
+
+
+def get_shadow_offline_days(db: Session) -> int:
+    """长期离线判定天数（默认 30）"""
+    return get_config_int(db, "shadow_offline_days", 30)

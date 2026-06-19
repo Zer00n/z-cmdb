@@ -78,7 +78,7 @@ def login(
         key=REFRESH_COOKIE_NAME,
         value=refresh_token,
         httponly=True,
-        secure=settings.APP_ENV != "development",  # 生产环境强制 HTTPS
+        secure=settings.COOKIE_SECURE,
         samesite="strict",
         max_age=settings.JWT_REFRESH_EXPIRE_DAYS * 24 * 3600,
         path="/api/auth",

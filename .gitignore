@@ -69,6 +69,7 @@ frontend/.vite/
 *.db-shm
 backend/data/
 backend/uploads/
+INITIAL_ADMIN_PASSWORD.txt
 
 # ── Secrets ──────────────────────────────────────────────────
 secrets/*.txt

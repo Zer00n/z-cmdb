@@ -89,3 +89,42 @@ stdout 缓冲区内容可能在进程退出前丢失。
 ```dockerfile
 ENV PYTHONUNBUFFERED=1
 ```
+
+---
+
+## 问题 7: docker exec 报 sqlalchemy 缺失
+
+**现象**: 以默认（root）身份执行 `docker compose exec backend python -c "import sqlalchemy"` 失败，报 `ModuleNotFoundError`。
+
+**原因**: 依赖通过 `pip install --user` 装入 `/root/.local`，再复制到 `/home/cmdb/.local`。`docker exec` 默认以 root 进入，root 的 user-site（`/root/.local`）为空，故无法 import。
+
+**修复**: 将依赖装入虚拟环境 `/opt/venv`，`COPY --from=builder /opt/venv /opt/venv`，并设置 `ENV PATH=/opt/venv/bin:$PATH`。虚拟环境对 root 与 cmdb 用户均可见，彻底消除用户隔离导致的 import 失败。
+
+---
+
+## 问题 8: 运维脚本不在后端镜像内
+
+**现象**: `docker compose exec backend python scripts/reset_admin.py` 报 `No such file or directory`。
+
+**原因**: `docker/Dockerfile.backend` 的 build context 是 `../backend`；`scripts/` 位于仓库根目录，在构建上下文之外，无法被 COPY 进镜像。
+
+**修复**: 新增应用内 CLI 模块 `backend/app/cli.py`，位于 `app/` 包内（已被 COPY），提供 `reset-admin` 和 `init-db` 子命令。容器内统一使用：
+```bash
+docker compose exec backend python -m app.cli reset-admin
+docker compose exec backend python -m app.cli init-db
+```
+本地开发脚本（`scripts/`）保留，但仅供宿主机使用，不再需要拷贝进容器。
+
+---
+
+## 问题 9: README 默认密码与随机生成不一致
+
+**现象**: README 写默认密码为 `Admin@123456`，但实际首次启动随机生成 16 位密码，照 README 登录必然失败。随机密码只在首次启动日志出现一次，data 卷持久化后无法再取得。
+
+**原因**: `ensure_initial_admin()` 调用 `generate_initial_password()` 生成随机密码，与 README 硬编码的 `Admin@123456` 不符。
+
+**修复**:
+- `ensure_initial_admin()` 优先读环境变量 `CMDB_INITIAL_ADMIN_PASSWORD`（需满足密码策略），否则随机生成。
+- 生效的初始密码写入 `data/INITIAL_ADMIN_PASSWORD.txt`（权限 600），可随时读取。
+- 新增 `python -m app.cli reset-admin` 命令，忘记密码时可重置。
+- README 不再承诺固定密码，改为指引用户读密码文件或容器日志。

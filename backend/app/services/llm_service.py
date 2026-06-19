@@ -142,15 +142,11 @@ class OllamaProvider(LLMProvider):
 
 def get_provider(provider_name: str, api_key: str, base_url: str, model: str) -> LLMProvider:
     """根据配置获取 LLM 提供方实例"""
-    providers = {
-        "deepseek": OpenAIProvider,
-        "openrouter": OpenAIProvider,
-        "ollama": OllamaProvider,
-    }
-    cls = providers.get(provider_name.lower())
-    if cls is None:
-        raise LLMCallError(f"不支持的 LLM 提供方: {provider_name}")
-    return cls(api_key=api_key, base_url=base_url, model=model)
+    name = provider_name.lower()
+    if name == "ollama":
+        return OllamaProvider(api_key=api_key, base_url=base_url, model=model)
+    # 自定义模式（openrouter/deepseek 或任意名称）：使用 OpenAI 兼容接口
+    return OpenAIProvider(api_key=api_key, base_url=base_url, model=model)
 
 
 def call_llm(

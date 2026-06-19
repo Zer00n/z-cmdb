@@ -48,6 +48,12 @@ class Settings(BaseSettings):
     # CORS（开发期允许前端 dev server）
     CORS_ORIGINS: list[str] = ["http://localhost:5173", "http://127.0.0.1:5173"]
 
+    # 初始管理员密码（首次启动时使用，留空则随机生成）
+    INITIAL_ADMIN_PASSWORD: str = ""
+
+    # refresh cookie Secure 标志（默认 False；生产 HTTPS 环境设为 true）
+    COOKIE_SECURE: bool = False
+
     @property
     def db_path(self) -> Path:
         """解析数据库文件的绝对路径（跨平台）"""

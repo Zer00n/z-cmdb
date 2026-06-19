@@ -14,6 +14,10 @@ services:
       - LOG_LEVEL=INFO
       - TZ=Asia/Shanghai
       - JWT_SECRET_FILE=/run/secrets/jwt_secret
+      # 按需设置：填值则 Docker 与 Windows 两模式初始密码一致，留空则各自随机
+      - CMDB_INITIAL_ADMIN_PASSWORD=${CMDB_INITIAL_ADMIN_PASSWORD:-}
+      # 纯 HTTP 内网部署保持 false；启用 HTTPS 后改为 true
+      - COOKIE_SECURE=${COOKIE_SECURE:-false}
     secrets:
       - jwt_secret
     networks:

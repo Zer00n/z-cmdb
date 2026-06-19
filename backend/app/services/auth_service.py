@@ -127,15 +127,68 @@ def generate_initial_password() -> str:
             return pwd
 
 
+def _check_password_policy(password: str) -> bool:
+    """检查密码是否满足最低策略：>=8 位，含大小写、数字、符号"""
+    if len(password) < 8:
+        return False
+    has_upper = any(c.isupper() for c in password)
+    has_lower = any(c.islower() for c in password)
+    has_digit = any(c.isdigit() for c in password)
+    has_symbol = any(not c.isalnum() for c in password)
+    return has_upper and has_lower and has_digit and has_symbol
+
+
+def _persist_initial_password(password: str) -> None:
+    """
+    将初始密码写入 data 目录下的 INITIAL_ADMIN_PASSWORD.txt。
+    权限 600（仅文件属主可读写），同时打印到 stdout。
+    """
+    from app.core.config import settings
+
+    pw_file = settings.db_path.parent / "INITIAL_ADMIN_PASSWORD.txt"
+    pw_file.parent.mkdir(parents=True, exist_ok=True)
+    pw_file.write_text(password, encoding="utf-8")
+    # Windows 不支持 chmod，仅在 POSIX 系统上设置权限
+    try:
+        pw_file.chmod(0o600)
+    except OSError:
+        pass
+
+    print(f"\n{'='*60}")
+    print(f"  初始管理员密码已保存至：{pw_file}")
+    print(f"  用户名: admin")
+    print(f"  密  码: {password}")
+    print(f"  请登录后立即修改密码！")
+    print(f"{'='*60}\n")
+
+
 def ensure_initial_admin(db: Session) -> None:
     """
     首次启动时，若 users 表为空，自动创建 super_admin 账号。
-    初始密码打印到 stdout 一次（不写入日志文件）。
+    优先使用环境变量 CMDB_INITIAL_ADMIN_PASSWORD（需满足密码策略），
+    否则随机生成。生效的密码写入 data/INITIAL_ADMIN_PASSWORD.txt。
     """
+    from app.core.config import settings
+
     if user_repo.count_users(db) > 0:
         return
 
-    initial_password = generate_initial_password()
+    # 优先读环境变量
+    initial_password = ""
+    env_password = settings.INITIAL_ADMIN_PASSWORD
+    if env_password:
+        if _check_password_policy(env_password):
+            initial_password = env_password
+            logger.info("using INITIAL_ADMIN_PASSWORD from environment")
+        else:
+            logger.warning(
+                "CMDB_INITIAL_ADMIN_PASSWORD 不满足密码策略（>=8位，含大小写/数字/符号），"
+                "回退到随机生成"
+            )
+
+    if not initial_password:
+        initial_password = generate_initial_password()
+
     password_hash = hash_password(initial_password)
 
     user_repo.create_user(
@@ -147,10 +200,4 @@ def ensure_initial_admin(db: Session) -> None:
     )
     db.commit()
 
-    # 初始密码只打印到 stdout，不写入结构化日志（避免日志收集系统记录）
-    print(f"\n{'='*60}")
-    print(f"  Z-CMDB Lite 首次启动，已创建初始管理员账号：")
-    print(f"  用户名: admin")
-    print(f"  密  码: {initial_password}")
-    print(f"  请登录后立即修改密码！")
-    print(f"{'='*60}\n")
+    _persist_initial_password(initial_password)

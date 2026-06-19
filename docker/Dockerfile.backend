@@ -2,7 +2,8 @@
 FROM python:3.11-slim AS builder
 WORKDIR /build
 COPY requirements.txt .
-RUN pip install --no-cache-dir --user -r requirements.txt
+RUN python -m venv /opt/venv && \
+    /opt/venv/bin/pip install --no-cache-dir -r requirements.txt
 
 # ── Stage 2: 运行镜像 ────────────────────────────────────────
 FROM python:3.11-slim
@@ -18,8 +19,8 @@ RUN groupadd -r cmdb && useradd -r -g cmdb -u 1001 cmdb
 
 WORKDIR /app
 
-# 从 builder 复制已安装的包
-COPY --from=builder /root/.local /home/cmdb/.local
+# 从 builder 复制虚拟环境（对 root 与 cmdb 均可读执行）
+COPY --from=builder /opt/venv /opt/venv
 
 # 复制应用代码
 COPY --chown=cmdb:cmdb ./app ./app
@@ -29,7 +30,7 @@ COPY --chown=cmdb:cmdb ./alembic.ini ./
 # 创建数据目录
 RUN mkdir -p /app/data /app/uploads
 
-ENV PATH=/home/cmdb/.local/bin:$PATH
+ENV PATH=/opt/venv/bin:$PATH
 ENV PYTHONPATH=/app
 ENV PYTHONUNBUFFERED=1
 

@@ -23,6 +23,49 @@ const drawioXml = ref('')
 const drawioReady = ref(false)
 const iframeRef = ref<HTMLIFrameElement | null>(null)
 
+// ── 生成日志 ──────────────────────────────────────────────
+interface LogEntry {
+  time: string
+  level: 'info' | 'warn' | 'error' | 'success'
+  message: string
+}
+
+const rightTab = ref<'versions' | 'logs'>('versions')
+const genLogs = ref<LogEntry[]>([])
+
+function addLog(level: LogEntry['level'], message: string) {
+  const now = new Date()
+  const hh = String(now.getHours()).padStart(2, '0')
+  const mm = String(now.getMinutes()).padStart(2, '0')
+  const ss = String(now.getSeconds()).padStart(2, '0')
+  genLogs.value.push({ time: `${hh}:${mm}:${ss}`, level, message })
+}
+
+const llmDetail = ref<{
+  provider?: string
+  model?: string
+  elapsed_ms?: number
+  success?: boolean
+  prompt_length?: number
+} | null>(null)
+
+async function fetchLatestLlmLog() {
+  try {
+    const resp: any = await (await import('@/api/request')).default.get('/api/audit/llm-logs', { params: { page: 1, page_size: 1 } })
+    if (resp.items?.length) {
+      const log = resp.items[0]
+      llmDetail.value = {
+        provider: log.provider,
+        model: log.model,
+        elapsed_ms: log.elapsed_ms,
+        success: log.success,
+      }
+    }
+  } catch {
+    // 无权限或接口不存在时静默
+  }
+}
+
 // drawio embed URL
 const DRAWIO_URL = 'https://embed.diagrams.net/?embed=1&ui=min&spin=1&proto=json&configure=1&lang=zh'
 
@@ -99,14 +142,29 @@ async function handleGenerate() {
     { confirmButtonText: '开始生成', cancelButtonText: '取消' }
   )
   generating.value = true
+  rightTab.value = 'logs'
+  genLogs.value = []
+  llmDetail.value = null
+  addLog('info', '开始生成拓扑图...')
+  addLog('info', '正在获取在线资产数据...')
+
+  const startTime = Date.now()
   try {
+    addLog('info', '正在调用 LLM 接口，请耐心等待...')
     const result = await generateTopology()
+    const elapsed = ((Date.now() - startTime) / 1000).toFixed(1)
     drawioXml.value = result.drawio_xml
-    // 加载到 drawio
     if (drawioReady.value) {
       sendToDrawio({ action: 'load', xml: drawioXml.value })
     }
+    addLog('success', `生成完成，耗时 ${elapsed}s，包含 ${result.asset_count} 个资产`)
     ElMessage.success(`拓扑图已生成（${result.asset_count} 个资产）`)
+    // 拉取 LLM 调用详情
+    fetchLatestLlmLog()
+  } catch (e: any) {
+    const elapsed = ((Date.now() - startTime) / 1000).toFixed(1)
+    addLog('error', `生成失败（${elapsed}s）：${e?.response?.data?.message || e?.message || '未知错误'}`)
+    throw e
   } finally {
     generating.value = false
   }
@@ -199,46 +257,107 @@ onBeforeUnmount(() => {
         />
       </div>
 
-      <!-- 版本列表 -->
+      <!-- 右侧面板：Tab 切换 -->
       <div class="ui-card versions-card">
-        <div class="versions-head">
-          <h3>历史版本</h3>
-          <span class="versions-count">{{ versions.length }}</span>
-        </div>
-        <div v-if="versions.length === 0" class="ui-empty">
-          <div class="ui-empty-title">暂无历史版本</div>
-          <div class="ui-empty-desc">保存后将出现在此</div>
-        </div>
-        <div v-else class="version-list">
-          <div
-            v-for="v in versions"
-            :key="v.id"
-            class="version-item"
-            :class="{ current: v.is_current }"
+        <!-- Tab 栏 -->
+        <div class="right-tabs">
+          <button
+            :class="['right-tab', { active: rightTab === 'versions' }]"
+            @click="rightTab = 'versions'"
           >
-            <div class="v-info">
-              <div class="v-line-1">
-                <span class="v-no">{{ v.version_no }}</span>
-                <span v-if="v.is_current" class="ui-badge is-success">
-                  <span class="ui-badge-dot" />
-                  当前
-                </span>
+            历史版本
+            <span class="tab-badge">{{ versions.length }}</span>
+          </button>
+          <button
+            :class="['right-tab', { active: rightTab === 'logs' }]"
+            @click="rightTab = 'logs'"
+          >
+            生成日志
+            <span v-if="genLogs.length" class="tab-badge">{{ genLogs.length }}</span>
+          </button>
+        </div>
+
+        <!-- 历史版本 -->
+        <div v-show="rightTab === 'versions'" class="tab-content">
+          <div v-if="versions.length === 0" class="ui-empty">
+            <div class="ui-empty-title">暂无历史版本</div>
+            <div class="ui-empty-desc">保存后将出现在此</div>
+          </div>
+          <div v-else class="version-list">
+            <div
+              v-for="v in versions"
+              :key="v.id"
+              class="version-item"
+              :class="{ current: v.is_current }"
+            >
+              <div class="v-info">
+                <div class="v-line-1">
+                  <span class="v-no">{{ v.version_no }}</span>
+                  <span v-if="v.is_current" class="ui-badge is-success">
+                    <span class="ui-badge-dot" />
+                    当前
+                  </span>
+                </div>
+                <span class="v-title" v-if="v.title">{{ v.title }}</span>
+                <span class="v-time">{{ v.created_at }}</span>
               </div>
-              <span class="v-title" v-if="v.title">{{ v.title }}</span>
-              <span class="v-time">{{ v.created_at }}</span>
-            </div>
-            <div class="v-actions">
-              <el-button
-                v-if="!v.is_current"
-                link
-                size="small"
-                type="primary"
-                @click="handleRollback(v.id, v.version_no)"
-              >
-                回滚
-              </el-button>
+              <div class="v-actions">
+                <el-button
+                  v-if="!v.is_current"
+                  link
+                  size="small"
+                  type="primary"
+                  @click="handleRollback(v.id, v.version_no)"
+                >
+                  回滚
+                </el-button>
+              </div>
             </div>
           </div>
+        </div>
+
+        <!-- 生成日志 -->
+        <div v-show="rightTab === 'logs'" class="tab-content log-content">
+          <div v-if="genLogs.length === 0 && !llmDetail" class="ui-empty">
+            <div class="ui-empty-title">暂无日志</div>
+            <div class="ui-empty-desc">点击「LLM 生成」后日志将在此显示</div>
+          </div>
+          <template v-else>
+            <!-- LLM 调用详情 -->
+            <div v-if="llmDetail" class="llm-detail-card">
+              <div class="llm-row">
+                <span class="llm-label">提供方</span>
+                <span class="llm-value">{{ llmDetail.provider || '-' }}</span>
+              </div>
+              <div class="llm-row">
+                <span class="llm-label">模型</span>
+                <span class="llm-value llm-model">{{ llmDetail.model || '-' }}</span>
+              </div>
+              <div class="llm-row">
+                <span class="llm-label">耗时</span>
+                <span class="llm-value">{{ llmDetail.elapsed_ms ? (llmDetail.elapsed_ms / 1000).toFixed(1) + 's' : '-' }}</span>
+              </div>
+              <div class="llm-row">
+                <span class="llm-label">结果</span>
+                <span :class="['llm-value', llmDetail.success ? 'text-success' : 'text-error']">
+                  {{ llmDetail.success ? '成功' : '失败' }}
+                </span>
+              </div>
+            </div>
+            <!-- 日志列表 -->
+            <div class="log-list">
+              <div v-for="(log, i) in genLogs" :key="i" :class="['log-entry', log.level]">
+                <span class="log-time">{{ log.time }}</span>
+                <span class="log-icon">
+                  <template v-if="log.level === 'info'">●</template>
+                  <template v-else-if="log.level === 'success'">✓</template>
+                  <template v-else-if="log.level === 'warn'">▲</template>
+                  <template v-else>✕</template>
+                </span>
+                <span class="log-msg">{{ log.message }}</span>
+              </div>
+            </div>
+          </template>
         </div>
       </div>
     </div>
@@ -315,28 +434,52 @@ onBeforeUnmount(() => {
   padding: 0;
   overflow: hidden;
 }
-.versions-head {
+
+/* 右侧 Tab 栏 */
+.right-tabs {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: var(--space-4);
   border-bottom: var(--border-base);
   flex-shrink: 0;
 }
-.versions-head h3 {
-  margin: 0;
-  font-size: var(--fs-h4);
-  color: var(--neutral-900);
-  font-weight: 600;
+.right-tab {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 0;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--neutral-500);
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
 }
-.versions-count {
+.right-tab:hover { color: var(--neutral-700); }
+.right-tab.active {
+  color: var(--color-primary);
+  border-bottom-color: var(--color-primary);
+}
+.tab-badge {
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: 11px;
   color: var(--neutral-500);
   background: var(--surface-sunken);
-  padding: 2px 10px;
+  padding: 0 7px;
   border-radius: 999px;
-  border: 1px solid var(--neutral-200);
+  line-height: 18px;
+}
+.right-tab.active .tab-badge {
+  color: var(--color-primary);
+  background: rgba(37, 99, 235, 0.08);
+}
+
+.tab-content {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
 }
 
 .version-list {
@@ -344,7 +487,6 @@ onBeforeUnmount(() => {
   flex-direction: column;
   gap: var(--space-2);
   padding: var(--space-3);
-  overflow-y: auto;
 }
 .version-item {
   display: flex;
@@ -389,4 +531,68 @@ onBeforeUnmount(() => {
   color: var(--neutral-400);
   font-family: var(--font-mono);
 }
+
+/* LLM 详情卡片 */
+.llm-detail-card {
+  margin: var(--space-3);
+  padding: var(--space-3);
+  background: var(--surface-sunken);
+  border: 1px solid var(--neutral-200);
+  border-radius: var(--radius-md);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.llm-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+}
+.llm-label { color: var(--neutral-500); }
+.llm-value { color: var(--neutral-800); font-weight: 500; font-family: var(--font-mono); font-size: 11.5px; }
+.llm-model { max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.text-success { color: var(--color-success) !important; }
+.text-error { color: var(--color-danger) !important; }
+
+/* 日志列表 */
+.log-content { padding: 0; }
+.log-list {
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-2) var(--space-3);
+  gap: 2px;
+}
+.log-entry {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 3px 0;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.log-time {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--neutral-400);
+  flex-shrink: 0;
+  width: 52px;
+}
+.log-icon {
+  flex-shrink: 0;
+  width: 14px;
+  text-align: center;
+  font-size: 10px;
+}
+.log-entry.info .log-icon { color: var(--color-primary); }
+.log-entry.success .log-icon { color: var(--color-success); }
+.log-entry.warn .log-icon { color: var(--color-warning); }
+.log-entry.error .log-icon { color: var(--color-danger); }
+.log-msg {
+  color: var(--neutral-700);
+  word-break: break-all;
+}
+.log-entry.error .log-msg { color: var(--color-danger); }
+.log-entry.success .log-msg { color: var(--color-success); }
 </style>

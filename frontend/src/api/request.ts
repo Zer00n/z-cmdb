@@ -25,7 +25,13 @@ request.interceptors.response.use(
   (response) => response.data,
   (error) => {
     const status = error.response?.status
-    const message = error.response?.data?.message || '请求失败，请稍后重试'
+    const message =
+      error.response?.data?.message ||
+      // FastAPI 422 Pydantic 校验错误：detail 为数组
+      (Array.isArray(error.response?.data?.detail)
+        ? error.response.data.detail.map((d: any) => d.msg).join('；')
+        : error.response?.data?.detail) ||
+      '请求失败，请稍后重试'
 
     if (status === 401) {
       // 清除本地 token，跳转登录页

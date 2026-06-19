@@ -20,6 +20,7 @@ from app.routers.reports import router as reports_router
 from app.routers.config import router as config_router
 from app.routers.topology import router as topology_router
 from app.routers.asset_apps import router as asset_apps_router
+from app.routers.dashboard import router as dashboard_router
 
 # 初始化日志（必须在其他模块 import 之前）
 setup_logging()
@@ -110,6 +111,7 @@ app.include_router(reports_router)
 app.include_router(config_router)
 app.include_router(topology_router)
 app.include_router(asset_apps_router)
+app.include_router(dashboard_router)
 
 
 # ── 启动事件 ─────────────────────────────────────────────────

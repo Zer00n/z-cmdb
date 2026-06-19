@@ -30,6 +30,21 @@ const rules: FormRules = {
   new_password: [
     { required: true, message: '请输入新密码', trigger: 'blur' },
     { min: 12, message: '密码至少 12 位', trigger: 'blur' },
+    {
+      validator: (_rule, value, callback) => {
+        if (!value) return callback()
+        const hasUpper = /[A-Z]/.test(value)
+        const hasLower = /[a-z]/.test(value)
+        const hasDigit = /\d/.test(value)
+        const hasSymbol = /[^A-Za-z0-9]/.test(value)
+        if (!(hasUpper && hasLower && hasDigit && hasSymbol)) {
+          callback(new Error('必须包含大写字母、小写字母、数字和特殊符号'))
+        } else {
+          callback()
+        }
+      },
+      trigger: 'blur',
+    },
   ],
   confirm_password: [
     { required: true, message: '请确认新密码', trigger: 'blur' },

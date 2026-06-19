@@ -54,25 +54,46 @@ def generate_topology(
     # 判断是否有核心资产
     has_core = any(a.importance == "core" for a in assets)
 
-    # 路由决策：如果全局禁用云端 或 有核心资产且配置路由到本地 → 使用 ollama
+    # 路由决策
     actual_provider = provider_name
-    # api_key 已在 router 层解密过，这里直接使用
     actual_api_key = api_key
     actual_base_url = base_url
     actual_model = model
 
+    def _ollama_available() -> bool:
+        """检测本地 Ollama 是否在运行"""
+        import httpx
+        try:
+            resp = httpx.get("http://localhost:11434/api/tags", timeout=3)
+            return resp.status_code == 200
+        except Exception:
+            return False
+
+    # Ollama 使用独立的模型配置，不复用主 llm_model
+    ollama_model = get_config_value(db, "llm_ollama_model", "qwen2.5")
+
+    should_route_local = False
+    route_reason = ""
+
     if not cloud_enabled:
-        # 全局禁用云端，强制走 ollama
-        actual_provider = "ollama"
-        actual_api_key = ""
-        actual_base_url = "http://localhost:11434"
-        actual_model = get_config_value(db, "llm_model", "qwen2.5")
+        should_route_local = True
+        route_reason = "全局禁用云端 LLM"
     elif has_core and route_core_to_local and actual_provider != "ollama":
-        # 有核心资产且配置路由到本地
-        actual_provider = "ollama"
-        actual_api_key = ""
-        actual_base_url = "http://localhost:11434"
-        actual_model = get_config_value(db, "llm_model", "qwen2.5")
+        should_route_local = True
+        route_reason = "存在核心资产且配置了路由到本地 LLM"
+
+    if should_route_local:
+        if _ollama_available():
+            actual_provider = "ollama"
+            actual_api_key = ""
+            actual_base_url = "http://localhost:11434"
+            actual_model = ollama_model
+            logger.info("routed to local ollama: %s", route_reason)
+        else:
+            raise ValidationError(
+                f"检测到需要使用本地 LLM（{route_reason}），但本地 Ollama 服务未运行。"
+                "请启动 Ollama（ollama serve），或将系统配置中的 llm_route_core_to_local 设为 false。"
+            )
 
     # 构造资产数据（含端口），限制最多 20 个避免推理模型 token 耗尽
     asset_data = []

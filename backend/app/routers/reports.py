@@ -1,33 +1,41 @@
 """
 安全报表路由
-GET /api/reports/port-exposure     端口暴露面
-GET /api/reports/dangerous-ports   危险端口列表
-GET /api/reports/shadow-assets     影子资产
-GET /api/reports/asset-changes     资产变化时间线
+GET /api/reports/dashboard-summary   大屏聚合数据
+GET /api/reports/port-exposure       端口暴露面
+GET /api/reports/dangerous-ports     危险端口列表
+GET /api/reports/shadow-assets       影子资产
+GET /api/reports/asset-changes       资产变化时间线
 """
 import logging
 
-from fastapi import APIRouter, Depends, Response
+from fastapi import APIRouter, Depends, Query, Response
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.deps import AnyUser
 from app.models.asset import Asset, AssetPort
+from app.services import config_service
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/reports", tags=["reports"])
 
-# PRD 12.2 危险端口清单
-DANGEROUS_PORTS = {
-    21, 22, 23, 135, 139, 445, 1433, 1521, 2375,
-    3306, 3389, 5432, 5984, 6379, 8080, 8888, 9200, 11211, 27017,
-}
 
-# 高危区域（暴露在这些区域的危险端口为高危）
-HIGH_RISK_ZONES = {"dmz", "office"}
+# ── 大屏聚合接口 ────────────────────────────────────────────
 
+@router.get("/dashboard-summary")
+def dashboard_summary(
+    force: bool = Query(False, description="强制刷新，跳过缓存"),
+    _current_user: AnyUser = None,
+    db: Session = Depends(get_db),
+) -> dict:
+    """大屏聚合数据（单一请求返回全部面板数据）"""
+    from app.services.dashboard_service import get_summary
+    return get_summary(db, force=force)
+
+
+# ── 端口暴露面 ──────────────────────────────────────────────
 
 @router.get("/port-exposure")
 def port_exposure(
@@ -75,8 +83,11 @@ def dangerous_ports(
 ) -> dict:
     """
     危险端口告警列表：
-    暴露在 DMZ 或办公网的危险端口为高危，内网为中危
+    危险端口清单与高危区域从 system_configs 配置读取
     """
+    dangerous_ports_set = config_service.get_dangerous_ports_list(db)
+    dangerous_zones_set = config_service.get_dangerous_zones(db)
+
     stmt = (
         select(
             Asset.id, Asset.asset_no, Asset.ip_address, Asset.hostname,
@@ -85,7 +96,7 @@ def dangerous_ports(
         )
         .join(AssetPort, Asset.id == AssetPort.asset_id)
         .where(AssetPort.state == "open")
-        .where(AssetPort.port_number.in_(DANGEROUS_PORTS))
+        .where(AssetPort.port_number.in_(dangerous_ports_set))
         .where(Asset.status == "online")
         .order_by(Asset.network_zone, AssetPort.port_number)
     )
@@ -94,7 +105,7 @@ def dangerous_ports(
     alerts = []
     for row in rows:
         zone = row[4]
-        severity = "high" if zone in HIGH_RISK_ZONES else "medium"
+        severity = "high" if zone in dangerous_zones_set else "medium"
         alerts.append({
             "asset_id": row[0],
             "asset_no": row[1],
@@ -123,8 +134,10 @@ def shadow_assets(
     """
     影子资产识别：
     - 被扫到但缺少业务系统/负责人字段的资产
-    - 长期 offline 的资产（missing_count >= 3）
+    - 长期 offline 的资产（missing_count 超过阈值）
     """
+    offline_threshold = config_service.get_shadow_offline_days(db)
+
     # 缺少关键字段的资产
     incomplete_stmt = (
         select(Asset)
@@ -136,10 +149,10 @@ def shadow_assets(
     )
     incomplete = list(db.scalars(incomplete_stmt).all())
 
-    # 长期 offline
+    # 长期 offline（missing_count >= 阈值）
     long_offline_stmt = (
         select(Asset)
-        .where(Asset.missing_count >= 3)
+        .where(Asset.missing_count >= offline_threshold)
         .where(Asset.status.in_(["offline", "online"]))
     )
     long_offline = list(db.scalars(long_offline_stmt).all())
