@@ -34,6 +34,12 @@ V0.3 brings **full internationalization (i18n)** to Z-CMDB Lite, adding English/
 
 - **Complete English translation** of all 16 pages and 3 shared components — every button, label, tooltip, validation message, and chart title is localized
 - **Topbar language toggle** (EN/中) for instant switching from any page without navigating to settings
+
+| English | Chinese |
+|---------|---------|
+| ![Dashboard EN](img/i18n-dashboard-en.png) | ![Dashboard ZH](img/i18n-dashboard-zh.png) |
+| ![Settings EN](img/i18n-settings-en.png) | ![Settings ZH](img/i18n-settings-zh.png) |
+
 - **System Config language selector** (section 00) with dropdown for English / Chinese
 - **Persistent preference** saved to `localStorage` — language choice survives browser refresh and restarts
 - **Element Plus locale sync** — pagination text, date pickers, table empty states, and all built-in component labels switch dynamically via `ElConfigProvider`

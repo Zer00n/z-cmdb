@@ -34,6 +34,12 @@ V0.3 为 Z-CMDB Lite 带来了**完整的国际化（i18n）支持**，在整个
 
 - **完整英文翻译**覆盖全部 16 个页面和 3 个共享组件——每个按钮、标签、提示、验证消息、图表标题均已本地化
 - **顶栏语言切换按钮**（EN/中），任意页面即时切换，无需进入设置页
+
+| 英文版 | 中文版 |
+|--------|--------|
+| ![Dashboard EN](img/i18n-dashboard-en.png) | ![Dashboard ZH](img/i18n-dashboard-zh.png) |
+| ![Settings EN](img/i18n-settings-en.png) | ![Settings ZH](img/i18n-settings-zh.png) |
+
 - **系统配置语言选择器**（section 00），下拉选择 English / 中文
 - **偏好持久化**存储在 `localStorage`——语言选择在刷新和重启后保持不变
 - **Element Plus 组件库语言同步**——分页文字、日期选择器、表格空状态等内置组件标签通过 `ElConfigProvider` 动态切换
