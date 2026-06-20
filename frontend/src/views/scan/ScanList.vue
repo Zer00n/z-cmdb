@@ -1,4 +1,4 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 /**
  * 扫描批次列表页
  * 2026 UI Redesign：升级页头、状态徽标，逻辑保持不变
@@ -9,6 +9,11 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { fetchScanBatches, uploadScan, rejectBatch } from '@/api/scan'
 import type { ScanBatch } from '@/types/scan'
 import dayjs from 'dayjs'
+import { useI18n } from 'vue-i18n'
+import { useTranslatedLabels } from '@/composables/useTranslatedLabels'
+
+const { t } = useI18n()
+const { scanStatusLabel } = useTranslatedLabels()
 
 const router = useRouter()
 const loading = ref(false)
@@ -32,7 +37,7 @@ async function handleUpload(file: File) {
   uploading.value = true
   try {
     await uploadScan(file)
-    ElMessage.success('扫描报告上传成功，请在列表中确认导入')
+    ElMessage.success(t('scan.list.uploadSuccess'))
     loadData()
   } finally {
     uploading.value = false
@@ -46,22 +51,17 @@ function goConfirm(row: ScanBatch) {
 
 async function handleReject(row: ScanBatch) {
   await ElMessageBox.confirm(
-    `确认拒绝批次 "${row.batch_name}"？拒绝后数据不会入库。`,
-    '拒绝批次',
-    { confirmButtonText: '确认拒绝', cancelButtonText: '取消', type: 'warning' }
+    t('scan.list.rejectConfirm', { name: row.batch_name }),
+    t('scan.list.rejectTitle'),
+    { confirmButtonText: t('scan.list.rejectBtn'), cancelButtonText: t('common.cancel'), type: 'warning' }
   )
   await rejectBatch(row.id)
-  ElMessage.success('批次已拒绝')
+  ElMessage.success(t('scan.list.rejectSuccess'))
   loadData()
 }
 
 function formatTime(t: string): string {
   return dayjs(t).format('YYYY-MM-DD HH:mm')
-}
-
-function statusLabel(s: string): string {
-  const map: Record<string, string> = { pending: '待确认', confirmed: '已确认', rejected: '已拒绝' }
-  return map[s] || s
 }
 
 function statusBadgeClass(s: string): string {
@@ -83,20 +83,20 @@ onMounted(loadData)
     <div class="ui-page-head">
       <div>
         <h1 class="ui-page-title">
-          扫描批次
-          <span class="ui-page-count">共 <b>{{ total }}</b> 项</span>
+          {{ t('scan.list.title') }}
+          <span class="ui-page-count">{{ t('scan.list.total', { count: total }) }}</span>
         </h1>
         <p class="ui-page-subtitle">
           <span v-if="pendingCount > 0" style="color: var(--color-warning); font-weight: 500">
-            ⚠ 有 {{ pendingCount }} 个批次待确认
+            {{ t('scan.list.pendingWarning', { count: pendingCount }) }}
           </span>
-          <span v-else>所有批次均已处理</span>
+          <span v-else>{{ t('scan.list.allProcessed') }}</span>
         </p>
       </div>
       <div class="ui-page-actions">
         <router-link to="/help" class="help-link">
           <el-icon><Document /></el-icon>
-          nmap 扫描指南
+          {{ t('scan.list.nmapGuide') }}
         </router-link>
         <el-upload
           :show-file-list="false"
@@ -106,7 +106,7 @@ onMounted(loadData)
         >
           <el-button type="primary" :loading="uploading">
             <el-icon><Upload /></el-icon>
-            上传 nmap XML
+            {{ t('scan.list.uploadNmap') }}
           </el-button>
         </el-upload>
       </div>
@@ -114,76 +114,76 @@ onMounted(loadData)
 
     <div class="ui-table-card">
       <el-table v-loading="loading" :data="tableData" stripe style="width: 100%">
-        <el-table-column prop="id" label="ID" width="70">
+        <el-table-column prop="id" :label="t('scan.list.columns.id')" width="70">
           <template #default="{ row }">
             <span class="ui-mono ui-mono-muted">#{{ row.id }}</span>
           </template>
         </el-table-column>
-        <el-table-column prop="batch_name" label="文件名" min-width="240" show-overflow-tooltip>
+        <el-table-column prop="batch_name" :label="t('scan.list.columns.filename')" min-width="240" show-overflow-tooltip>
           <template #default="{ row }">
             <span style="color: var(--neutral-900); font-weight: 500">{{ row.batch_name }}</span>
           </template>
         </el-table-column>
-        <el-table-column prop="uploaded_at" label="上传时间" width="160">
+        <el-table-column prop="uploaded_at" :label="t('scan.list.columns.uploadTime')" width="160">
           <template #default="{ row }">
             <span class="ui-mono ui-mono-muted">{{ formatTime(row.uploaded_at) }}</span>
           </template>
         </el-table-column>
-        <el-table-column prop="total_hosts" label="主机数" width="90" align="center">
+        <el-table-column prop="total_hosts" :label="t('scan.list.columns.hosts')" width="90" align="center">
           <template #default="{ row }">
             <span class="num-cell">{{ row.total_hosts }}</span>
           </template>
         </el-table-column>
-        <el-table-column prop="new_count" label="新发现" width="90" align="center">
+        <el-table-column prop="new_count" :label="t('scan.list.columns.new')" width="90" align="center">
           <template #default="{ row }">
             <span v-if="row.new_count > 0" class="num-cell num-blue">+{{ row.new_count }}</span>
             <span v-else class="num-cell ui-mono-muted">0</span>
           </template>
         </el-table-column>
-        <el-table-column prop="changed_count" label="变更" width="90" align="center">
+        <el-table-column prop="changed_count" :label="t('scan.list.columns.changed')" width="90" align="center">
           <template #default="{ row }">
             <span v-if="row.changed_count > 0" class="num-cell num-warning">~{{ row.changed_count }}</span>
             <span v-else class="num-cell ui-mono-muted">0</span>
           </template>
         </el-table-column>
-        <el-table-column prop="missing_count" label="消失" width="90" align="center">
+        <el-table-column prop="missing_count" :label="t('scan.list.columns.missing')" width="90" align="center">
           <template #default="{ row }">
             <span v-if="row.missing_count > 0" class="num-cell num-muted">−{{ row.missing_count }}</span>
             <span v-else class="num-cell ui-mono-muted">0</span>
           </template>
         </el-table-column>
-        <el-table-column prop="status" label="状态" width="120">
+        <el-table-column prop="status" :label="t('scan.list.columns.status')" width="120">
           <template #default="{ row }">
             <span class="ui-badge" :class="statusBadgeClass(row.status)">
               <span class="ui-badge-dot" />
-              {{ statusLabel(row.status) }}
+              {{ scanStatusLabel(row.status) }}
             </span>
           </template>
         </el-table-column>
-        <el-table-column prop="file_size_bytes" label="大小" width="100">
+        <el-table-column prop="file_size_bytes" :label="t('scan.list.columns.size')" width="100">
           <template #default="{ row }">
             <span class="ui-mono ui-mono-muted">
               {{ row.file_size_bytes ? (row.file_size_bytes / 1024).toFixed(0) + ' KB' : '-' }}
             </span>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="200" fixed="right">
+        <el-table-column :label="t('scan.list.columns.actions')" width="200" fixed="right">
           <template #default="{ row }">
             <el-button v-if="row.status === 'pending'" link type="primary" size="small" @click="goConfirm(row)">
-              确认导入
+              {{ t('scan.list.confirmImport') }}
             </el-button>
             <el-button v-if="row.status === 'pending'" link type="danger" size="small" @click="handleReject(row)">
-              拒绝
+              {{ t('scan.list.reject') }}
             </el-button>
             <el-button v-if="row.status !== 'pending'" link size="small" @click="goConfirm(row)">
-              查看详情
+              {{ t('scan.list.viewDetail') }}
             </el-button>
           </template>
         </el-table-column>
       </el-table>
 
       <div class="ui-pagination-bar">
-        <span class="ui-pagination-info">共 {{ total }} 条</span>
+        <span class="ui-pagination-info">{{ t('scan.list.pagination', { total: total }) }}</span>
         <el-pagination
           v-model:current-page="page"
           :total="total"

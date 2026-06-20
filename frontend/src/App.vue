@@ -1,7 +1,15 @@
 <script setup lang="ts">
-// 根组件，仅提供路由出口
+import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
+import zhCn from 'element-plus/es/locale/lang/zh-cn'
+import en from 'element-plus/es/locale/lang/en'
+
+const { locale } = useI18n()
+const elLocale = computed(() => locale.value === 'zh' ? zhCn : en)
 </script>
 
 <template>
-  <RouterView />
+  <el-config-provider :locale="elLocale">
+    <RouterView />
+  </el-config-provider>
 </template>

@@ -9,6 +9,9 @@ import { fetchAssetApps, deleteAssetApp, exportAssetAppsCsv } from '@/api/asset-
 import { getCategoryLabel } from '@/constants/app-categories'
 import type { AssetApp } from '@/types/asset-app'
 import AppServiceDialog from './AppServiceDialog.vue'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 const props = defineProps<{
   assetId: number
@@ -46,13 +49,14 @@ function handleEdit(app: AssetApp) {
 }
 
 async function handleDelete(app: AssetApp) {
+  const appName = `${app.name}${app.version ? ' ' + app.version : ''}`
   await ElMessageBox.confirm(
-    `确认删除应用「${app.name}${app.version ? ' ' + app.version : ''}」？`,
-    '删除确认',
-    { confirmButtonText: '确认删除', cancelButtonText: '取消', type: 'warning' }
+    t('components.appService.table.deleteConfirm', { name: appName }),
+    t('components.appService.table.deleteTitle'),
+    { confirmButtonText: t('components.appService.table.deleteBtn'), cancelButtonText: t('common.cancel'), type: 'warning' }
   )
   await deleteAssetApp(props.assetId, app.id)
-  ElMessage.success('应用已删除')
+  ElMessage.success(t('components.appService.table.deleteSuccess'))
   loadApps()
 }
 
@@ -73,7 +77,7 @@ function handleDialogSuccess() {
 }
 
 function sourceLabel(source: string): string {
-  return source === 'scan' ? '扫描' : '手动'
+  return source === 'scan' ? t('components.appService.table.sourceLabels.scan') : t('components.appService.table.sourceLabels.manual')
 }
 
 onMounted(loadApps)
@@ -84,41 +88,41 @@ onMounted(loadApps)
     <div class="app-toolbar">
       <el-button type="primary" size="small" @click="handleCreate">
         <el-icon><Plus /></el-icon>
-        新增应用
+        {{ t('components.appService.table.addApp') }}
       </el-button>
       <el-button size="small" @click="handleExport" :disabled="apps.length === 0">
         <el-icon><Download /></el-icon>
-        导出 CSV
+        {{ t('common.export') }}
       </el-button>
     </div>
 
     <el-table v-loading="loading" :data="apps" stripe style="width: 100%">
-      <el-table-column prop="name" label="名称" width="140">
+      <el-table-column prop="name" :label="t('components.appService.table.name')" width="140">
         <template #default="{ row }">
           <span style="font-weight: 600; color: var(--neutral-900)">{{ row.name }}</span>
         </template>
       </el-table-column>
 
-      <el-table-column prop="version" label="版本" width="110">
+      <el-table-column prop="version" :label="t('components.appService.table.version')" width="110">
         <template #default="{ row }">
           <span class="ui-mono">{{ row.version || '-' }}</span>
         </template>
       </el-table-column>
 
-      <el-table-column prop="category" label="大类" width="160" show-overflow-tooltip>
+      <el-table-column prop="category" :label="t('components.appService.table.category')" width="160" show-overflow-tooltip>
         <template #default="{ row }">
           <span>{{ getCategoryLabel(row.category) }}</span>
         </template>
       </el-table-column>
 
-      <el-table-column prop="port" label="端口" width="90">
+      <el-table-column prop="port" :label="t('components.appService.table.port')" width="90">
         <template #default="{ row }">
           <span v-if="row.port" class="ui-mono">{{ row.port }}/{{ row.protocol || 'tcp' }}</span>
           <span v-else class="ui-mono-muted">-</span>
         </template>
       </el-table-column>
 
-      <el-table-column prop="source" label="来源" width="80">
+      <el-table-column prop="source" :label="t('components.appService.table.source')" width="80">
         <template #default="{ row }">
           <el-tag size="small" :type="row.source === 'scan' ? 'success' : 'info'" effect="plain">
             {{ sourceLabel(row.source) }}
@@ -126,19 +130,19 @@ onMounted(loadApps)
         </template>
       </el-table-column>
 
-      <el-table-column prop="notes" label="备注" show-overflow-tooltip />
+      <el-table-column prop="notes" :label="t('components.appService.dialog.notes')" show-overflow-tooltip />
 
-      <el-table-column label="操作" width="120" fixed="right">
+      <el-table-column :label="t('components.appService.table.actions')" width="120" fixed="right">
         <template #default="{ row }">
-          <el-button link type="primary" size="small" @click="handleEdit(row)">编辑</el-button>
-          <el-button link type="danger" size="small" @click="handleDelete(row)">删除</el-button>
+          <el-button link type="primary" size="small" @click="handleEdit(row)">{{ t('components.appService.table.edit') }}</el-button>
+          <el-button link type="danger" size="small" @click="handleDelete(row)">{{ t('components.appService.table.delete') }}</el-button>
         </template>
       </el-table-column>
     </el-table>
 
     <div v-if="apps.length === 0 && !loading" class="app-empty">
-      <p>暂无应用记录</p>
-      <el-button type="primary" size="small" @click="handleCreate">添加第一个应用</el-button>
+      <p>{{ t('components.appService.table.empty') }}</p>
+      <el-button type="primary" size="small" @click="handleCreate">{{ t('components.appService.table.addApp') }}</el-button>
     </div>
 
     <AppServiceDialog

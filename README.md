@@ -1,6 +1,8 @@
+**English** | [中文](README_zh.md)
+
 # Z-CMDB Lite
 
-> 准确性优先、零门槛、面向中小团队的轻量级配置管理数据库
+> Accuracy-first, zero-barrier, lightweight CMDB for small and medium teams
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/Python-3.11+-3776AB?logo=python&logoColor=white)](https://python.org)
@@ -9,230 +11,250 @@
 
 ---
 
-## 简介
+## Introduction
 
-Z-CMDB Lite 面向 **5～50 人规模**的中小企业 IT 运维和安全工程师，通过 nmap 扫描上传的方式管理内网 / 办公网 / IDC / 云上资产，用于：
+Z-CMDB Lite is designed for IT operations and security engineers in **small-to-medium teams (5–50 people)**. It manages intranet / office network / IDC / cloud assets via nmap scan uploads, for:
 
-- 日常运维资产台账
-- 安全审计 & 等保备查
-- HVV / 红蓝对抗资产梳理
-- 端口暴露面分析
+- Daily operations asset ledger
+- Security audit & compliance readiness
+- HVV / Red-Blue exercise asset inventory
+- Port exposure analysis
 
-**核心设计原则**：SQLite 单文件、零中间件依赖、所有写操作可审计、敏感数据不出内网。
-
----
-
-## ✨ V0.2 版本简介
-
-V0.2 新增**资产总览**（`/dashboard`）作为登录后的默认首页，把原本散落在报表、资产列表里的关键指标聚合到一屏，让运维与安全工程师一打开就能掌握整体资产安全态势。本版同步完成了一轮前端工程质量
-优化。
-
-![资产总览](img/dashboard-overview.png)
-
-### 资产总览
-
-整页数据由后端聚合接口 `GET /api/reports/dashboard-summary` 一次性提供（SQL 聚合 + 30s TTL 缓存，刷新整页仅一次请求）。页面由 5 个模块组成：
-
-**① KPI 指标卡（8 项）**
-资产总数 · 在线 · 离线 · 已下线 · 危险端口 · 影子资产 · 本月变更 · 扫描覆盖率。进入页面时数字以翻牌动效落位；「在线 / 离线 / 已下线」卡片可点击，直达资产列表并自动套用状态筛选。
-
-**② 网络区域拓扑图**
-基于 ECharts force-directed 力导向布局，按 `network_zone` 聚合，节点大小反映资产数量；存在核心资产的区域以红色边框高亮，支持拖拽与缩放探索。
-
-**③ 资产分布环形图**
-环心展示资产总数，顶部 Tab 一键切换四个维度：网络区域 / 资产类型 / 重要性 / 操作系统。
-
-**④ 端口暴露面**
-左侧为开放端口 Top 10 水平柱状图（危险端口自动标红），右侧为按网络区域分布的占比环形图。
-
-**⑤ 危险端口告警滚动列表**
-滚动播报危险端口明细（IP / 端口 / 服务 / 区域 / 级别），按高危、中危着色，高危行脉冲提醒；鼠标悬停自动暂停，便于查看。
-
-
-### 工程优化
-
-- **移除废弃大屏代码**：清理早期未启用的固定分辨率大屏实现（`panels/*`、`ScreenContainer`、`registry`），统一以响应式资产总览页为唯一实现，消除两套并行代码与配色不一致
-- **性能**：首次加载命中后端缓存（仅「刷新数据」按钮强制刷新）、窗口 `resize` 防抖、ECharts 实例 `shallowRef` 化、去除冗余 `deep` 监听
-- **响应式**：新增桌面 / 笔记本 / 平板断点，KPI 卡片 8 → 4 → 2 列自适应，窄屏下双列卡片自动单列堆叠
-- **体验**：加载骨架屏替代空白页、可点击 KPI 增加 hover 反馈、危险端口列表在页面切到后台时自动暂停滚动（修复后台空转与定时器泄漏）
-- **无障碍**：数字翻牌、高危脉冲、自动滚动均尊重系统「减少动态效果」（`prefers-reduced-motion`）设置
-- **可维护性**：区域配色 / 危险端口 / 区域映射等常量提取为单源（`constants/dashboard.ts`），KPI 图标抽为独立组件
-
-> 完整变更记录见文末 [更新日志](#更新日志)。
+**Core design principles**: SQLite single-file, zero middleware dependency, all write operations are auditable, sensitive data stays on-premises.
 
 ---
 
-## 功能概览
+## V0.3 Highlights
 
-### 🗂 资产管理
+V0.3 brings **full internationalization (i18n)** to Z-CMDB Lite, adding English/Chinese bilingual support across the entire frontend. The default language is now English, with one-click switching available from any page via the topbar toggle or System Config. The README documentation is also split into separate English and Chinese editions.
 
-![资产列表](img/001.png)
+![Language Switching](img/i18n-preview.png)
 
-- 支持物理服务器、虚拟机、**云服务器**、网络设备、其他五种资产类型
-- 云服务器选择后，网络区域自动切换为云服务商（阿里云 / 腾讯云 / 华为云 / AWS / Azure / GCP）
-- 多维度筛选：网络区域、资产类型、重要性、状态
-- 全文搜索：IP、主机名、资产编号、业务系统、**应用名称**（如 nginx、mysql）
-- 批量操作：批量修改负责人、业务系统、重要性、网络区域
-- 导出：标准 CSV + 威胁狩猎助手兼容格式
+### Bilingual UI
 
-### 📋 资产详情
+- **Complete English translation** of all 16 pages and 3 shared components — every button, label, tooltip, validation message, and chart title is localized
+- **Topbar language toggle** (EN/中) for instant switching from any page without navigating to settings
+- **System Config language selector** (section 00) with dropdown for English / Chinese
+- **Persistent preference** saved to `localStorage` — language choice survives browser refresh and restarts
+- **Element Plus locale sync** — pagination text, date pickers, table empty states, and all built-in component labels switch dynamically via `ElConfigProvider`
+- **ECharts chart re-rendering** — dashboard charts (topology, distribution, port exposure) automatically re-render with localized labels on language switch
 
-![资产详情](img/003.png)
+### README Split
 
-三个标签页一站式查看：
-
-| 标签页 | 内容 |
-|--------|------|
-| 基本信息 | 资产编号、IP/MAC/主机名、OS、归属、硬件、采购保修 |
-| 端口 | 扫描发现的开放端口，含服务名、版本、状态 |
-| 应用 | 手动登记或扫描提取的应用清单，含版本、端口、安装路径 |
-
-**端口与应用双向同步**：手动新增应用时填写端口，自动写入端口表；nmap 扫描确认导入时，有 service_name 的端口同步生成应用记录。
-
-### 📡 扫描批次
-
-![扫描批次](img/005.png)
-![差异确认](img/006.png)
-
-1. 在跳板机运行 nmap，生成 XML 报告
-2. 上传到平台，自动解析并与现有资产做差异分析
-3. 差异分为四类：**新发现** / **变更** / **消失** / **恢复**
-4. 人工审核每台主机的端口变更详情后确认导入
-5. 消失主机不立即删除，`missing_count + 1`，超过阈值才标记离线
-
-### 🗺 拓扑图（AI 生成）
-
-![拓扑图](img/007.png)
-
-- 一键调用 LLM 生成 drawio 网络拓扑图初稿
-- 支持 DeepSeek / OpenRouter / 本地 Ollama
-- 资产数据**自动脱敏**后投喂 LLM（IP → 占位符，业务系统 → 代号）
-- 核心资产可配置强制走本地模型，敏感数据不出内网
-- 生成后可在内嵌 drawio 编辑器中手工调整，支持版本管理和回滚
-
-### 📊 安全报表
-
-![安全报表](img/008.png)
-
-- 资产分布：网络区域、重要性、操作系统、资产类型
-- 端口暴露面分析：Top 端口、高危端口统计
-- 扫描覆盖率：最近扫描时间分布
-- 威胁狩猎助手兼容导出：按"资产 × 应用"展开，含 environment / criticality / exposure_scope / vendor 字段
-
-### 📝 审计日志
-
-![审计日志](img/009.png)
-
-- 记录所有登录、增删改、导出、LLM 调用操作
-- **不可篡改**：SQLite 触发器在数据库层禁止 UPDATE / DELETE
-- 支持按动作类型、用户、目标类型筛选
-
-### 👥 用户与权限
-
-![用户管理](img/010.png)
-
-三种角色，职责分离：
-
-| 角色 | 权限 |
-|------|------|
-| `super_admin` | 全部操作 + 用户管理 + 系统配置 |
-| `admin` | 资产增删改、扫描上传确认、拓扑生成 |
-| `auditor` | 只读 + 审计日志查看 |
-
-> 系统要求至少创建一个 auditor 账号才能解锁完整功能（等保职责分离要求）。
-
-### ⚙️ 系统配置
-
-- LLM 提供方 / API Key / 模型 / Base URL
-- 核心资产路由策略（是否强制走本地 Ollama）
-- 资产编号前缀（默认 `CMDB`）
-- 扫描消失阈值（连续 N 次未扫到才标记离线）
-- 上传文件大小限制
+- `README.md` (English, default) and `README_zh.md` (Chinese) with mutual language toggle links at the top of each file
+- Both editions stay in sync with identical structure and screenshots
 
 ---
 
-## 技术栈
+## V0.2 Highlights
 
-| 层 | 选型 |
-|---|------|
-| 后端语言 | Python 3.11+ |
-| Web 框架 | FastAPI |
-| 数据库 | SQLite 3（WAL 模式，单文件） |
+V0.2 introduces the **Asset Overview** (`/dashboard`) as the default homepage after login, aggregating key metrics previously scattered across reports and asset lists into a single view, enabling operations and security engineers to grasp the overall asset security posture at a glance. This release also includes a round of frontend engineering quality improvements.
+
+![Asset Overview](img/dashboard-overview.png)
+
+### Asset Overview
+
+All page data is provided by the backend aggregation endpoint `GET /api/reports/dashboard-summary` in a single request (SQL aggregation + 30s TTL cache, full page refresh triggers only one request). The page consists of 5 modules:
+
+**KPI Cards (8 metrics)**
+Total Assets · Online · Offline · Decommissioned · Dangerous Ports · Shadow Assets · Monthly Changes · Scan Coverage. Numbers animate with a flip effect on page entry; "Online / Offline / Decommissioned" cards are clickable, linking directly to the asset list with pre-applied status filters.
+
+**Network Zone Topology**
+ECharts force-directed layout, aggregated by `network_zone`, node size reflects asset count; zones with core assets are highlighted with red borders, supports drag and zoom exploration.
+
+**Asset Distribution Donut Chart**
+Center displays total asset count, top tabs switch between four dimensions: Network Zone / Asset Type / Importance / OS.
+
+**Port Exposure**
+Left side: Top 10 open ports horizontal bar chart (dangerous ports auto-highlighted in red); right side: donut chart showing distribution by network zone.
+
+**Dangerous Port Alert Scrolling List**
+Scrolling broadcast of dangerous port details (IP / Port / Service / Zone / Level), color-coded by severity (high-risk with pulse animation), auto-pauses on mouse hover for inspection.
+
+### Engineering Improvements
+
+- **Removed deprecated large-screen code**: Cleaned up the unused fixed-resolution large-screen implementation (`panels/*`, `ScreenContainer`, `registry`), unified as the responsive Asset Overview page as the sole implementation, eliminating dual code paths and inconsistent color schemes
+- **Performance**: Backend cache hit on first load (only "Refresh Data" button forces refresh), window `resize` debounce, ECharts instances use `shallowRef`, removed redundant `deep` watchers
+- **Responsive**: Added desktop / laptop / tablet breakpoints, KPI cards adapt from 8 → 4 → 2 columns, dual-column cards auto-stack to single column on narrow screens
+- **UX**: Loading skeleton screens replace blank pages, clickable KPIs add hover feedback, dangerous port list auto-pauses scrolling when page is backgrounded (fixes background idle and timer leaks)
+- **Accessibility**: Number flip, high-risk pulse, and auto-scroll respect system "Reduce Motion" (`prefers-reduced-motion`) settings
+- **Maintainability**: Zone colors / dangerous ports / zone mapping constants extracted as single source (`constants/dashboard.ts`), KPI icons extracted as independent components
+
+> Full changelog at the end of this document: [Changelog](#changelog).
+
+---
+
+## Feature Overview
+
+### Asset Management
+
+![Asset List](img/001.png)
+
+- Supports five asset types: Physical Server, Virtual Machine, **Cloud Server**, Network Device, Other
+- When Cloud Server is selected, network zone auto-switches to cloud provider (Alibaba Cloud / Tencent Cloud / Huawei Cloud / AWS / Azure / GCP)
+- Multi-dimension filtering: Network Zone, Asset Type, Importance, Status
+- Full-text search: IP, Hostname, Asset Number, Business System, **Application Name** (e.g., nginx, mysql)
+- Batch operations: Batch modify Owner, Business System, Importance, Network Zone
+- Export: Standard CSV + Threat Hunting Assistant compatible format
+
+### Asset Detail
+
+![Asset Detail](img/003.png)
+
+Three tabs for one-stop viewing:
+
+| Tab | Content |
+|-----|---------|
+| Basic Info | Asset Number, IP/MAC/Hostname, OS, Ownership, Hardware, Procurement & Warranty |
+| Ports | Open ports discovered by scan, including service name, version, status |
+| Applications | Manually registered or scan-extracted application list, including version, port, install path |
+
+**Port-Application bidirectional sync**: When manually adding an application with ports, it auto-writes to the ports table; when confirming nmap scan import, ports with `service_name` automatically generate application records.
+
+### Scan Batches
+
+![Scan Batches](img/005.png)
+![Diff Confirmation](img/006.png)
+
+1. Run nmap on a jump host to generate an XML report
+2. Upload to the platform, auto-parse and perform diff analysis against existing assets
+3. Diffs are categorized into four types: **New Discovery** / **Change** / **Disappearance** / **Recovery**
+4. Manually review each host's port change details before confirming import
+5. Disappeared hosts are not immediately deleted; `missing_count + 1`, marked offline only after exceeding the threshold
+
+### Topology (AI-Generated)
+
+![Topology](img/007.png)
+
+- One-click LLM invocation to generate a draft drawio network topology diagram
+- Supports DeepSeek / OpenRouter / Local Ollama
+- Asset data is **auto-anonymized** before being sent to the LLM (IP → placeholder, business system → code name)
+- Core assets can be configured to force local model usage; sensitive data stays on-premises
+- After generation, manual adjustments can be made in the embedded drawio editor, with version management and rollback support
+
+### Security Reports
+
+![Security Reports](img/008.png)
+
+- Asset distribution: Network Zone, Importance, OS, Asset Type
+- Port exposure analysis: Top ports, dangerous port statistics
+- Scan coverage: Recent scan time distribution
+- Threat Hunting Assistant compatible export: Expanded by "Asset x Application", including environment / criticality / exposure_scope / vendor fields
+
+### Audit Log
+
+![Audit Log](img/009.png)
+
+- Records all login, CRUD, export, and LLM call operations
+- **Tamper-proof**: SQLite triggers at the database layer prevent UPDATE / DELETE
+- Supports filtering by action type, user, target type
+
+### Users & Permissions
+
+![User Management](img/010.png)
+
+Three roles with separation of duties:
+
+| Role | Permissions |
+|------|------------|
+| `super_admin` | All operations + User management + System configuration |
+| `admin` | Asset CRUD, Scan upload & confirm, Topology generation |
+| `auditor` | Read-only + Audit log viewing |
+
+> The system requires at least one auditor account to be created before unlocking full functionality (compliance separation-of-duties requirement).
+
+### System Configuration
+
+- LLM Provider / API Key / Model / Base URL
+- Core asset routing policy (whether to force local Ollama)
+- Asset number prefix (default `CMDB`)
+- Scan disappearance threshold (consecutive N scans without detection before marking offline)
+- Upload file size limit
+
+---
+
+## Tech Stack
+
+| Layer | Choice |
+|-------|--------|
+| Backend Language | Python 3.11+ |
+| Web Framework | FastAPI |
+| Database | SQLite 3 (WAL mode, single file) |
 | ORM | SQLAlchemy 2.0 |
-| 数据迁移 | Alembic |
-| 前端框架 | Vue 3 + Vite + TypeScript |
-| UI 组件库 | Element Plus |
-| 状态管理 | Pinia |
-| 密码哈希 | argon2id |
-| 认证 | JWT（access + refresh token） |
-| 部署 | Docker + docker-compose |
+| Data Migration | Alembic |
+| Frontend Framework | Vue 3 + Vite + TypeScript |
+| UI Component Library | Element Plus |
+| State Management | Pinia |
+| Password Hashing | argon2id |
+| Authentication | JWT (access + refresh token) |
+| Deployment | Docker + docker-compose |
 
 ---
 
-## 快速开始
+## Quick Start
 
-### 方式一：Docker（推荐）
+### Option 1: Docker (Recommended)
 
 ```bash
-# 1. 克隆项目
+# 1. Clone the project
 git clone https://github.com/Zer00n/z-cmdb.git
 cd z-cmdb
 
-# 2. 配置 JWT 密钥
+# 2. Configure JWT secret
 cp secrets/jwt_secret.txt.example secrets/jwt_secret.txt
-# 编辑 secrets/jwt_secret.txt，填入随机字符串（建议 32 位以上）
+# Edit secrets/jwt_secret.txt, enter a random string (recommended 32+ characters)
 
-# 3. 启动
+# 3. Start
 docker compose -f docker/docker-compose.yml up --build -d
 
-# 4. 访问
+# 4. Access
 # http://localhost:8080
 
-# 5. 获取初始密码（首次启动自动生成）
-# 方式一：查看容器日志
+# 5. Get initial password (auto-generated on first start)
+# Method 1: View container logs
 docker compose -f docker/docker-compose.yml logs backend | grep "密码"
-# 方式二：读取密码文件
+# Method 2: Read password file
 cat data/INITIAL_ADMIN_PASSWORD.txt
-# 默认账号：admin，用上面获取的密码登录
+# Default account: admin, use the password obtained above to log in
 
-# （可选）预设初始密码，Docker 与 Windows 两模式一致：
-# 在仓库根目录创建 .env 文件，写入：
+# (Optional) Preset initial password, consistent for both Docker and Windows modes:
+# Create a .env file in the repository root, write:
 # CMDB_INITIAL_ADMIN_PASSWORD=YourPassword@123
-# 然后用以下命令启动：
+# Then start with:
 # docker compose --env-file .env -f docker/docker-compose.yml up --build -d
 ```
 
-### 方式二：本地开发（Windows 11）
+### Option 2: Local Development (Windows 11)
 
-**一键启动**
+**One-click Start**
 
-项目根目录提供了 Windows 批处理脚本，双击即可同时启动前后端：
+The project root provides Windows batch scripts, double-click to start both frontend and backend simultaneously:
 
 ```
-dev-start.bat    # 一键启动后端 + 前端（自动打开两个终端窗口）
-dev-stop.bat     # 一键停止所有服务
+dev-start.bat    # One-click start backend + frontend (auto-opens two terminal windows)
+dev-stop.bat     # One-click stop all services
 ```
 
-> 前提：已完成下方的环境初始化（venv + pnpm install + alembic upgrade head）。
+> Prerequisite: Complete the environment initialization below (venv + pnpm install + alembic upgrade head).
 
-**环境初始化（仅首次）**
+**Environment Initialization (First time only)**
 
 ```powershell
-# 后端
+# Backend
 cd backend
 uv venv
 .venv\Scripts\activate
 uv pip install -r requirements.txt
 alembic upgrade head
 
-# 前端
+# Frontend
 cd ..\frontend
 pnpm install
 ```
 
-**手动启动（如需分别调试）**
+**Manual Start (for separate debugging)**
 
-后端：
+Backend:
 
 ```powershell
 cd backend
@@ -240,157 +262,170 @@ cd backend
 uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
-前端（新终端）：
+Frontend (new terminal):
 
 ```powershell
 cd frontend
 pnpm dev
 ```
 
-访问 http://localhost:5173  
-初始密码见 `backend/data/INITIAL_ADMIN_PASSWORD.txt`（首次启动自动生成）。
+Access http://localhost:5173
+Initial password is in `backend/data/INITIAL_ADMIN_PASSWORD.txt` (auto-generated on first start).
 
 ---
 
-## 项目结构
+## Project Structure
 
 ```
 z-cmdb/
 ├── backend/
 │   ├── app/
-│   │   ├── cli.py            # 管理 CLI（init-db / reset-admin）
-│   │   ├── core/           # 配置、安全、依赖注入、加密
-│   │   ├── models/         # SQLAlchemy 模型
-│   │   ├── schemas/        # Pydantic v2 Schema
-│   │   ├── routers/        # API 路由
-│   │   ├── services/       # 业务逻辑
-│   │   ├── repositories/   # 数据访问层
-│   │   └── utils/          # nmap 解析等工具
-│   ├── alembic/            # 数据库迁移脚本
+│   │   ├── cli.py            # Management CLI (init-db / reset-admin)
+│   │   ├── core/           # Config, security, dependency injection, encryption
+│   │   ├── models/         # SQLAlchemy models
+│   │   ├── schemas/        # Pydantic v2 Schemas
+│   │   ├── routers/        # API routes
+│   │   ├── services/       # Business logic
+│   │   ├── repositories/   # Data access layer
+│   │   └── utils/          # nmap parsing and other utilities
+│   ├── alembic/            # Database migration scripts
 │   └── requirements.txt
 ├── frontend/
 │   └── src/
-│       ├── views/          # 页面组件
-│       ├── components/     # 通用组件
-│       ├── api/            # API 封装
-│       ├── stores/         # Pinia 状态
-│       ├── styles/         # 全局样式 & Design Token
-│       ├── types/          # TypeScript 类型定义
-│       └── constants/      # 枚举常量（OS 选项、应用分类等）
+│       ├── views/          # Page components
+│       ├── components/     # Shared components
+│       ├── api/            # API wrappers
+│       ├── stores/         # Pinia state
+│       ├── styles/         # Global styles & Design Tokens
+│       ├── types/          # TypeScript type definitions
+│       └── constants/      # Enum constants (OS options, app categories, etc.)
 ├── docker/                 # Dockerfile & docker-compose
-├── scripts/                # 运维脚本（重置密码、导出审计等）
-├── secrets/                # JWT 密钥（不提交，仅 .example 文件）
-├── img/                    # 功能截图
+├── scripts/                # Operations scripts (password reset, audit export, etc.)
+├── secrets/                # JWT secret (not committed, only .example files)
+├── img/                    # Feature screenshots
 └── README.md
 ```
 
 ---
 
-## nmap 扫描参考
+## nmap Scan Reference
 
 ```bash
-# 快速扫描（常用端口）
+# Quick scan (common ports)
 nmap -sV -T4 -oX scan_result.xml 192.168.1.0/24
 
-# 全端口扫描
+# Full port scan
 nmap -sV -p- -T4 -oX scan_full.xml 192.168.1.0/24
 
-# 指定端口 + OS 识别
+# Specific ports + OS detection
 nmap -sV -O -p 22,80,443,3306,6379,8080 -oX scan_web.xml 192.168.1.0/24
 ```
 
-扫描完成后，将 `.xml` 文件上传到平台「扫描批次」页面即可。
+After scanning, upload the `.xml` file to the "Scan Batches" page on the platform.
 
 ---
 
-## 安全说明
+## Security Notes
 
-- 密码使用 argon2id 哈希（memory=64MB, time=3, parallelism=4）
-- JWT 支持 access token（短期）+ refresh token（长期）
-- 登录失败超过阈值自动锁定账户
-- 所有响应头包含 CSP / X-Content-Type-Options / X-Frame-Options
-- 审计日志通过数据库触发器保证不可篡改
-- LLM 调用前对资产数据脱敏，核心资产可强制走本地模型
+- Passwords use argon2id hashing (memory=64MB, time=3, parallelism=4)
+- JWT supports access token (short-lived) + refresh token (long-lived)
+- Account auto-locks after exceeding failed login threshold
+- All response headers include CSP / X-Content-Type-Options / X-Frame-Options
+- Audit logs are tamper-proof via database triggers
+- Asset data is anonymized before LLM calls; core assets can be forced to use local models
 
 ---
 
-## 忘记密码 / 重置管理员
+## Forgot Password / Reset Admin
 
-**Docker 环境：**
+**Docker environment:**
 
 ```bash
-# 重置为随机密码（新密码打印到终端并写入 data/INITIAL_ADMIN_PASSWORD.txt）
+# Reset to random password (new password printed to terminal and written to data/INITIAL_ADMIN_PASSWORD.txt)
 docker compose -f docker/docker-compose.yml exec backend python -m app.cli reset-admin
 
-# 重置为指定密码
+# Reset to a specific password
 docker compose -f docker/docker-compose.yml exec backend python -m app.cli reset-admin --password 'YourNew@Pass1'
 ```
 
-**本地开发：**
+**Local development:**
 
 ```powershell
 cd backend
 .venv\Scripts\activate
 python -m app.cli reset-admin
-# 或指定密码：
+# Or specify a password:
 python -m app.cli reset-admin --password 'YourNew@Pass1'
 ```
 
 ---
 
-## ⚠️ 注意事项
+## Disclaimer
 
-**本项目不建议部署到正式生产环境。**
+**This project is not recommended for production deployment.**
 
-Z-CMDB Lite 的设计定位是个人或小团队的本机工具，适合以下使用方式：
+Z-CMDB Lite is designed as a local tool for individuals or small teams, suitable for the following usage patterns:
 
-- 部署在**本机或内网工作站**上，随用随启动
-- 用完后关闭服务（`dev-stop.bat` 或直接关终端），不长期暴露在网络上
-- **不要将服务端口暴露到公网**，如确需远程访问请配合 VPN 或 SSH 隧道
-- 数据库为 SQLite 单文件（`backend/data/cmdb.db`），定期备份即可
-- 默认管理员密码请在首次登录后立即修改（系统会强制要求）
+- Deployed on a **local machine or intranet workstation**, started on demand
+- Shut down after use (`dev-stop.bat` or close terminal); do not leave it exposed on the network long-term
+- **Do not expose the service port to the public internet**; if remote access is needed, use VPN or SSH tunnel
+- Database is a single SQLite file (`backend/data/cmdb.db`); back up regularly
+- Change the default admin password immediately after first login (system will enforce this)
 
-如果你的场景涉及多人并发写入（>50 人）、高可用、或需要对外提供服务，请考虑使用 PostgreSQL 等生产级数据库方案。
+If your use case involves concurrent writes from multiple users (>50 people), high availability, or public-facing services, please consider production-grade database solutions like PostgreSQL.
 
 ---
 
-## 更新日志
+## Changelog
 
-### V0.2（2026-06-19）
+### V0.3 (2026-06-20)
 
-**资产总览**
-- 新增 `/dashboard` 资产总览页面，作为登录后默认首页
-- 8 类 KPI 指标卡片（资产总数、在线/离线/已下线、危险端口、影子资产、本月变更、扫描覆盖率），带数字翻牌动效
-- 网络区域拓扑图（ECharts force-directed），按 `network_zone` 聚合，核心资产红色边框
-- 资产分布环形图，支持网络区域/资产类型/重要性/操作系统四维度切换
-- 端口暴露面：开放端口 Top 10 水平柱状图 + 按区域分布环形图
-- 危险端口告警滚动列表，按严重性着色（高危脉冲动画），悬停暂停
-- 影子资产（缺字段 + 长期离线）Tab 切换展示
-- 资产变化时间线、审计与 LLM 活动流滚动播报
-- 后端聚合接口 `GET /api/reports/dashboard-summary`，SQL 聚合 + 30s TTL 缓存，单次刷新仅一次请求
-- 危险端口清单与高危区域从硬编码迁入 `system_configs` 配置，报表与总览共用同一判定逻辑
-- 布局持久化（个人布局 + 全局默认），`system_configs` KV 存储
+**Internationalization (i18n)**
+- Added full English/Chinese bilingual support via vue-i18n@9 (Composition API mode)
+- Default language changed to English; all UI strings translated
+- Language toggle button in topbar (EN/中) for quick switching from any page
+- Language settings card in System Config page (section 00) with dropdown selector
+- Language preference persisted to localStorage across sessions
+- Element Plus component locale (pagination, date pickers, table empty text) dynamically switches via ElConfigProvider
+- README split into English (`README.md`, default) and Chinese (`README_zh.md`) with mutual language toggle links
+- Translation files organized by module: common, layout, router, login, dashboard, asset, scan, topology, report, audit, user, settings, help, components, constants
+- Shared `useTranslatedLabels()` composable centralizes zoneLabel/importanceLabel/statusLabel/typeLabel/roleLabel functions
 
-**Docker 部署修复**
-- 后端依赖改用 `/opt/venv` 虚拟环境，解决 `docker exec` 下 `import sqlalchemy` 失败
-- 新增应用内 CLI `python -m app.cli`（`init-db` / `reset-admin`），无需拷贝 scripts 进容器
-- 初始密码可控：支持 `CMDB_INITIAL_ADMIN_PASSWORD` 环境变量预设，未设置则随机生成并写入 `data/INITIAL_ADMIN_PASSWORD.txt`
-- 新增 `COOKIE_SECURE` 配置项，修复 HTTP 部署下 refresh token cookie 被浏览器拒绝的问题
-- 新增 `.env.example` 环境变量模板
-- 本地开发脚本（`scripts/reset_admin.py`、`init_db.py`）修正路径逻辑，复用 CLI 服务层
+### V0.2 (2026-06-19)
 
-**拓扑图优化**
-- 修复路由到 Ollama 时复用 OpenRouter 模型名导致 502 的 Bug
-- 新增 Ollama 可用性检测，不可用时给出明确中文提示（而非晦涩的 502）
-- 新增 `llm_ollama_model` 独立配置，Ollama 路由使用专用模型名
-- LLM 提供方简化为「自定义」和「本地」两个选项，自定义支持任意 OpenAI 兼容 API
-- 拓扑图页面新增「生成日志」Tab，显示 LLM 调用过程和详情（提供方/模型/耗时）
-- 修复配置页面保存时掩码值覆盖真实 API Key 的 Bug
+**Asset Overview**
+- Added `/dashboard` Asset Overview page as the default homepage after login
+- 8 KPI metric cards (Total Assets, Online/Offline/Decommissioned, Dangerous Ports, Shadow Assets, Monthly Changes, Scan Coverage) with number flip animation
+- Network Zone Topology (ECharts force-directed), aggregated by `network_zone`, core assets highlighted with red borders
+- Asset Distribution donut chart, supporting Network Zone/Asset Type/Importance/OS dimension switching
+- Port Exposure: Top 10 open ports horizontal bar chart + distribution by zone donut chart
+- Dangerous Port Alert scrolling list, color-coded by severity (high-risk pulse animation), auto-pauses on hover
+- Shadow Assets (missing fields + long-term offline) tab switching display
+- Asset change timeline, audit & LLM activity stream scrolling broadcast
+- Backend aggregation endpoint `GET /api/reports/dashboard-summary`, SQL aggregation + 30s TTL cache, single refresh triggers only one request
+- Dangerous port list and high-risk zones migrated from hardcoded to `system_configs` configuration, reports and overview share the same judgment logic
+- Layout persistence (personal layout + global default), `system_configs` KV storage
 
-**其他改进**
-- 修复修改密码 422 错误：前端密码策略校验（>= 12 位 + 大小写数字符号）与后端对齐
-- 422 Pydantic 校验错误信息正确展示（从 `detail` 数组提取 `msg`）
-- 后端 `llm_service.get_provider()` 不再校验 provider 名称，非 ollama 一律走 OpenAI 兼容接口
+**Docker Deployment Fixes**
+- Backend dependencies switched to `/opt/venv` virtual environment, fixing `import sqlalchemy` failure in `docker exec`
+- Added in-app CLI `python -m app.cli` (`init-db` / `reset-admin`), no need to copy scripts into the container
+- Initial password controllable: supports `CMDB_INITIAL_ADMIN_PASSWORD` environment variable preset, random generation and write to `data/INITIAL_ADMIN_PASSWORD.txt` if not set
+- Added `COOKIE_SECURE` configuration, fixing refresh token cookie rejection by browsers under HTTP deployment
+- Added `.env.example` environment variable template
+- Local development scripts (`scripts/reset_admin.py`, `init_db.py`) path logic corrected, reusing CLI service layer
+
+**Topology Improvements**
+- Fixed routing to Ollama reusing OpenRouter model name causing 502 error
+- Added Ollama availability detection, showing clear Chinese prompt when unavailable (instead of cryptic 502)
+- Added `llm_ollama_model` independent configuration, Ollama routing uses dedicated model name
+- LLM provider simplified to "Custom" and "Local" two options, custom supports any OpenAI-compatible API
+- Topology page added "Generation Log" tab, showing LLM call process and details (provider/model/latency)
+- Fixed config page saving masked values overwriting real API Key bug
+
+**Other Improvements**
+- Fixed change password 422 error: frontend password policy validation (>= 12 chars + uppercase/lowercase/digit/symbol) aligned with backend
+- 422 Pydantic validation error messages correctly displayed (extracting `msg` from `detail` array)
+- Backend `llm_service.get_provider()` no longer validates provider name, non-ollama always uses OpenAI-compatible interface
 
 ---
 

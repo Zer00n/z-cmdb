@@ -5,9 +5,11 @@
  * v2.1：危险端口告警支持多字段筛选 + 分页
  */
 import { ref, onMounted, computed, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { fetchPortExposure, fetchDangerousPorts, fetchShadowAssets } from '@/api/report'
 import type { PortExposureData, DangerousPortsData, ShadowAssetsData } from '@/types/report'
 
+const { t } = useI18n()
 const loading = ref(true)
 const portExposure = ref<PortExposureData | null>(null)
 const dangerousPorts = ref<DangerousPortsData | null>(null)
@@ -29,20 +31,20 @@ const dpPageSize = ref(20)
 // 重置分页到第一页（筛选条件变化时触发）
 watch(dpFilter, () => { dpPage.value = 1 }, { deep: true })
 
-const ZONE_OPTIONS = [
-  { label: '全部区域', value: '' },
-  { label: '内网', value: 'intranet' },
-  { label: 'DMZ', value: 'dmz' },
-  { label: '办公网', value: 'office' },
-  { label: '管理网', value: 'management' },
-  { label: '其他', value: 'other' },
-]
+const ZONE_OPTIONS = computed(() => [
+  { label: t('report.filters.allZones'), value: '' },
+  { label: t('report.zones.intranet'), value: 'intranet' },
+  { label: t('report.zones.dmz'), value: 'dmz' },
+  { label: t('report.zones.office'), value: 'office' },
+  { label: t('report.zones.management'), value: 'management' },
+  { label: t('report.zones.other'), value: 'other' },
+])
 
-const SEVERITY_OPTIONS = [
-  { label: '全部严重性', value: '' },
-  { label: '高危', value: 'high' },
-  { label: '中危', value: 'medium' },
-]
+const SEVERITY_OPTIONS = computed(() => [
+  { label: t('report.filters.allSeverity'), value: '' },
+  { label: t('report.severity.high'), value: 'high' },
+  { label: t('report.severity.medium'), value: 'medium' },
+])
 
 /** 经过筛选后的全量告警 */
 const dpFiltered = computed(() => {
@@ -89,10 +91,8 @@ async function loadData() {
 }
 
 function zoneLabel(zone: string): string {
-  const map: Record<string, string> = {
-    intranet: '内网', dmz: 'DMZ', office: '办公网', management: '管理网', other: '其他',
-  }
-  return map[zone] || zone
+  const key = `report.zones.${zone}`
+  return t(key) !== key ? t(key) : zone
 }
 
 function zoneClass(zone: string): string {
@@ -122,8 +122,8 @@ onMounted(loadData)
     <!-- 页头 -->
     <div class="ui-page-head">
       <div>
-        <h1 class="ui-page-title">安全报表</h1>
-        <p class="ui-page-subtitle">基于已确认资产数据生成 · 实时计算</p>
+        <h1 class="ui-page-title">{{ t('report.title') }}</h1>
+        <p class="ui-page-subtitle">{{ t('report.subtitle') }}</p>
       </div>
     </div>
 
@@ -131,7 +131,7 @@ onMounted(loadData)
     <div class="ui-kpi-grid">
       <div class="ui-kpi is-danger">
         <div class="ui-kpi-head">
-          <span class="ui-kpi-label">高危端口告警</span>
+          <span class="ui-kpi-label">{{ t('report.kpi.highDangerPorts') }}</span>
           <span class="ui-kpi-icon">
             <el-icon size="16"><Warning /></el-icon>
           </span>
@@ -139,46 +139,46 @@ onMounted(loadData)
         <div class="ui-kpi-num">{{ dangerousPorts?.high_count || 0 }}</div>
         <div class="ui-kpi-foot">
           <el-icon size="12"><CaretTop /></el-icon>
-          需立即处置（DMZ / 办公网暴露）
+          {{ t('report.kpi.highDangerPortsFoot') }}
         </div>
       </div>
 
       <div class="ui-kpi is-warning">
         <div class="ui-kpi-head">
-          <span class="ui-kpi-label">中危端口告警</span>
+          <span class="ui-kpi-label">{{ t('report.kpi.mediumDangerPorts') }}</span>
           <span class="ui-kpi-icon">
             <el-icon size="16"><InfoFilled /></el-icon>
           </span>
         </div>
         <div class="ui-kpi-num">{{ dangerousPorts?.medium_count || 0 }}</div>
         <div class="ui-kpi-foot">
-          内网区域内的危险端口
+          {{ t('report.kpi.mediumDangerPortsFoot') }}
         </div>
       </div>
 
       <div class="ui-kpi is-info">
         <div class="ui-kpi-head">
-          <span class="ui-kpi-label">影子资产</span>
+          <span class="ui-kpi-label">{{ t('report.kpi.shadowAssets') }}</span>
           <span class="ui-kpi-icon">
             <el-icon size="16"><View /></el-icon>
           </span>
         </div>
         <div class="ui-kpi-num">{{ shadowAssets?.total || 0 }}</div>
         <div class="ui-kpi-foot">
-          缺失字段或长期离线
+          {{ t('report.kpi.shadowAssetsFoot') }}
         </div>
       </div>
 
       <div class="ui-kpi is-accent">
         <div class="ui-kpi-head">
-          <span class="ui-kpi-label">暴露端口类型</span>
+          <span class="ui-kpi-label">{{ t('report.kpi.exposedPortTypes') }}</span>
           <span class="ui-kpi-icon">
             <el-icon size="16"><Connection /></el-icon>
           </span>
         </div>
         <div class="ui-kpi-num">{{ portExposure?.top_ports?.length || 0 }}</div>
         <div class="ui-kpi-foot">
-          全网开放端口去重数
+          {{ t('report.kpi.exposedPortTypesFoot') }}
         </div>
       </div>
     </div>
@@ -190,9 +190,9 @@ onMounted(loadData)
         <div class="ui-card-head">
           <h3 class="ui-card-title">
             <span class="title-dot dot-blue" />
-            端口暴露面 Top 10
+            {{ t('report.portExposure.title') }}
           </h3>
-          <span class="card-meta">按开放数量排序</span>
+          <span class="card-meta">{{ t('report.portExposure.meta') }}</span>
         </div>
         <div class="port-list">
           <div
@@ -211,8 +211,8 @@ onMounted(loadData)
             <span class="port-count">{{ item.count }}</span>
           </div>
           <div v-if="!portExposure?.top_ports?.length" class="ui-empty">
-            <div class="ui-empty-title">暂无开放端口数据</div>
-            <div class="ui-empty-desc">上传 nmap 扫描后将自动生成</div>
+            <div class="ui-empty-title">{{ t('report.portExposure.emptyTitle') }}</div>
+            <div class="ui-empty-desc">{{ t('report.portExposure.emptyDesc') }}</div>
           </div>
         </div>
       </div>
@@ -222,9 +222,9 @@ onMounted(loadData)
         <div class="ui-card-head">
           <h3 class="ui-card-title">
             <span class="title-dot dot-purple" />
-            按网络区域分布
+            {{ t('report.zoneDistribution.title') }}
           </h3>
-          <span class="card-meta">所有开放端口</span>
+          <span class="card-meta">{{ t('report.zoneDistribution.meta') }}</span>
         </div>
         <div class="zone-list">
           <div
@@ -245,7 +245,7 @@ onMounted(loadData)
             <span class="zone-count">{{ stat.port_count }}</span>
           </div>
           <div v-if="!portExposure?.zone_stats?.length" class="ui-empty">
-            <div class="ui-empty-title">暂无区域数据</div>
+            <div class="ui-empty-title">{{ t('report.zoneDistribution.emptyTitle') }}</div>
           </div>
         </div>
       </div>
@@ -256,11 +256,11 @@ onMounted(loadData)
       <div class="ui-card-head">
         <h3 class="ui-card-title">
           <span class="title-dot dot-red" />
-          危险端口告警
+          {{ t('report.dangerousPorts.title') }}
           <span class="ui-page-count">
-            共 <b>{{ dpFiltered.length }}</b> 项
+            {{ t('report.dangerousPorts.totalItems', { count: dpFiltered.length }) }}
             <template v-if="dpFiltered.length !== dangerousPorts.total">
-              （全部 {{ dangerousPorts.total }} 项）
+              （{{ t('report.dangerousPorts.allItems', { count: dangerousPorts.total }) }}）
             </template>
           </span>
         </h3>
@@ -270,7 +270,7 @@ onMounted(loadData)
           text
           @click="resetDpFilter"
         >
-          清除筛选
+          {{ t('report.dangerousPorts.clearFilter') }}
         </el-button>
       </div>
 
@@ -278,35 +278,35 @@ onMounted(loadData)
       <div class="dp-filter-bar">
         <el-input
           v-model="dpFilter.asset_no"
-          placeholder="资产编号"
+          :placeholder="t('report.dangerousPorts.filterAssetNo')"
           clearable
           size="small"
           class="dp-filter-input"
         />
         <el-input
           v-model="dpFilter.ip_address"
-          placeholder="IP 地址"
+          :placeholder="t('report.dangerousPorts.filterIp')"
           clearable
           size="small"
           class="dp-filter-input"
         />
         <el-input
           v-model="dpFilter.hostname"
-          placeholder="主机名"
+          :placeholder="t('report.dangerousPorts.filterHostname')"
           clearable
           size="small"
           class="dp-filter-input"
         />
         <el-input
           v-model="dpFilter.port_number"
-          placeholder="端口号"
+          :placeholder="t('report.dangerousPorts.filterPort')"
           clearable
           size="small"
           class="dp-filter-input dp-filter-input--sm"
         />
         <el-input
           v-model="dpFilter.service_name"
-          placeholder="服务"
+          :placeholder="t('report.dangerousPorts.filterService')"
           clearable
           size="small"
           class="dp-filter-input dp-filter-input--sm"
@@ -339,38 +339,38 @@ onMounted(loadData)
 
       <!-- 表格 -->
       <el-table :data="dpPageData" stripe style="width: 100%">
-        <el-table-column prop="asset_no" label="资产编号" width="160">
+        <el-table-column prop="asset_no" :label="t('report.dangerousPorts.columnAssetNo')" width="160">
           <template #default="{ row }">
             <span class="ui-mono">{{ row.asset_no }}</span>
           </template>
         </el-table-column>
-        <el-table-column prop="ip_address" label="IP 地址" width="150">
+        <el-table-column prop="ip_address" :label="t('report.dangerousPorts.columnIp')" width="150">
           <template #default="{ row }">
             <span class="ui-mono">{{ row.ip_address }}</span>
           </template>
         </el-table-column>
-        <el-table-column prop="port_number" label="端口" width="90">
+        <el-table-column prop="port_number" :label="t('report.dangerousPorts.columnPort')" width="90">
           <template #default="{ row }">
             <span class="port-chip">{{ row.port_number }}</span>
           </template>
         </el-table-column>
-        <el-table-column prop="service_name" label="服务" width="130" />
-        <el-table-column prop="network_zone" label="区域" width="120">
+        <el-table-column prop="service_name" :label="t('report.dangerousPorts.columnService')" width="130" />
+        <el-table-column prop="network_zone" :label="t('report.dangerousPorts.columnZone')" width="120">
           <template #default="{ row }">
             <span class="ui-zone" :class="zoneClass(row.network_zone)">
               {{ zoneLabel(row.network_zone) }}
             </span>
           </template>
         </el-table-column>
-        <el-table-column prop="severity" label="严重性" width="110">
+        <el-table-column prop="severity" :label="t('report.dangerousPorts.columnSeverity')" width="110">
           <template #default="{ row }">
             <span class="ui-badge" :class="row.severity === 'high' ? 'is-danger' : 'is-warning'">
               <span class="ui-badge-dot" />
-              {{ row.severity === 'high' ? '高危' : '中危' }}
+              {{ row.severity === 'high' ? t('report.severity.high') : t('report.severity.medium') }}
             </span>
           </template>
         </el-table-column>
-        <el-table-column prop="hostname" label="主机名" show-overflow-tooltip />
+        <el-table-column prop="hostname" :label="t('report.dangerousPorts.columnHostname')" show-overflow-tooltip />
       </el-table>
 
       <!-- 分页 -->
@@ -392,35 +392,35 @@ onMounted(loadData)
       <div class="ui-card-head">
         <h3 class="ui-card-title">
           <span class="title-dot dot-cyan" />
-          影子资产
-          <span class="ui-page-count">共 <b>{{ shadowAssets.total }}</b> 项</span>
+          {{ t('report.shadowAssets.title') }}
+          <span class="ui-page-count">{{ t('report.shadowAssets.totalItems', { count: shadowAssets.total }) }}</span>
         </h3>
       </div>
       <div style="padding: var(--space-2) var(--space-6) var(--space-4)">
         <div v-if="shadowAssets.incomplete_assets.length" style="margin-bottom: var(--space-4)">
-          <h4 class="sub-title">缺少关键字段（{{ shadowAssets.incomplete_assets.length }}）</h4>
+          <h4 class="sub-title">{{ t('report.shadowAssets.incompleteTitle', { count: shadowAssets.incomplete_assets.length }) }}</h4>
           <el-table :data="shadowAssets.incomplete_assets" stripe style="width: 100%">
-            <el-table-column prop="asset_no" label="资产编号" width="160">
+            <el-table-column prop="asset_no" :label="t('report.dangerousPorts.columnAssetNo')" width="160">
               <template #default="{ row }"><span class="ui-mono">{{ row.asset_no }}</span></template>
             </el-table-column>
-            <el-table-column prop="ip_address" label="IP" width="150">
+            <el-table-column prop="ip_address" :label="t('report.shadowAssets.columnIp')" width="150">
               <template #default="{ row }"><span class="ui-mono">{{ row.ip_address }}</span></template>
             </el-table-column>
-            <el-table-column prop="hostname" label="主机名" width="180" />
-            <el-table-column prop="reason" label="原因" />
+            <el-table-column prop="hostname" :label="t('report.shadowAssets.columnHostname')" width="180" />
+            <el-table-column prop="reason" :label="t('report.shadowAssets.columnReason')" />
           </el-table>
         </div>
         <div v-if="shadowAssets.long_offline_assets.length">
-          <h4 class="sub-title">长期离线（{{ shadowAssets.long_offline_assets.length }}）</h4>
+          <h4 class="sub-title">{{ t('report.shadowAssets.offlineTitle', { count: shadowAssets.long_offline_assets.length }) }}</h4>
           <el-table :data="shadowAssets.long_offline_assets" stripe style="width: 100%">
-            <el-table-column prop="asset_no" label="资产编号" width="160">
+            <el-table-column prop="asset_no" :label="t('report.dangerousPorts.columnAssetNo')" width="160">
               <template #default="{ row }"><span class="ui-mono">{{ row.asset_no }}</span></template>
             </el-table-column>
-            <el-table-column prop="ip_address" label="IP" width="150">
+            <el-table-column prop="ip_address" :label="t('report.shadowAssets.columnIp')" width="150">
               <template #default="{ row }"><span class="ui-mono">{{ row.ip_address }}</span></template>
             </el-table-column>
-            <el-table-column prop="hostname" label="主机名" width="180" />
-            <el-table-column prop="missing_count" label="连续未扫到次数" width="160">
+            <el-table-column prop="hostname" :label="t('report.shadowAssets.columnHostname')" width="180" />
+            <el-table-column prop="missing_count" :label="t('report.shadowAssets.columnMissingCount')" width="160">
               <template #default="{ row }">
                 <span class="ui-badge is-warning"><span class="ui-badge-dot" />{{ row.missing_count }}</span>
               </template>

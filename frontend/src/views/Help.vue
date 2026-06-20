@@ -3,40 +3,44 @@
  * 帮助页面 - nmap 命令一键复制
  * 2026 UI Redesign：升级命令卡视觉，逻辑保持不变
  */
+import { computed } from 'vue'
 import { ElMessage } from 'element-plus'
+import { useI18n } from 'vue-i18n'
 
-const commands = [
+const { t } = useI18n()
+
+const commands = computed(() => [
   {
-    title: '标准扫描',
-    badge: '推荐',
+    title: t('help.commands.standard.title'),
+    badge: t('help.commands.standard.badge'),
     badgeClass: 'is-success',
-    desc: '覆盖 1-10000 端口，适用于日常资产盘点，耗时约 10-30 分钟（/24 网段）',
+    desc: t('help.commands.standard.desc'),
     cmd: 'nmap -sS -sV -O --osscan-guess -p 1-10000 --version-intensity 5 -T4 -oX scan_$(date +%Y%m%d_%H%M).xml <目标网段>',
     cmdWin: 'nmap -sS -sV -O --osscan-guess -p 1-10000 --version-intensity 5 -T4 -oX scan_$(Get-Date -Format yyyyMMdd_HHmm).xml <目标网段>',
   },
   {
-    title: '快速扫描',
-    badge: '快',
+    title: t('help.commands.quick.title'),
+    badge: t('help.commands.quick.badge'),
     badgeClass: 'is-info',
-    desc: '仅扫描 Top 1000 端口，适用于快速确认主机存活，耗时约 3-10 分钟',
+    desc: t('help.commands.quick.desc'),
     cmd: 'nmap -sS -sV -O --osscan-guess --top-ports 1000 -T4 -oX scan_quick_$(date +%Y%m%d_%H%M).xml <目标网段>',
     cmdWin: 'nmap -sS -sV -O --osscan-guess --top-ports 1000 -T4 -oX scan_quick_$(Get-Date -Format yyyyMMdd_HHmm).xml <目标网段>',
   },
   {
-    title: '深度扫描',
-    badge: '慢但全面',
+    title: t('help.commands.deep.title'),
+    badge: t('help.commands.deep.badge'),
     badgeClass: 'is-warning',
-    desc: '扫描全部 65535 端口，适用于安全审计 / HVV 前全面盘点，耗时 30 分钟 - 数小时',
+    desc: t('help.commands.deep.desc'),
     cmd: 'nmap -sS -sV -O --osscan-guess -p- --version-intensity 7 -T3 -oX scan_deep_$(date +%Y%m%d_%H%M).xml <目标网段>',
     cmdWin: 'nmap -sS -sV -O --osscan-guess -p- --version-intensity 7 -T3 -oX scan_deep_$(Get-Date -Format yyyyMMdd_HHmm).xml <目标网段>',
   },
-]
+])
 
 function copyCommand(cmd: string) {
   navigator.clipboard.writeText(cmd).then(() => {
-    ElMessage.success('命令已复制到剪贴板')
+    ElMessage.success(t('help.copySuccess'))
   }).catch(() => {
-    ElMessage.warning('复制失败，请手动选择复制')
+    ElMessage.warning(t('help.copyFailed'))
   })
 }
 </script>
@@ -45,8 +49,8 @@ function copyCommand(cmd: string) {
   <div class="ui-page">
     <div class="ui-page-head">
       <div>
-        <h1 class="ui-page-title">nmap 扫描命令参考</h1>
-        <p class="ui-page-subtitle">命令模板可直接复制使用 · 输出格式必须为 XML（-oX），系统只解析 XML</p>
+        <h1 class="ui-page-title">{{ t('help.title') }}</h1>
+        <p class="ui-page-subtitle">{{ t('help.subtitle') }}</p>
       </div>
     </div>
 
@@ -72,7 +76,7 @@ function copyCommand(cmd: string) {
               <pre class="cmd-text">{{ item.cmd }}</pre>
               <el-button type="primary" size="small" @click="copyCommand(item.cmd)">
                 <el-icon><CopyDocument /></el-icon>
-                复制
+                {{ t('help.copy') }}
               </el-button>
             </div>
           </div>
@@ -85,7 +89,7 @@ function copyCommand(cmd: string) {
               <pre class="cmd-text">{{ item.cmdWin }}</pre>
               <el-button type="primary" size="small" @click="copyCommand(item.cmdWin)">
                 <el-icon><CopyDocument /></el-icon>
-                复制
+                {{ t('help.copy') }}
               </el-button>
             </div>
           </div>
@@ -96,14 +100,14 @@ function copyCommand(cmd: string) {
     <div class="ui-card ui-card-padded">
       <h3 class="ui-section-title">
         <el-icon size="16" color="var(--color-warning)"><InfoFilled /></el-icon>
-        注意事项
+        {{ t('help.notices.title') }}
       </h3>
       <ul class="notice-list">
-        <li><code>-sS</code>（SYN 扫描）和 <code>-O</code>（OS 检测）需要 root / 管理员权限</li>
-        <li>上传文件大小上限 <b>50 MB</b>（可在系统配置中调整）</li>
-        <li>建议按 /24 网段拆分扫描，避免单次文件过大</li>
-        <li>Windows 环境下 <code>$(date ...)</code> 不可用，请手动命名文件</li>
-        <li>如果大量端口显示 filtered，考虑降低扫描速度（<code>-T3</code> 或 <code>-T2</code>）</li>
+        <li v-html="t('help.notices.items.privileges')"></li>
+        <li v-html="t('help.notices.items.uploadLimit')"></li>
+        <li>{{ t('help.notices.items.subnet') }}</li>
+        <li>{{ t('help.notices.items.windows') }}</li>
+        <li>{{ t('help.notices.items.filtered') }}</li>
       </ul>
     </div>
   </div>

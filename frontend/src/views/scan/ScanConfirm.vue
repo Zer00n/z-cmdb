@@ -9,6 +9,9 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { fetchScanDiff, confirmBatch, rejectBatch } from '@/api/scan'
 import type { ScanDiffResponse, DiffNewHost, DiffChangedHost, DiffMissingHost, ScanConfirmRequest } from '@/types/scan'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 const route = useRoute()
 const router = useRouter()
@@ -66,16 +69,16 @@ async function handleConfirm() {
   const selectedNew = newAssetForms.value.filter(f => f.selected)
   for (const item of selectedNew) {
     if (!item.location || !item.owner || !item.business_system) {
-      ElMessage.warning(`新资产 ${item.ip_address} 缺少必填字段（位置/负责人/业务系统）`)
+      ElMessage.warning(t('scan.confirm.validation.missingFields', { ip: item.ip_address }))
       activeTab.value = 'new'
       return
     }
   }
 
   await ElMessageBox.confirm(
-    `确认导入本批次？将录入 ${selectedNew.length} 个新资产，更新 ${diffData.value.changed_count} 个变更资产。`,
-    '确认导入',
-    { confirmButtonText: '确认导入', cancelButtonText: '取消', type: 'info' }
+    t('scan.confirm.confirmDialog.message', { newCount: selectedNew.length, changedCount: diffData.value.changed_count }),
+    t('scan.confirm.confirmDialog.title'),
+    { confirmButtonText: t('scan.confirm.confirmDialog.btn'), cancelButtonText: t('common.cancel'), type: 'info' }
   )
 
   submitting.value = true
@@ -94,7 +97,7 @@ async function handleConfirm() {
       })),
     }
     await confirmBatch(batchId.value, req)
-    ElMessage.success('批次已确认导入')
+    ElMessage.success(t('scan.confirm.success.confirmed'))
     router.push('/scans')
   } finally {
     submitting.value = false
@@ -104,14 +107,14 @@ async function handleConfirm() {
 // 拒绝批次
 async function handleReject() {
   await ElMessageBox.confirm(
-    '确认拒绝此批次？拒绝后数据不会入库。',
-    '拒绝批次',
-    { confirmButtonText: '确认拒绝', cancelButtonText: '取消', type: 'warning' }
+    t('scan.confirm.success.rejectConfirm'),
+    t('scan.confirm.action.rejectBatch'),
+    { confirmButtonText: t('scan.list.rejectBtn'), cancelButtonText: t('common.cancel'), type: 'warning' }
   )
   submitting.value = true
   try {
     await rejectBatch(batchId.value)
-    ElMessage.success('批次已拒绝')
+    ElMessage.success(t('scan.confirm.success.rejected'))
     router.push('/scans')
   } finally {
     submitting.value = false
@@ -135,19 +138,19 @@ onMounted(loadDiff)
       <div class="ui-page-head">
         <div>
           <div class="title-row">
-            <h1 class="ui-page-title">扫描批次确认</h1>
+            <h1 class="ui-page-title">{{ t('scan.confirm.title') }}</h1>
             <span class="file-tag">{{ diffData.batch_name }}</span>
             <span class="ui-badge is-warning">
               <span class="ui-badge-dot" />
-              待确认
+              {{ t('scan.confirm.pending') }}
             </span>
           </div>
-          <p class="ui-page-subtitle">请逐 Tab review 后确认导入</p>
+          <p class="ui-page-subtitle">{{ t('scan.confirm.subtitle') }}</p>
         </div>
         <div class="ui-page-actions">
           <el-button @click="router.push('/scans')">
             <el-icon><ArrowLeft /></el-icon>
-            返回列表
+            {{ t('scan.confirm.backToList') }}
           </el-button>
         </div>
       </div>
@@ -156,28 +159,28 @@ onMounted(loadDiff)
       <div class="ui-kpi-grid">
         <div class="ui-kpi">
           <div class="ui-kpi-head">
-            <span class="ui-kpi-label">本次扫描主机</span>
+            <span class="ui-kpi-label">{{ t('scan.confirm.kpi.scannedHosts') }}</span>
             <span class="ui-kpi-icon"><el-icon size="16"><Connection /></el-icon></span>
           </div>
           <div class="ui-kpi-num">{{ diffData.total_hosts }}</div>
         </div>
         <div class="ui-kpi is-accent">
           <div class="ui-kpi-head">
-            <span class="ui-kpi-label">新发现</span>
+            <span class="ui-kpi-label">{{ t('scan.confirm.kpi.newDiscovery') }}</span>
             <span class="ui-kpi-icon"><el-icon size="16"><Plus /></el-icon></span>
           </div>
           <div class="ui-kpi-num">{{ diffData.new_count }}</div>
         </div>
         <div class="ui-kpi is-warning">
           <div class="ui-kpi-head">
-            <span class="ui-kpi-label">变更</span>
+            <span class="ui-kpi-label">{{ t('scan.confirm.kpi.changed') }}</span>
             <span class="ui-kpi-icon"><el-icon size="16"><Refresh /></el-icon></span>
           </div>
           <div class="ui-kpi-num">{{ diffData.changed_count }}</div>
         </div>
         <div class="ui-kpi">
           <div class="ui-kpi-head">
-            <span class="ui-kpi-label">消失</span>
+            <span class="ui-kpi-label">{{ t('scan.confirm.kpi.missing') }}</span>
             <span class="ui-kpi-icon"><el-icon size="16"><Minus /></el-icon></span>
           </div>
           <div class="ui-kpi-num" style="color: var(--neutral-500)">{{ diffData.missing_count }}</div>
@@ -188,12 +191,12 @@ onMounted(loadDiff)
       <div class="ui-card" style="padding: var(--space-4) var(--space-6)">
         <el-tabs v-model="activeTab">
           <!-- 新发现 Tab -->
-          <el-tab-pane :label="`新发现 (${diffData.new_count})`" name="new">
-            <div v-if="newAssetForms.length === 0" class="empty-hint">本次扫描无新发现主机</div>
+          <el-tab-pane :label="`${t('scan.confirm.tabs.new')} (${diffData.new_count})`" name="new">
+            <div v-if="newAssetForms.length === 0" class="empty-hint">{{ t('scan.confirm.newTab.empty') }}</div>
             <template v-else>
               <div class="tab-toolbar">
-                <el-checkbox :model-value="allNewSelected" @change="toggleAllNew">全选</el-checkbox>
-                <span class="hint">请为新发现资产补充必填字段后确认导入</span>
+                <el-checkbox :model-value="allNewSelected" @change="toggleAllNew">{{ t('scan.confirm.newTab.selectAll') }}</el-checkbox>
+                <span class="hint">{{ t('scan.confirm.newTab.hint') }}</span>
               </div>
               <div class="new-host-list">
                 <div
@@ -208,49 +211,49 @@ onMounted(loadDiff)
                     <span v-if="form.hostname" class="nh-hostname">{{ form.hostname }}</span>
                     <span v-if="form.os_info" class="nh-os">{{ form.os_info }}</span>
                     <el-tag size="small" type="info" v-if="diffData.new_hosts[idx]?.ports?.length">
-                      {{ diffData.new_hosts[idx].ports.length }} 端口
+                      {{ t('scan.confirm.newTab.ports', { count: diffData.new_hosts[idx].ports.length }) }}
                     </el-tag>
                   </div>
                   <div v-if="form.selected" class="nh-form">
                     <div class="form-grid">
                       <div class="form-item">
-                        <label>资产类型 *</label>
+                        <label>{{ t('scan.confirm.newTab.assetType') }}</label>
                         <el-select v-model="form.asset_type" size="small" style="width: 100%">
-                          <el-option label="物理服务器" value="physical" />
-                          <el-option label="虚拟机" value="virtual" />
-                          <el-option label="网络设备" value="network_device" />
-                          <el-option label="其他" value="other" />
+                          <el-option :label="t('scan.confirm.newTab.types.physical')" value="physical" />
+                          <el-option :label="t('scan.confirm.newTab.types.virtual')" value="virtual" />
+                          <el-option :label="t('scan.confirm.newTab.types.networkDevice')" value="network_device" />
+                          <el-option :label="t('scan.confirm.newTab.types.other')" value="other" />
                         </el-select>
                       </div>
                       <div class="form-item">
-                        <label>网络区域 *</label>
+                        <label>{{ t('scan.confirm.newTab.networkZone') }}</label>
                         <el-select v-model="form.network_zone" size="small" style="width: 100%">
-                          <el-option label="内网" value="intranet" />
-                          <el-option label="DMZ" value="dmz" />
-                          <el-option label="办公网" value="office" />
-                          <el-option label="管理网" value="management" />
-                          <el-option label="其他" value="other" />
+                          <el-option :label="t('constants.zones.intranet')" value="intranet" />
+                          <el-option :label="t('constants.zones.dmz')" value="dmz" />
+                          <el-option :label="t('constants.zones.office')" value="office" />
+                          <el-option :label="t('constants.zones.management')" value="management" />
+                          <el-option :label="t('constants.zones.other')" value="other" />
                         </el-select>
                       </div>
                       <div class="form-item">
-                        <label>重要性 *</label>
+                        <label>{{ t('scan.confirm.newTab.importance') }}</label>
                         <el-select v-model="form.importance" size="small" style="width: 100%">
-                          <el-option label="核心" value="core" />
-                          <el-option label="重要" value="important" />
-                          <el-option label="普通" value="normal" />
+                          <el-option :label="t('constants.importance.core')" value="core" />
+                          <el-option :label="t('constants.importance.important')" value="important" />
+                          <el-option :label="t('constants.importance.normal')" value="normal" />
                         </el-select>
                       </div>
                       <div class="form-item">
-                        <label>物理位置 *</label>
-                        <el-input v-model="form.location" size="small" placeholder="机房-机架-U位" />
+                        <label>{{ t('scan.confirm.newTab.location') }}</label>
+                        <el-input v-model="form.location" size="small" :placeholder="t('scan.confirm.newTab.locationPlaceholder')" />
                       </div>
                       <div class="form-item">
-                        <label>负责人 *</label>
-                        <el-input v-model="form.owner" size="small" placeholder="负责人姓名" />
+                        <label>{{ t('scan.confirm.newTab.owner') }}</label>
+                        <el-input v-model="form.owner" size="small" :placeholder="t('scan.confirm.newTab.ownerPlaceholder')" />
                       </div>
                       <div class="form-item">
-                        <label>业务系统 *</label>
-                        <el-input v-model="form.business_system" size="small" placeholder="所属业务系统" />
+                        <label>{{ t('scan.confirm.newTab.businessSystem') }}</label>
+                        <el-input v-model="form.business_system" size="small" :placeholder="t('scan.confirm.newTab.businessSystemPlaceholder')" />
                       </div>
                     </div>
                   </div>
@@ -260,8 +263,8 @@ onMounted(loadDiff)
           </el-tab-pane>
 
           <!-- 变更 Tab -->
-          <el-tab-pane :label="`变更 (${diffData.changed_count})`" name="changed">
-            <div v-if="diffData.changed_hosts.length === 0" class="empty-hint">本次扫描无变更主机</div>
+          <el-tab-pane :label="`${t('scan.confirm.tabs.changed')} (${diffData.changed_count})`" name="changed">
+            <div v-if="diffData.changed_hosts.length === 0" class="empty-hint">{{ t('scan.confirm.changedTab.empty') }}</div>
             <div v-else class="changed-list">
               <div
                 v-for="host in diffData.changed_hosts"
@@ -288,9 +291,9 @@ onMounted(loadDiff)
                 <!-- 三栏对比 -->
                 <div v-if="host.port_changes.length > 0" class="chg-body">
                   <div class="compare-head">
-                    <div class="col-label">字段</div>
-                    <div class="col-scan">扫描值</div>
-                    <div class="col-current">当前值</div>
+                    <div class="col-label">{{ t('scan.confirm.changedTab.field') }}</div>
+                    <div class="col-scan">{{ t('scan.confirm.changedTab.scanValue') }}</div>
+                    <div class="col-current">{{ t('scan.confirm.changedTab.currentValue') }}</div>
                   </div>
                   <div
                     v-for="pc in host.port_changes"
@@ -300,11 +303,11 @@ onMounted(loadDiff)
                     <div class="col-label mono">{{ pc.port_number }}/{{ pc.protocol }}</div>
                     <div class="col-scan">
                       <span class="val">{{ pc.new_service || '-' }} {{ pc.new_version || '' }}</span>
-                      <span v-if="pc.change_type === 'added'" class="diff-add">新增</span>
+                      <span v-if="pc.change_type === 'added'" class="diff-add">{{ t('scan.confirm.changedTab.added') }}</span>
                     </div>
                     <div class="col-current">
                       <span class="val">{{ pc.old_service || '-' }} {{ pc.old_version || '' }}</span>
-                      <span v-if="pc.change_type === 'removed'" class="diff-del">已关闭</span>
+                      <span v-if="pc.change_type === 'removed'" class="diff-del">{{ t('scan.confirm.changedTab.closed') }}</span>
                     </div>
                   </div>
                 </div>
@@ -313,38 +316,38 @@ onMounted(loadDiff)
           </el-tab-pane>
 
           <!-- 消失 Tab -->
-          <el-tab-pane :label="`消失 (${diffData.missing_count})`" name="missing">
-            <div v-if="diffData.missing_hosts.length === 0" class="empty-hint">本次扫描无消失主机</div>
+          <el-tab-pane :label="`${t('scan.confirm.tabs.missing')} (${diffData.missing_count})`" name="missing">
+            <div v-if="diffData.missing_hosts.length === 0" class="empty-hint">{{ t('scan.confirm.missingTab.empty') }}</div>
             <div v-else>
               <div class="missing-notice">
                 <el-icon><InfoFilled /></el-icon>
-                消失资产不会立即下线。连续 3 次扫描未发现后才会自动标记为离线（消失保护机制）。
+                {{ t('scan.confirm.missingTab.notice') }}
               </div>
               <el-table :data="diffData.missing_hosts" stripe style="width: 100%">
-                <el-table-column prop="matched_asset_no" label="资产编号" width="150">
+                <el-table-column prop="matched_asset_no" :label="t('scan.confirm.missingTab.assetNo')" width="150">
                   <template #default="{ row }">
                     <span class="mono">{{ row.matched_asset_no || '-' }}</span>
                   </template>
                 </el-table-column>
-                <el-table-column prop="ip_address" label="IP 地址" width="140">
+                <el-table-column prop="ip_address" :label="t('scan.confirm.missingTab.ip')" width="140">
                   <template #default="{ row }">
                     <span class="mono">{{ row.ip_address }}</span>
                   </template>
                 </el-table-column>
-                <el-table-column prop="hostname" label="主机名" width="160" />
-                <el-table-column prop="missing_count" label="连续未扫到" width="120">
+                <el-table-column prop="hostname" :label="t('scan.confirm.missingTab.hostname')" width="160" />
+                <el-table-column prop="missing_count" :label="t('scan.confirm.missingTab.consecutiveMiss')" width="120">
                   <template #default="{ row }">
                     <span :class="{ 'text-warning': row.missing_count >= 2 }">
-                      {{ row.missing_count }} 次
+                      {{ t('scan.confirm.missingTab.missCount', { count: row.missing_count }) }}
                     </span>
                   </template>
                 </el-table-column>
-                <el-table-column label="状态预测">
+                <el-table-column :label="t('scan.confirm.missingTab.statusPrediction')">
                   <template #default="{ row }">
                     <el-tag v-if="row.missing_count >= 2" type="warning" size="small">
-                      下次将标记离线
+                      {{ t('scan.confirm.missingTab.willOffline') }}
                     </el-tag>
-                    <span v-else class="text-muted">保持在线</span>
+                    <span v-else class="text-muted">{{ t('scan.confirm.missingTab.stayOnline') }}</span>
                   </template>
                 </el-table-column>
               </el-table>
@@ -356,14 +359,14 @@ onMounted(loadDiff)
       <!-- 底部操作栏 -->
       <div class="action-bar">
         <div class="action-left">
-          <span class="summary-item new">新增 <b>{{ newAssetForms.filter(f => f.selected).length }}</b></span>
-          <span class="summary-item chg">变更 <b>{{ diffData.changed_count }}</b></span>
-          <span class="summary-item miss">消失 <b>{{ diffData.missing_count }}</b></span>
+          <span class="summary-item new">{{ t('scan.confirm.action.new') }} <b>{{ newAssetForms.filter(f => f.selected).length }}</b></span>
+          <span class="summary-item chg">{{ t('scan.confirm.action.changed') }} <b>{{ diffData.changed_count }}</b></span>
+          <span class="summary-item miss">{{ t('scan.confirm.action.missing') }} <b>{{ diffData.missing_count }}</b></span>
         </div>
         <div class="action-right">
-          <el-button :loading="submitting" @click="handleReject">拒绝批次</el-button>
+          <el-button :loading="submitting" @click="handleReject">{{ t('scan.confirm.action.rejectBatch') }}</el-button>
           <el-button type="primary" :loading="submitting" @click="handleConfirm">
-            确认导入
+            {{ t('scan.confirm.action.confirmImport') }}
           </el-button>
         </div>
       </div>

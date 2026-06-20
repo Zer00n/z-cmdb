@@ -5,10 +5,12 @@
  */
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
+import { useI18n } from 'vue-i18n'
 import { fetchAuditLogs, exportAuditReport } from '@/api/audit'
 import type { AuditLog, AuditQueryParams } from '@/types/audit'
 import dayjs from 'dayjs'
 
+const { t } = useI18n()
 const loading = ref(false)
 const tableData = ref<AuditLog[]>([])
 const total = ref(0)
@@ -55,7 +57,7 @@ async function handleExport() {
   a.download = 'audit_report.csv'
   a.click()
   URL.revokeObjectURL(url)
-  ElMessage.success('审计报告已导出')
+  ElMessage.success(t('audit.exportSuccess'))
 }
 
 function formatTime(t: string): string {
@@ -63,16 +65,8 @@ function formatTime(t: string): string {
 }
 
 function actionLabel(action: string): string {
-  const map: Record<string, string> = {
-    LOGIN: '登录',
-    CREATE: '创建',
-    UPDATE: '更新',
-    DELETE: '删除',
-    EXPORT: '导出',
-    LLM_CALL: 'LLM 调用',
-    CONFIG: '配置变更',
-  }
-  return map[action] || action
+  const key = `audit.actions.${action}`
+  return t(key) !== key ? t(key) : action
 }
 
 function actionClass(action: string): string {
@@ -89,12 +83,8 @@ function actionClass(action: string): string {
 }
 
 function roleLabel(r: string): string {
-  const map: Record<string, string> = {
-    super_admin: '超管',
-    admin: '管理员',
-    auditor: '审计员',
-  }
-  return map[r] || r
+  const key = `audit.roles.${r}`
+  return t(key) !== key ? t(key) : r
 }
 
 onMounted(loadData)
@@ -105,75 +95,75 @@ onMounted(loadData)
     <!-- 不可变提示 -->
     <div class="ui-notice">
       <el-icon size="14" color="var(--color-primary-600)"><Lock /></el-icon>
-      <span>审计日志<b>不可修改、不可删除</b>，所有操作均已永久记录 · 数据库层面已启用触发器保护</span>
+      <span v-html="t('audit.notice')"></span>
     </div>
 
     <!-- 页头 -->
     <div class="ui-page-head">
       <div>
         <h1 class="ui-page-title">
-          操作审计日志
-          <span class="ui-page-count">共 <b>{{ total }}</b> 条</span>
+          {{ t('audit.title') }}
+          <span class="ui-page-count">{{ t('audit.total', { count: total }) }}</span>
         </h1>
-        <p class="ui-page-subtitle">来源 IP、User-Agent、操作前后状态均完整记录</p>
+        <p class="ui-page-subtitle">{{ t('audit.subtitle') }}</p>
       </div>
       <div class="ui-page-actions">
         <el-button type="primary" @click="handleExport">
           <el-icon><Download /></el-icon>
-          导出审计报告
+          {{ t('audit.exportBtn') }}
         </el-button>
       </div>
     </div>
 
     <!-- 筛选 -->
     <div class="ui-filter-bar">
-      <el-select v-model="query.action_type" placeholder="操作类型" clearable @change="handleSearch" style="width: 150px">
-        <el-option label="登录" value="LOGIN" />
-        <el-option label="创建" value="CREATE" />
-        <el-option label="更新" value="UPDATE" />
-        <el-option label="删除" value="DELETE" />
-        <el-option label="导出" value="EXPORT" />
-        <el-option label="LLM 调用" value="LLM_CALL" />
-        <el-option label="配置变更" value="CONFIG" />
+      <el-select v-model="query.action_type" :placeholder="t('audit.filters.action')" clearable @change="handleSearch" style="width: 150px">
+        <el-option :label="t('audit.actions.LOGIN')" value="LOGIN" />
+        <el-option :label="t('audit.actions.CREATE')" value="CREATE" />
+        <el-option :label="t('audit.actions.UPDATE')" value="UPDATE" />
+        <el-option :label="t('audit.actions.DELETE')" value="DELETE" />
+        <el-option :label="t('audit.actions.EXPORT')" value="EXPORT" />
+        <el-option :label="t('audit.actions.LLM_CALL')" value="LLM_CALL" />
+        <el-option :label="t('audit.actions.CONFIG')" value="CONFIG" />
       </el-select>
 
-      <el-select v-model="query.target_type" placeholder="目标类型" clearable @change="handleSearch" style="width: 150px">
-        <el-option label="资产" value="asset" />
-        <el-option label="用户" value="user" />
-        <el-option label="扫描批次" value="scan_batch" />
-        <el-option label="拓扑图" value="topology" />
-        <el-option label="系统配置" value="system_config" />
-        <el-option label="审计报告" value="audit_report" />
+      <el-select v-model="query.target_type" :placeholder="t('audit.filters.targetType')" clearable @change="handleSearch" style="width: 150px">
+        <el-option :label="t('audit.targetTypes.asset')" value="asset" />
+        <el-option :label="t('audit.targetTypes.user')" value="user" />
+        <el-option :label="t('audit.targetTypes.scan_batch')" value="scan_batch" />
+        <el-option :label="t('audit.targetTypes.topology')" value="topology" />
+        <el-option :label="t('audit.targetTypes.system_config')" value="system_config" />
+        <el-option :label="t('audit.targetTypes.audit_report')" value="audit_report" />
       </el-select>
 
       <el-button @click="query.action_type = undefined; query.target_type = undefined; handleSearch()">
         <el-icon><Refresh /></el-icon>
-        重置
+        {{ t('audit.reset') }}
       </el-button>
     </div>
 
     <!-- 表格 -->
     <div class="ui-table-card">
       <el-table v-loading="loading" :data="tableData" stripe style="width: 100%">
-        <el-table-column prop="timestamp" label="时间" width="180">
+        <el-table-column prop="timestamp" :label="t('audit.columns.time')" width="180">
           <template #default="{ row }">
             <span class="ui-mono ui-mono-muted" style="font-size: 12px">{{ formatTime(row.timestamp) }}</span>
           </template>
         </el-table-column>
 
-        <el-table-column prop="username" label="操作人" width="110">
+        <el-table-column prop="username" :label="t('audit.columns.user')" width="110">
           <template #default="{ row }">
             <span style="font-weight: 500">{{ row.username || '-' }}</span>
           </template>
         </el-table-column>
 
-        <el-table-column prop="user_role" label="角色" width="120">
+        <el-table-column prop="user_role" :label="t('audit.columns.role')" width="120">
           <template #default="{ row }">
             <span v-if="row.user_role" class="ui-badge is-neutral">{{ roleLabel(row.user_role) }}</span>
           </template>
         </el-table-column>
 
-        <el-table-column prop="action_type" label="操作" width="120">
+        <el-table-column prop="action_type" :label="t('audit.columns.action')" width="120">
           <template #default="{ row }">
             <span class="ui-badge" :class="actionClass(row.action_type)">
               <span class="ui-badge-dot" />
@@ -182,33 +172,33 @@ onMounted(loadData)
           </template>
         </el-table-column>
 
-        <el-table-column prop="target_type" label="目标" width="110">
+        <el-table-column prop="target_type" :label="t('audit.columns.targetType')" width="110">
           <template #default="{ row }">
             <span class="ui-mono">{{ row.target_type || '-' }}</span>
           </template>
         </el-table-column>
-        <el-table-column prop="target_id" label="目标 ID" width="120" show-overflow-tooltip>
+        <el-table-column prop="target_id" :label="t('audit.columns.targetId')" width="120" show-overflow-tooltip>
           <template #default="{ row }">
             <span class="ui-mono ui-mono-muted">{{ row.target_id || '-' }}</span>
           </template>
         </el-table-column>
 
-        <el-table-column prop="ip_address" label="来源 IP" width="140">
+        <el-table-column prop="ip_address" :label="t('audit.columns.ip')" width="140">
           <template #default="{ row }">
             <span class="ui-mono">{{ row.ip_address || '-' }}</span>
           </template>
         </el-table-column>
 
-        <el-table-column prop="result" label="结果" width="90">
+        <el-table-column prop="result" :label="t('audit.columns.result')" width="90">
           <template #default="{ row }">
             <span class="ui-badge" :class="row.result === 'success' ? 'is-success' : 'is-danger'">
               <span class="ui-badge-dot" />
-              {{ row.result === 'success' ? '成功' : '失败' }}
+              {{ row.result === 'success' ? t('audit.resultSuccess') : t('audit.resultFail') }}
             </span>
           </template>
         </el-table-column>
 
-        <el-table-column prop="details" label="详情" show-overflow-tooltip>
+        <el-table-column prop="details" :label="t('audit.columns.detail')" show-overflow-tooltip>
           <template #default="{ row }">
             <span style="color: var(--neutral-500); font-size: 12.5px">{{ row.details || '-' }}</span>
           </template>
@@ -216,7 +206,7 @@ onMounted(loadData)
       </el-table>
 
       <div class="ui-pagination-bar">
-        <span class="ui-pagination-info">共 {{ total }} 条</span>
+        <span class="ui-pagination-info">{{ t('audit.pagination', { total }) }}</span>
         <el-pagination
           v-model:current-page="query.page"
           :total="total"

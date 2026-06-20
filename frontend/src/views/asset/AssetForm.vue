@@ -6,6 +6,7 @@
  */
 import { ref, reactive, onMounted, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
 import { createAsset, fetchAsset, updateAsset } from '@/api/asset'
 import type { AssetCreateRequest, AssetUpdateRequest } from '@/types/asset'
@@ -14,6 +15,7 @@ import { getOsFieldMode, filterVisibleOsGroups } from './os-policy'
 
 const route = useRoute()
 const router = useRouter()
+const { t } = useI18n()
 
 const formRef = ref<FormInstance>()
 const loading = ref(false)
@@ -22,7 +24,7 @@ const submitting = ref(false)
 // 判断是新增还是编辑
 const isEdit = computed(() => !!route.params.id)
 const assetId = computed(() => Number(route.params.id) || 0)
-const pageTitle = computed(() => isEdit.value ? '编辑资产' : '新增资产')
+const pageTitle = computed(() => isEdit.value ? t('asset.form.editTitle') : t('asset.form.createTitle'))
 
 const form = reactive<AssetCreateRequest>({
   asset_no: '',
@@ -45,22 +47,22 @@ const form = reactive<AssetCreateRequest>({
   source: 'manual',
 })
 
-const rules: FormRules = {
+const rules = computed<FormRules>(() => ({
   ip_address: [
-    { required: true, message: '请输入 IP 地址', trigger: 'blur' },
+    { required: true, message: t('asset.form.validation.ipRequired'), trigger: 'blur' },
     {
       pattern: /^(\d{1,3}\.){3}\d{1,3}$/,
-      message: 'IPv4 格式不正确',
+      message: t('asset.form.validation.ipFormat'),
       trigger: 'blur',
     },
   ],
-  asset_type: [{ required: true, message: '请选择资产类型', trigger: 'change' }],
-  location: [{ required: true, message: '请输入物理位置', trigger: 'blur' }],
-  owner: [{ required: true, message: '请输入负责人', trigger: 'blur' }],
-  business_system: [{ required: true, message: '请输入业务系统', trigger: 'blur' }],
-  importance: [{ required: true, message: '请选择重要性', trigger: 'change' }],
-  network_zone: [{ required: true, message: '请选择网络区域', trigger: 'change' }],
-}
+  asset_type: [{ required: true, message: t('asset.form.validation.typeRequired'), trigger: 'change' }],
+  location: [{ required: true, message: t('asset.form.validation.locationRequired'), trigger: 'blur' }],
+  owner: [{ required: true, message: t('asset.form.validation.ownerRequired'), trigger: 'blur' }],
+  business_system: [{ required: true, message: t('asset.form.validation.businessSystemRequired'), trigger: 'blur' }],
+  importance: [{ required: true, message: t('asset.form.validation.importanceRequired'), trigger: 'change' }],
+  network_zone: [{ required: true, message: t('asset.form.validation.networkZoneRequired'), trigger: 'change' }],
+}))
 
 const osFieldMode = computed(() => getOsFieldMode(form.asset_type))
 const visibleOsGroups = computed(() => filterVisibleOsGroups(form.asset_type, osOptionGroups))
@@ -72,21 +74,21 @@ const isCloudServer = computed(() => form.asset_type === 'cloud_server')
 const networkZoneOptions = computed(() => {
   if (isCloudServer.value) {
     return [
-      { label: '阿里云', value: 'aliyun' },
-      { label: '腾讯云', value: 'tencent' },
-      { label: '华为云', value: 'huawei' },
+      { label: t('constants.zones.aliyun'), value: 'aliyun' },
+      { label: t('constants.zones.tencent'), value: 'tencent' },
+      { label: t('constants.zones.huawei'), value: 'huawei' },
       { label: 'AWS', value: 'aws' },
       { label: 'Azure', value: 'azure' },
       { label: 'Google Cloud', value: 'gcp' },
-      { label: '其他云', value: 'other_cloud' },
+      { label: t('constants.zones.other_cloud'), value: 'other_cloud' },
     ]
   }
   return [
-    { label: '内网', value: 'intranet' },
+    { label: t('constants.zones.intranet'), value: 'intranet' },
     { label: 'DMZ', value: 'dmz' },
-    { label: '办公网', value: 'office' },
-    { label: '管理网', value: 'management' },
-    { label: '其他', value: 'other' },
+    { label: t('constants.zones.office'), value: 'office' },
+    { label: t('constants.zones.management'), value: 'management' },
+    { label: t('constants.zones.other'), value: 'other' },
   ]
 })
 
@@ -140,14 +142,14 @@ async function handleSubmit() {
       if (isEdit.value) {
         const data: AssetUpdateRequest = { ...form }
         await updateAsset(assetId.value, data)
-        ElMessage.success('资产更新成功')
+        ElMessage.success(t('asset.form.success.updated'))
         router.push(`/assets/${assetId.value}`)
       } else {
         const data: AssetCreateRequest = { ...form }
         // 空字符串的 asset_no 改为 null（让后端自动生成）
         if (!data.asset_no) data.asset_no = null
         const asset = await createAsset(data)
-        ElMessage.success('资产创建成功')
+        ElMessage.success(t('asset.form.success.created'))
         router.push(`/assets/${asset.id}`)
       }
     } finally {
@@ -170,13 +172,13 @@ onMounted(loadAsset)
       <div class="ui-page-head" style="margin-bottom: var(--space-6)">
         <div>
           <h1 class="ui-page-title">{{ pageTitle }}</h1>
-          <p class="ui-page-subtitle">所有带 <span style="color: var(--color-danger)">*</span> 字段为必填</p>
+          <p class="ui-page-subtitle" v-html="t('asset.form.requiredHint')"></p>
         </div>
         <div class="ui-page-actions">
-          <el-button @click="handleCancel">取消</el-button>
+          <el-button @click="handleCancel">{{ t('asset.form.cancel') }}</el-button>
           <el-button type="primary" :loading="submitting" @click="handleSubmit">
             <el-icon><Check /></el-icon>
-            保存
+            {{ t('asset.form.save') }}
           </el-button>
         </div>
       </div>
@@ -192,56 +194,56 @@ onMounted(loadAsset)
         <div class="sec-card">
           <div class="sec-head">
             <span class="sec-num">01</span>
-            <span class="sec-title">基础信息</span>
-            <el-tag size="small" type="danger" effect="plain">必填</el-tag>
+            <span class="sec-title">{{ t('asset.form.sections.basic') }}</span>
+            <el-tag size="small" type="danger" effect="plain">{{ t('asset.form.sections.required') }}</el-tag>
           </div>
           <div class="sec-body">
-            <el-form-item label="资产编号">
+            <el-form-item :label="t('asset.form.fields.assetNo')">
               <el-input
                 v-model="form.asset_no"
-                placeholder="留空则自动生成（CMDB-YYYYMMDD-NNN）"
+                :placeholder="t('asset.form.fields.assetNoPlaceholder')"
                 style="width: 360px"
                 :disabled="isEdit"
               />
             </el-form-item>
 
-            <el-form-item label="IP 地址" prop="ip_address">
+            <el-form-item :label="t('asset.form.fields.ip')" prop="ip_address">
               <el-input
                 v-model="form.ip_address"
-                placeholder="例如 192.168.1.100"
+                :placeholder="t('asset.form.fields.ipPlaceholder')"
                 style="width: 360px"
                 class="mono-input"
               />
             </el-form-item>
 
-            <el-form-item label="MAC 地址">
+            <el-form-item :label="t('asset.form.fields.mac')">
               <el-input
                 v-model="form.mac_address"
-                placeholder="例如 52:54:00:8a:3f:21"
+                :placeholder="t('asset.form.fields.macPlaceholder')"
                 style="width: 360px"
                 class="mono-input"
               />
             </el-form-item>
 
-            <el-form-item label="主机名">
+            <el-form-item :label="t('asset.form.fields.hostname')">
               <el-input
                 v-model="form.hostname"
-                placeholder="例如 web-prod-04"
+                :placeholder="t('asset.form.fields.hostnamePlaceholder')"
                 style="width: 360px"
               />
             </el-form-item>
 
-            <el-form-item label="资产类型" prop="asset_type">
+            <el-form-item :label="t('asset.form.fields.assetType')" prop="asset_type">
               <el-radio-group v-model="form.asset_type">
-                <el-radio-button value="physical">物理服务器</el-radio-button>
-                <el-radio-button value="virtual">虚拟机</el-radio-button>
-                <el-radio-button value="cloud_server">云服务器</el-radio-button>
-                <el-radio-button value="network_device">网络设备</el-radio-button>
-                <el-radio-button value="other">其他</el-radio-button>
+                <el-radio-button value="physical">{{ t('asset.form.types.physical') }}</el-radio-button>
+                <el-radio-button value="virtual">{{ t('asset.form.types.virtual') }}</el-radio-button>
+                <el-radio-button value="cloud_server">{{ t('asset.form.types.cloudServer') }}</el-radio-button>
+                <el-radio-button value="network_device">{{ t('asset.form.types.networkDevice') }}</el-radio-button>
+                <el-radio-button value="other">{{ t('asset.form.types.other') }}</el-radio-button>
               </el-radio-group>
             </el-form-item>
 
-            <el-form-item label="网络区域" prop="network_zone">
+            <el-form-item :label="t('asset.form.fields.networkZone')" prop="network_zone">
               <el-select v-model="form.network_zone" style="width: 360px">
                 <el-option
                   v-for="opt in networkZoneOptions"
@@ -250,14 +252,14 @@ onMounted(loadAsset)
                   :value="opt.value"
                 />
               </el-select>
-              <span v-if="isCloudServer" class="zone-hint">选择云服务商所在平台</span>
+              <span v-if="isCloudServer" class="zone-hint">{{ t('asset.form.fields.cloudHint') }}</span>
             </el-form-item>
 
-            <el-form-item label="操作系统">
+            <el-form-item :label="t('asset.form.fields.os')">
               <el-select
                 v-if="osFieldMode === 'select'"
                 v-model="form.os_info"
-                placeholder="选择或输入操作系统（支持自定义）"
+                :placeholder="t('asset.form.fields.osSelectPlaceholder')"
                 style="width: 360px"
                 filterable
                 allow-create
@@ -280,7 +282,7 @@ onMounted(loadAsset)
               <el-input
                 v-else
                 v-model="form.os_info"
-                placeholder="请输入操作系统名称（如自研系统、定制 OS 等）"
+                :placeholder="t('asset.form.fields.osInputPlaceholder')"
                 style="width: 360px"
               />
             </el-form-item>
@@ -291,31 +293,31 @@ onMounted(loadAsset)
         <div class="sec-card">
           <div class="sec-head">
             <span class="sec-num">02</span>
-            <span class="sec-title">归属信息</span>
-            <el-tag size="small" type="danger" effect="plain">必填</el-tag>
+            <span class="sec-title">{{ t('asset.form.sections.ownership') }}</span>
+            <el-tag size="small" type="danger" effect="plain">{{ t('asset.form.sections.required') }}</el-tag>
           </div>
           <div class="sec-body">
-            <el-form-item label="物理位置" prop="location">
-              <el-input v-model="form.location" placeholder="机房-机架-U位 或 办公区房间号" style="width: 360px" />
+            <el-form-item :label="t('asset.form.fields.location')" prop="location">
+              <el-input v-model="form.location" :placeholder="t('asset.form.fields.locationPlaceholder')" style="width: 360px" />
             </el-form-item>
 
-            <el-form-item label="负责人" prop="owner">
-              <el-input v-model="form.owner" placeholder="负责人姓名" style="width: 360px" />
+            <el-form-item :label="t('asset.form.fields.owner')" prop="owner">
+              <el-input v-model="form.owner" :placeholder="t('asset.form.fields.ownerPlaceholder')" style="width: 360px" />
             </el-form-item>
 
-            <el-form-item label="业务系统" prop="business_system">
-              <el-input v-model="form.business_system" placeholder="所属业务系统名称" style="width: 360px" />
+            <el-form-item :label="t('asset.form.fields.businessSystem')" prop="business_system">
+              <el-input v-model="form.business_system" :placeholder="t('asset.form.fields.businessSystemPlaceholder')" style="width: 360px" />
             </el-form-item>
 
-            <el-form-item label="重要性" prop="importance">
+            <el-form-item :label="t('asset.form.fields.importance')" prop="importance">
               <el-radio-group v-model="form.importance">
                 <el-radio-button value="core">
-                  <span style="color: var(--color-danger)">核心</span>
+                  <span style="color: var(--color-danger)">{{ t('asset.form.importanceLevels.core') }}</span>
                 </el-radio-button>
                 <el-radio-button value="important">
-                  <span style="color: var(--color-warning)">重要</span>
+                  <span style="color: var(--color-warning)">{{ t('asset.form.importanceLevels.important') }}</span>
                 </el-radio-button>
-                <el-radio-button value="normal">普通</el-radio-button>
+                <el-radio-button value="normal">{{ t('asset.form.importanceLevels.normal') }}</el-radio-button>
               </el-radio-group>
             </el-form-item>
           </div>
@@ -325,48 +327,48 @@ onMounted(loadAsset)
         <div class="sec-card">
           <div class="sec-head">
             <span class="sec-num">03</span>
-            <span class="sec-title">硬件与采购</span>
-            <el-tag size="small" effect="plain">可选</el-tag>
+            <span class="sec-title">{{ t('asset.form.sections.hardware') }}</span>
+            <el-tag size="small" effect="plain">{{ t('asset.form.sections.optional') }}</el-tag>
           </div>
           <div class="sec-body">
-            <el-form-item label="CPU">
-              <el-input v-model="form.cpu" placeholder="例如 Intel Xeon E5-2680 v4" style="width: 360px" />
+            <el-form-item :label="t('asset.form.fields.cpu')">
+              <el-input v-model="form.cpu" :placeholder="t('asset.form.fields.cpuPlaceholder')" style="width: 360px" />
             </el-form-item>
 
-            <el-form-item label="内存 (GB)">
+            <el-form-item :label="t('asset.form.fields.memory')">
               <el-input-number v-model="form.memory_gb" :min="0" :max="10240" placeholder="GB" />
             </el-form-item>
 
-            <el-form-item label="磁盘 (GB)">
+            <el-form-item :label="t('asset.form.fields.disk')">
               <el-input-number v-model="form.disk_gb" :min="0" :max="1048576" placeholder="GB" />
             </el-form-item>
 
-            <el-form-item label="采购日期">
+            <el-form-item :label="t('asset.form.fields.purchaseDate')">
               <el-date-picker
                 v-model="form.purchase_date"
                 type="date"
-                placeholder="选择日期"
+                :placeholder="t('asset.form.fields.datePlaceholder')"
                 value-format="YYYY-MM-DD"
                 style="width: 180px"
               />
             </el-form-item>
 
-            <el-form-item label="保修到期">
+            <el-form-item :label="t('asset.form.fields.warrantyExpiry')">
               <el-date-picker
                 v-model="form.warranty_expiry"
                 type="date"
-                placeholder="选择日期"
+                :placeholder="t('asset.form.fields.datePlaceholder')"
                 value-format="YYYY-MM-DD"
                 style="width: 180px"
               />
             </el-form-item>
 
-            <el-form-item label="备注">
+            <el-form-item :label="t('asset.form.fields.remark')">
               <el-input
                 v-model="form.remark"
                 type="textarea"
                 :rows="4"
-                placeholder="补充说明"
+                :placeholder="t('asset.form.fields.remarkPlaceholder')"
                 style="width: 100%; max-width: 720px"
               />
             </el-form-item>

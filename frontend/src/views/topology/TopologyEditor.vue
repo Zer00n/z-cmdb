@@ -6,6 +6,7 @@
  */
 import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { useI18n } from 'vue-i18n'
 import {
   fetchCurrentTopology,
   fetchTopologyVersions,
@@ -14,6 +15,8 @@ import {
   rollbackTopology,
 } from '@/api/topology'
 import type { TopologyDetail, TopologyVersion } from '@/types/topology'
+
+const { t } = useI18n()
 
 const loading = ref(false)
 const generating = ref(false)
@@ -115,7 +118,7 @@ function handleDrawioMessage(evt: MessageEvent) {
   } else if (msg.event === 'save') {
     // 用户在 drawio 中点了保存
     drawioXml.value = msg.xml
-    ElMessage.success('拓扑图内容已更新（尚未保存到服务器）')
+    ElMessage.success(t('topology.drawioUpdated'))
   } else if (msg.event === 'export') {
     // 导出完成
     drawioXml.value = msg.data || msg.xml
@@ -137,33 +140,33 @@ function requestExport() {
 
 async function handleGenerate() {
   await ElMessageBox.confirm(
-    '将使用 LLM 基于当前在线资产生成拓扑图初稿，可能需要 30-60 秒。',
-    '生成拓扑图',
-    { confirmButtonText: '开始生成', cancelButtonText: '取消' }
+    t('topology.saveDialogContent'),
+    t('topology.saveDialogTitle'),
+    { confirmButtonText: t('topology.confirmGenerate'), cancelButtonText: t('topology.cancel') }
   )
   generating.value = true
   rightTab.value = 'logs'
   genLogs.value = []
   llmDetail.value = null
-  addLog('info', '开始生成拓扑图...')
-  addLog('info', '正在获取在线资产数据...')
+  addLog('info', t('topology.logStart'))
+  addLog('info', t('topology.logFetching'))
 
   const startTime = Date.now()
   try {
-    addLog('info', '正在调用 LLM 接口，请耐心等待...')
+    addLog('info', t('topology.logCallingLLM'))
     const result = await generateTopology()
     const elapsed = ((Date.now() - startTime) / 1000).toFixed(1)
     drawioXml.value = result.drawio_xml
     if (drawioReady.value) {
       sendToDrawio({ action: 'load', xml: drawioXml.value })
     }
-    addLog('success', `生成完成，耗时 ${elapsed}s，包含 ${result.asset_count} 个资产`)
-    ElMessage.success(`拓扑图已生成（${result.asset_count} 个资产）`)
+    addLog('success', t('topology.logGenerateDone', { elapsed, count: result.asset_count }))
+    ElMessage.success(t('topology.generateSuccess', { count: result.asset_count }))
     // 拉取 LLM 调用详情
     fetchLatestLlmLog()
   } catch (e: any) {
     const elapsed = ((Date.now() - startTime) / 1000).toFixed(1)
-    addLog('error', `生成失败（${elapsed}s）：${e?.response?.data?.message || e?.message || '未知错误'}`)
+    addLog('error', t('topology.logGenerateFail', { elapsed, error: e?.response?.data?.message || e?.message || 'Unknown' }))
     throw e
   } finally {
     generating.value = false
@@ -179,25 +182,25 @@ async function handleSave() {
   }
 
   if (!drawioXml.value) {
-    ElMessage.warning('没有可保存的拓扑图内容')
+    ElMessage.warning(t('topology.noSaveContent'))
     return
   }
   await saveTopology({
-    title: `拓扑图 ${new Date().toLocaleDateString()}`,
+    title: t('topology.saveTopologyTitle', { date: new Date().toLocaleDateString() }),
     drawio_xml: drawioXml.value,
   })
-  ElMessage.success('拓扑图已保存为新版本')
+  ElMessage.success(t('topology.saveSuccess'))
   loadData()
 }
 
 async function handleRollback(id: number, versionNo: string) {
   await ElMessageBox.confirm(
-    `确认回滚到版本 ${versionNo}？当前版本将不再是活跃版本。`,
-    '回滚确认',
-    { confirmButtonText: '确认回滚', cancelButtonText: '取消', type: 'warning' }
+    t('topology.rollbackConfirm', { version: versionNo }),
+    t('topology.rollbackTitle'),
+    { confirmButtonText: t('topology.rollbackBtn'), cancelButtonText: t('topology.cancel'), type: 'warning' }
   )
   await rollbackTopology(id)
-  ElMessage.success('已回滚')
+  ElMessage.success(t('topology.rollbackSuccess'))
   loadData()
 }
 
@@ -217,22 +220,22 @@ onBeforeUnmount(() => {
     <div class="ui-page-head">
       <div>
         <h1 class="ui-page-title">
-          网络拓扑图
+          {{ t('topology.title') }}
           <span v-if="currentTopology" class="ui-page-count">{{ currentTopology.version_no }}</span>
         </h1>
         <p class="ui-page-subtitle" v-if="currentTopology">
-          当前版本创建于 {{ currentTopology.created_at }} · 共 {{ versions.length }} 个历史版本
+          {{ t('topology.versionPrefix', { date: currentTopology.created_at, count: versions.length }) }}
         </p>
-        <p class="ui-page-subtitle" v-else>暂无拓扑图，请先用 LLM 生成或手动创建</p>
+        <p class="ui-page-subtitle" v-else>{{ t('topology.noTopology') }}</p>
       </div>
       <div class="ui-page-actions">
         <el-button :loading="generating" @click="handleGenerate">
           <el-icon><MagicStick /></el-icon>
-          LLM 生成
+          {{ t('topology.llmGenerate') }}
         </el-button>
         <el-button type="primary" @click="handleSave" :disabled="!drawioXml && !drawioReady">
           <el-icon><Check /></el-icon>
-          保存版本
+          {{ t('topology.saveVersion') }}
         </el-button>
       </div>
     </div>
@@ -246,7 +249,7 @@ onBeforeUnmount(() => {
             <span class="editor-dot" />
             drawio · embed.diagrams.net
           </span>
-          <span class="editor-hint">在编辑器中拖拽节点 · 双击文本编辑 · Ctrl+S 临时保存</span>
+          <span class="editor-hint">{{ t('topology.editorHint') }}</span>
         </div>
         <iframe
           ref="iframeRef"
@@ -265,14 +268,14 @@ onBeforeUnmount(() => {
             :class="['right-tab', { active: rightTab === 'versions' }]"
             @click="rightTab = 'versions'"
           >
-            历史版本
+            {{ t('topology.historyTab') }}
             <span class="tab-badge">{{ versions.length }}</span>
           </button>
           <button
             :class="['right-tab', { active: rightTab === 'logs' }]"
             @click="rightTab = 'logs'"
           >
-            生成日志
+            {{ t('topology.logsTab') }}
             <span v-if="genLogs.length" class="tab-badge">{{ genLogs.length }}</span>
           </button>
         </div>
@@ -280,8 +283,8 @@ onBeforeUnmount(() => {
         <!-- 历史版本 -->
         <div v-show="rightTab === 'versions'" class="tab-content">
           <div v-if="versions.length === 0" class="ui-empty">
-            <div class="ui-empty-title">暂无历史版本</div>
-            <div class="ui-empty-desc">保存后将出现在此</div>
+            <div class="ui-empty-title">{{ t('topology.noHistoryTitle') }}</div>
+            <div class="ui-empty-desc">{{ t('topology.noHistoryDesc') }}</div>
           </div>
           <div v-else class="version-list">
             <div
@@ -295,7 +298,7 @@ onBeforeUnmount(() => {
                   <span class="v-no">{{ v.version_no }}</span>
                   <span v-if="v.is_current" class="ui-badge is-success">
                     <span class="ui-badge-dot" />
-                    当前
+                    {{ t('topology.currentBadge') }}
                   </span>
                 </div>
                 <span class="v-title" v-if="v.title">{{ v.title }}</span>
@@ -309,7 +312,7 @@ onBeforeUnmount(() => {
                   type="primary"
                   @click="handleRollback(v.id, v.version_no)"
                 >
-                  回滚
+                  {{ t('topology.rollback') }}
                 </el-button>
               </div>
             </div>
@@ -319,28 +322,28 @@ onBeforeUnmount(() => {
         <!-- 生成日志 -->
         <div v-show="rightTab === 'logs'" class="tab-content log-content">
           <div v-if="genLogs.length === 0 && !llmDetail" class="ui-empty">
-            <div class="ui-empty-title">暂无日志</div>
-            <div class="ui-empty-desc">点击「LLM 生成」后日志将在此显示</div>
+            <div class="ui-empty-title">{{ t('topology.noLogsTitle') }}</div>
+            <div class="ui-empty-desc">{{ t('topology.noLogsDesc') }}</div>
           </div>
           <template v-else>
             <!-- LLM 调用详情 -->
             <div v-if="llmDetail" class="llm-detail-card">
               <div class="llm-row">
-                <span class="llm-label">提供方</span>
+                <span class="llm-label">{{ t('topology.llmProvider') }}</span>
                 <span class="llm-value">{{ llmDetail.provider || '-' }}</span>
               </div>
               <div class="llm-row">
-                <span class="llm-label">模型</span>
+                <span class="llm-label">{{ t('topology.llmModel') }}</span>
                 <span class="llm-value llm-model">{{ llmDetail.model || '-' }}</span>
               </div>
               <div class="llm-row">
-                <span class="llm-label">耗时</span>
+                <span class="llm-label">{{ t('topology.llmElapsed') }}</span>
                 <span class="llm-value">{{ llmDetail.elapsed_ms ? (llmDetail.elapsed_ms / 1000).toFixed(1) + 's' : '-' }}</span>
               </div>
               <div class="llm-row">
-                <span class="llm-label">结果</span>
+                <span class="llm-label">{{ t('topology.llmResult') }}</span>
                 <span :class="['llm-value', llmDetail.success ? 'text-success' : 'text-error']">
-                  {{ llmDetail.success ? '成功' : '失败' }}
+                  {{ llmDetail.success ? t('topology.llmSuccess') : t('topology.llmFail') }}
                 </span>
               </div>
             </div>

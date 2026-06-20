@@ -1,0 +1,15 @@
+export default {
+  dashboard: '资产总览',
+  assetList: '资产管理',
+  assetCreate: '新增资产',
+  assetDetail: '资产详情',
+  assetEdit: '编辑资产',
+  scanBatches: '扫描批次',
+  scanConfirm: '批次确认',
+  topology: '拓扑图',
+  reports: '安全报表',
+  audit: '审计日志',
+  users: '用户管理',
+  settings: '系统配置',
+  help: '帮助',
+}

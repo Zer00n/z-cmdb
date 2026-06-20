@@ -7,6 +7,9 @@ import { ElMessage } from 'element-plus'
 import { createAssetApp, updateAssetApp, fetchAppNames } from '@/api/asset-app'
 import { APP_CATEGORIES } from '@/constants/app-categories'
 import type { AssetApp, AssetAppCreateRequest, AssetAppUpdateRequest } from '@/types/asset-app'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 const props = defineProps<{
   visible: boolean
@@ -20,7 +23,7 @@ const emit = defineEmits<{
 }>()
 
 const isEdit = computed(() => !!props.editing)
-const title = computed(() => (isEdit.value ? '编辑应用' : '新增应用'))
+const title = computed(() => (isEdit.value ? t('components.appService.dialog.editTitle') : t('components.appService.dialog.title')))
 
 // 表单数据
 const form = ref({
@@ -90,7 +93,7 @@ function handleClose() {
 
 async function handleSubmit() {
   if (!form.value.name.trim()) {
-    ElMessage.warning('应用名称不能为空')
+    ElMessage.warning(t('components.appService.dialog.nameRequired'))
     return
   }
 
@@ -108,7 +111,7 @@ async function handleSubmit() {
         notes: form.value.notes.trim() || null,
       }
       await updateAssetApp(props.assetId, props.editing.id, data)
-      ElMessage.success('应用已更新')
+      ElMessage.success(t('components.appService.dialog.success.updated'))
     } else {
       const data: AssetAppCreateRequest = {
         name: form.value.name.trim(),
@@ -121,7 +124,7 @@ async function handleSubmit() {
         notes: form.value.notes.trim() || null,
       }
       await createAssetApp(props.assetId, data)
-      ElMessage.success('应用已添加')
+      ElMessage.success(t('components.appService.dialog.success.created'))
     }
     emit('success')
   } finally {
@@ -139,24 +142,24 @@ async function handleSubmit() {
     destroy-on-close
   >
     <el-form :model="form" label-width="100px" label-position="right">
-      <el-form-item label="应用名称" required>
+      <el-form-item :label="t('components.appService.dialog.name')" required>
         <el-autocomplete
           v-model="form.name"
           :fetch-suggestions="(_q: string, cb: Function) => cb(appNameSuggestions)"
-          placeholder="如 nginx、mysql-server、tomcat"
+          :placeholder="t('components.appService.dialog.namePlaceholder')"
           style="width: 100%"
           clearable
         />
       </el-form-item>
 
-      <el-form-item label="版本号">
-        <el-input v-model="form.version" placeholder="如 1.24.0、8.0.36" clearable />
+      <el-form-item :label="t('components.appService.dialog.version')">
+        <el-input v-model="form.version" :placeholder="t('components.appService.dialog.versionPlaceholder')" clearable />
       </el-form-item>
 
-      <el-form-item label="应用大类">
+      <el-form-item :label="t('components.appService.dialog.category')">
         <el-select
           v-model="form.category"
-          placeholder="选择或输入大类"
+          :placeholder="t('components.appService.dialog.categoryPlaceholder')"
           filterable
           allow-create
           clearable
@@ -171,13 +174,13 @@ async function handleSubmit() {
         </el-select>
       </el-form-item>
 
-      <el-form-item label="监听端口">
+      <el-form-item :label="t('components.appService.dialog.port')">
         <div style="display: flex; gap: 8px; width: 100%">
           <el-input-number
             v-model="form.port"
             :min="1"
             :max="65535"
-            placeholder="端口号"
+            :placeholder="t('components.appService.dialog.portPlaceholder')"
             controls-position="right"
             style="flex: 1"
           />
@@ -192,28 +195,28 @@ async function handleSubmit() {
         </div>
       </el-form-item>
 
-      <el-form-item label="安装路径">
-        <el-input v-model="form.install_path" placeholder="如 /usr/local/nginx" clearable />
+      <el-form-item :label="t('components.appService.dialog.installPath')">
+        <el-input v-model="form.install_path" :placeholder="t('components.appService.dialog.installPathPlaceholder')" clearable />
       </el-form-item>
 
-      <el-form-item label="配置路径">
-        <el-input v-model="form.config_path" placeholder="如 /etc/nginx/nginx.conf" clearable />
+      <el-form-item :label="t('components.appService.dialog.configPath')">
+        <el-input v-model="form.config_path" :placeholder="t('components.appService.dialog.configPathPlaceholder')" clearable />
       </el-form-item>
 
-      <el-form-item label="备注">
+      <el-form-item :label="t('components.appService.dialog.notes')">
         <el-input
           v-model="form.notes"
           type="textarea"
           :rows="3"
-          placeholder="自由备注"
+          :placeholder="t('components.appService.dialog.notesPlaceholder')"
         />
       </el-form-item>
     </el-form>
 
     <template #footer>
-      <el-button @click="handleClose">取消</el-button>
+      <el-button @click="handleClose">{{ t('components.appService.dialog.cancel') }}</el-button>
       <el-button type="primary" :loading="submitting" @click="handleSubmit">
-        {{ isEdit ? '保存' : '添加' }}
+        {{ isEdit ? t('components.appService.dialog.save') : t('components.appService.dialog.add') }}
       </el-button>
     </template>
   </el-dialog>

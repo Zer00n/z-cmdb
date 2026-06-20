@@ -3,12 +3,14 @@
  * 登录页
  * 2026 UI Redesign：双栏（左侧产品介绍 + 右侧登录卡片），保持原有逻辑
  */
-import { ref, reactive } from 'vue'
+import { ref, reactive, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
+import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
 import { login } from '@/api/auth'
 
+const { t } = useI18n()
 const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
@@ -21,10 +23,10 @@ const form = reactive({
   password: '',
 })
 
-const rules: FormRules = {
-  username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
-  password: [{ required: true, message: '请输入密码', trigger: 'blur' }],
-}
+const rules = computed<FormRules>(() => ({
+  username: [{ required: true, message: t('login.form.usernameRequired'), trigger: 'blur' }],
+  password: [{ required: true, message: t('login.form.passwordRequired'), trigger: 'blur' }],
+}))
 
 async function handleLogin() {
   if (!formRef.value) return
@@ -42,12 +44,12 @@ async function handleLogin() {
   })
 }
 
-const features = [
-  { icon: 'CircleCheck', text: '人工兜底的资产准确性' },
-  { icon: 'Lock', text: 'LLM 数据本地脱敏' },
-  { icon: 'Key', text: '三权分立 + 不可变审计' },
-  { icon: 'TrendCharts', text: '端口暴露面与影子资产分析' },
-]
+const features = computed(() => [
+  { icon: 'CircleCheck', text: t('login.features.accuracy') },
+  { icon: 'Lock', text: t('login.features.desensitize') },
+  { icon: 'Key', text: t('login.features.rbac') },
+  { icon: 'TrendCharts', text: t('login.features.exposure') },
+])
 </script>
 
 <template>
@@ -64,7 +66,7 @@ const features = [
         </span>
         <span class="brand-name">Z-CMDB <em>Lite</em></span>
       </div>
-      <span class="top-version">v0.1.0</span>
+      <span class="top-version">v0.3.0</span>
     </header>
 
     <!-- 主体：左侧介绍 + 右侧登录卡 -->
@@ -73,15 +75,14 @@ const features = [
       <section class="intro">
         <div class="intro-tag">
           <span class="intro-tag-dot" />
-          准确性优先 · 中小团队
+          {{ t('login.tag') }}
         </div>
         <h1 class="intro-title">
-          把内网资产<br />
-          <em>真正搞清楚</em>
+          {{ t('login.title').split('\n')[0] }}<br />
+          <em>{{ t('login.title').split('\n')[1] }}</em>
         </h1>
         <p class="intro-desc">
-          手动 nmap 扫描 + 人工 review 兜底，确保资产数据可信。
-          内置安全视角报表与可审计的 LLM 拓扑生成。
+          {{ t('login.desc') }}
         </p>
 
         <ul class="feature-list">
@@ -96,17 +97,17 @@ const features = [
         <div class="intro-stats">
           <div class="stat">
             <div class="stat-num">10<span>min</span></div>
-            <div class="stat-label">从 0 到运行</div>
+            <div class="stat-label">{{ t('login.stats.setup') }}</div>
           </div>
           <div class="stat-sep" />
           <div class="stat">
             <div class="stat-num">3</div>
-            <div class="stat-label">权限角色</div>
+            <div class="stat-label">{{ t('login.stats.roles') }}</div>
           </div>
           <div class="stat-sep" />
           <div class="stat">
             <div class="stat-num">SQLite</div>
-            <div class="stat-label">单文件部署</div>
+            <div class="stat-label">{{ t('login.stats.deploy') }}</div>
           </div>
         </div>
       </section>
@@ -115,8 +116,8 @@ const features = [
       <section class="login-side">
         <div class="login-card">
           <div class="login-card-head">
-            <h2>欢迎回来</h2>
-            <p>请使用账号登录管理控制台</p>
+            <h2>{{ t('login.card.title') }}</h2>
+            <p>{{ t('login.card.subtitle') }}</p>
           </div>
 
           <el-form
@@ -129,7 +130,7 @@ const features = [
             <el-form-item prop="username">
               <el-input
                 v-model="form.username"
-                placeholder="用户名"
+                :placeholder="t('login.form.username')"
                 size="large"
                 autocomplete="username"
               >
@@ -142,7 +143,7 @@ const features = [
               <el-input
                 v-model="form.password"
                 type="password"
-                placeholder="密码"
+                :placeholder="t('login.form.password')"
                 size="large"
                 show-password
                 autocomplete="current-password"
@@ -161,32 +162,32 @@ const features = [
               :loading="loading"
               @click="handleLogin"
             >
-              <span>登 录</span>
+              <span>{{ t('login.form.login') }}</span>
               <el-icon style="margin-left: 6px"><Right /></el-icon>
             </el-button>
           </el-form>
 
           <div class="help-line">
             <el-icon size="14"><InfoFilled /></el-icon>
-            忘记密码？请联系系统管理员重置
+            {{ t('login.help') }}
           </div>
 
           <div class="status-chips">
             <span class="chip">
               <span class="chip-dot online" />
-              服务正常
+              {{ t('login.status.serviceOk') }}
             </span>
             <span class="chip-sep">·</span>
-            <span class="chip">5 次 / 15 分钟</span>
+            <span class="chip">{{ t('login.status.rateLimit') }}</span>
             <span class="chip-sep">·</span>
-            <span class="chip">仅企业内网</span>
+            <span class="chip">{{ t('login.status.intranetOnly') }}</span>
           </div>
         </div>
       </section>
     </main>
 
     <footer class="login-footer">
-      Z-CMDB Lite · 内部运维平台
+      {{ t('login.footer') }}
       <span class="sep">·</span>
       © 2026
     </footer>

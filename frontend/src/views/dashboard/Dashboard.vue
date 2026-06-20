@@ -4,6 +4,7 @@
  */
 import { ref, computed, shallowRef, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { useEventListener, useDebounceFn, usePreferredReducedMotion } from '@vueuse/core'
 import { useDashboardStore } from '@/stores/dashboard'
 import * as echarts from 'echarts/core'
@@ -11,13 +12,16 @@ import { GraphChart, PieChart, BarChart } from 'echarts/charts'
 import { TooltipComponent, LegendComponent, GridComponent } from 'echarts/components'
 import { CanvasRenderer } from 'echarts/renderers'
 import type { DashboardSummary, KpiData } from '@/types/dashboard'
-import { ZONE_COLORS, TYPE_COLORS, IMP_COLORS, OS_COLORS, DANGEROUS_PORTS, zoneLabel } from '@/constants/dashboard'
+import { ZONE_COLORS, TYPE_COLORS, IMP_COLORS, OS_COLORS, DANGEROUS_PORTS } from '@/constants/dashboard'
+import { useTranslatedLabels } from '@/composables/useTranslatedLabels'
 import KpiIcon from '@/components/dashboard/KpiIcon.vue'
 
 echarts.use([GraphChart, PieChart, BarChart, TooltipComponent, LegendComponent, GridComponent, CanvasRenderer])
 
 const router = useRouter()
 const store = useDashboardStore()
+const { t, locale } = useI18n()
+const { zoneLabel } = useTranslatedLabels()
 const summary = computed(() => store.summary)
 const kpi = computed(() => summary.value?.kpi)
 
@@ -34,16 +38,16 @@ interface KpiDef {
   query?: Record<string, string>
 }
 
-const KPI_DEFS: KpiDef[] = [
-  { key: 'total', label: '资产总数', cssClass: 'kpi-neutral', getVal: k => k.total_assets, suffix: '' },
-  { key: 'online', label: '在线', cssClass: 'kpi-success', getVal: k => k.online, suffix: '', route: '/assets', query: { status: 'online' } },
-  { key: 'offline', label: '离线', cssClass: 'kpi-warning', getVal: k => k.offline, suffix: '', route: '/assets', query: { status: 'offline' } },
-  { key: 'decom', label: '已下线', cssClass: 'kpi-muted', getVal: k => k.decommissioned, suffix: '', route: '/assets', query: { status: 'decommissioned' } },
-  { key: 'danger', label: '危险端口', cssClass: 'kpi-danger', getVal: k => k.dangerous_ports, suffix: '' },
-  { key: 'shadow', label: '影子资产', cssClass: 'kpi-alert', getVal: k => k.shadow_assets, suffix: '' },
-  { key: 'changes', label: '本月变更', cssClass: 'kpi-purple', getVal: k => k.changes_this_month, suffix: '' },
-  { key: 'coverage', label: '扫描覆盖', cssClass: 'kpi-cyan', getVal: k => k.scan_coverage.total > 0 ? Math.round((k.scan_coverage.covered / k.scan_coverage.total) * 100) : 0, suffix: '%' },
-]
+const KPI_DEFS = computed<KpiDef[]>(() => [
+  { key: 'total', label: t('dashboard.kpi.total'), cssClass: 'kpi-neutral', getVal: k => k.total_assets, suffix: '' },
+  { key: 'online', label: t('dashboard.kpi.online'), cssClass: 'kpi-success', getVal: k => k.online, suffix: '', route: '/assets', query: { status: 'online' } },
+  { key: 'offline', label: t('dashboard.kpi.offline'), cssClass: 'kpi-warning', getVal: k => k.offline, suffix: '', route: '/assets', query: { status: 'offline' } },
+  { key: 'decom', label: t('dashboard.kpi.decommissioned'), cssClass: 'kpi-muted', getVal: k => k.decommissioned, suffix: '', route: '/assets', query: { status: 'decommissioned' } },
+  { key: 'danger', label: t('dashboard.kpi.dangerousPorts'), cssClass: 'kpi-danger', getVal: k => k.dangerous_ports, suffix: '' },
+  { key: 'shadow', label: t('dashboard.kpi.shadowAssets'), cssClass: 'kpi-alert', getVal: k => k.shadow_assets, suffix: '' },
+  { key: 'changes', label: t('dashboard.kpi.monthlyChanges'), cssClass: 'kpi-purple', getVal: k => k.changes_this_month, suffix: '' },
+  { key: 'coverage', label: t('dashboard.kpi.scanCoverage'), cssClass: 'kpi-cyan', getVal: k => k.scan_coverage.total > 0 ? Math.round((k.scan_coverage.covered / k.scan_coverage.total) * 100) : 0, suffix: '%' },
+])
 
 // KPI 翻牌动画
 const kpiNumRefs = ref<HTMLElement[]>([])
@@ -63,7 +67,7 @@ function animateCounter(el: HTMLElement, target: number, suffix: string) {
 watch(kpi, (val) => {
   if (!val) return
   nextTick(() => {
-    KPI_DEFS.forEach((def, i) => {
+    KPI_DEFS.value.forEach((def, i) => {
       const el = kpiNumRefs.value[i]
       if (el) animateCounter(el, def.getVal(val), def.suffix)
     })
@@ -76,12 +80,12 @@ function handleKpiClick(def: KpiDef) {
 
 // ── 资产分布 Tab ───────────────────────────────────────────
 const distTab = ref<'by_zone' | 'by_type' | 'by_importance' | 'by_os'>('by_zone')
-const distTabs = [
-  { key: 'by_zone' as const, label: '网络区域' },
-  { key: 'by_type' as const, label: '资产类型' },
-  { key: 'by_importance' as const, label: '重要性' },
-  { key: 'by_os' as const, label: '操作系统' },
-]
+const distTabs = computed(() => [
+  { key: 'by_zone' as const, label: t('dashboard.tabs.byZone') },
+  { key: 'by_type' as const, label: t('dashboard.tabs.byType') },
+  { key: 'by_importance' as const, label: t('dashboard.tabs.byImportance') },
+  { key: 'by_os' as const, label: t('dashboard.tabs.byOs') },
+])
 
 // ── 危险端口 ───────────────────────────────────────────────
 const dangerousPorts = computed(() => summary.value?.dangerous_ports || [])
@@ -106,7 +110,7 @@ function renderTopo() {
   const zones = summary.value.zone_topology.zones
   const hubValue = zones.reduce((s, z) => s + z.asset_count, 0)
   const nodes = [
-    { id: 'hub', name: '组织网络', value: hubValue, symbolSize: 60, itemStyle: { color: '#334155', borderColor: '#E2E8F0', borderWidth: 3 } },
+    { id: 'hub', name: t('dashboard.alert.orgNetwork'), value: hubValue, symbolSize: 60, itemStyle: { color: '#334155', borderColor: '#E2E8F0', borderWidth: 3 } },
     ...zones.map(z => ({
       id: z.zone, name: z.zone, value: z.asset_count,
       symbolSize: Math.max(24, Math.min(52, z.asset_count * 5 + 16)),
@@ -116,7 +120,7 @@ function renderTopo() {
   const edges = zones.map(z => ({ source: 'hub', target: z.zone }))
   chartTopo.value.setOption({
     backgroundColor: 'transparent', animation: true, animationDuration: 1200,
-    tooltip: { ...TOOLTIP, trigger: 'item', formatter: (p: any) => p.dataType === 'node' ? `<b>${p.data.name}</b><br/>资产数：${p.data.value}` : '' },
+    tooltip: { ...TOOLTIP, trigger: 'item', formatter: (p: any) => p.dataType === 'node' ? `<b>${p.data.name}</b><br/>${t('dashboard.alert.assets')}：${p.data.value}` : '' },
     series: [{
       type: 'graph', layout: 'force', data: nodes, edges, roam: true,
       label: { show: true, position: 'bottom', fontSize: 12, color: '#334155', formatter: (p: any) => `${p.data.name}\n${p.data.value}` },
@@ -144,7 +148,7 @@ function renderDist() {
     legend: { orient: 'vertical', right: 24, top: 'center', itemWidth: 10, itemHeight: 10, icon: 'roundRect', textStyle: { color: '#334155', fontSize: 12 }, itemGap: 10 },
     series: [{
       type: 'pie', radius: ['46%', '68%'], center: ['36%', '50%'], data,
-      label: { show: true, position: 'center', formatter: `{total|${total}}\n{sub|台资产}`, rich: { total: { fontSize: 26, fontWeight: 700, color: '#334155', fontFamily: '"JetBrains Mono", monospace', lineHeight: 34 }, sub: { fontSize: 12, color: '#94A3B8', lineHeight: 18 } } },
+      label: { show: true, position: 'center', formatter: `{total|${total}}\n{sub|${t('dashboard.alert.assets')}}`, rich: { total: { fontSize: 26, fontWeight: 700, color: '#334155', fontFamily: '"JetBrains Mono", monospace', lineHeight: 34 }, sub: { fontSize: 12, color: '#94A3B8', lineHeight: 18 } } },
       emphasis: { itemStyle: { shadowBlur: 12, shadowColor: 'rgba(0,0,0,0.1)' } },
       labelLine: { show: false },
     }],
@@ -158,7 +162,7 @@ function renderPortBar() {
   chartPortBar.value.setOption({
     backgroundColor: 'transparent', animation: true, animationDuration: 900,
     grid: { left: 56, right: 20, top: 8, bottom: 8, containLabel: false },
-    tooltip: { ...TOOLTIP, trigger: 'axis', axisPointer: { type: 'none' }, formatter: (p: any) => { const d = ports[p[0].dataIndex]; const badge = DANGEROUS_PORTS.has(d.port) ? ' <span style="color:#DC2626;font-weight:600;">危险</span>' : ''; return `端口 ${d.port}${badge}<br/>开放数：${d.count}` } },
+    tooltip: { ...TOOLTIP, trigger: 'axis', axisPointer: { type: 'none' }, formatter: (p: any) => { const d = ports[p[0].dataIndex]; const badge = DANGEROUS_PORTS.has(d.port) ? ` <span style="color:#DC2626;font-weight:600;">${t('dashboard.alert.danger')}</span>` : ''; return `${t('dashboard.alert.port')} ${d.port}${badge}<br/>${t('dashboard.alert.openCount')}${d.count}` } },
     xAxis: { type: 'value', show: false },
     yAxis: { type: 'category', data: ports.map(p => String(p.port)), axisLine: { show: false }, axisTick: { show: false }, axisLabel: { color: '#334155', fontFamily: '"JetBrains Mono", monospace', fontSize: 11, margin: 8 } },
     series: [{ type: 'bar', data: ports.map(p => ({ value: p.count, itemStyle: { color: DANGEROUS_PORTS.has(p.port) ? '#DC2626' : '#2563EB', borderRadius: [0, 3, 3, 0] } })), barMaxWidth: 14, label: { show: true, position: 'right', fontSize: 11, fontFamily: '"JetBrains Mono", monospace', color: '#334155' } }],
@@ -187,6 +191,8 @@ function renderAllCharts() { renderTopo(); renderDist(); renderPortBar(); render
 watch(distTab, () => nextTick(renderDist))
 // summary 整体替换，浅比较即可触发；无需 deep
 watch(summary, () => nextTick(renderAllCharts))
+// 语言切换时重新渲染图表（ECharts 内嵌中文字符串需更新）
+watch(locale, () => nextTick(renderAllCharts))
 
 // ── 危险端口自动滚动（页面不可见 / reduce 时自动停） ────────
 const alertListRef = ref<HTMLElement>()
@@ -236,15 +242,15 @@ onUnmounted(() => {
     <!-- 页头 -->
     <div class="page-head">
       <div class="page-head-left">
-        <h1>资产总览</h1>
+        <h1>{{ t('dashboard.title') }}</h1>
         <div class="sub" v-if="summary">
           <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6"/><path d="M8 4.5V8l2 1.5"/></svg>
-          数据更新于 <span class="ts">{{ new Date(summary.generated_at).toLocaleString('zh-CN') }}</span>
+          {{ t('dashboard.dataUpdatedAt') }} <span class="ts">{{ new Date(summary.generated_at).toLocaleString(locale === 'zh' ? 'zh-CN' : 'en-US') }}</span>
         </div>
       </div>
       <button class="btn-refresh" :disabled="store.loading || undefined" @click="store.fetchSummary(true)">
         <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13.5 2.5v4h-4"/><path d="M2.5 13.5v-4h4"/><path d="M13.5 6.5A5.5 5.5 0 0 0 3.8 3.8"/><path d="M2.5 9.5a5.5 5.5 0 0 0 9.7 2.7"/></svg>
-        刷新数据
+        {{ t('dashboard.refresh') }}
       </button>
     </div>
 
@@ -281,7 +287,7 @@ onUnmounted(() => {
               <span class="ttl-ico">
                 <svg width="14" height="14" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="4" r="2"/><circle cx="3.5" cy="14" r="2"/><circle cx="14.5" cy="14" r="2"/><path d="M9 6v3.5M9 9.5L3.5 12M9 9.5L14.5 12"/></svg>
               </span>
-              网络区域拓扑
+              {{ t('dashboard.charts.topo') }}
               <span class="ttl-meta">force-directed</span>
             </div>
           </div>
@@ -294,7 +300,7 @@ onUnmounted(() => {
               <span class="ttl-ico">
                 <svg width="14" height="14" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="9" r="7"/><path d="M9 2a7 7 0 0 1 7 7H9V2z" fill="currentColor" fill-opacity=".12"/></svg>
               </span>
-              资产分布
+              {{ t('dashboard.charts.dist') }}
             </div>
           </div>
           <div class="tab-bar">
@@ -312,18 +318,18 @@ onUnmounted(() => {
               <span class="ttl-ico" style="background:rgba(220,38,38,0.08); color:#DC2626;">
                 <svg width="14" height="14" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="12" height="12" rx="2"/><path d="M9 6v6M6 9h6"/></svg>
               </span>
-              端口暴露面
+              {{ t('dashboard.charts.portExposure') }}
             </div>
             <div class="tools"><button class="tool-btn">Top 10</button></div>
           </div>
           <div class="port-split">
             <div>
-              <div class="split-label">开放端口 Top 10</div>
+              <div class="split-label">{{ t('dashboard.port.topPorts') }}</div>
               <div ref="chartPortBarEl" style="height:288px;"></div>
             </div>
             <div class="ps-divider"></div>
             <div>
-              <div class="split-label">按区域分布</div>
+              <div class="split-label">{{ t('dashboard.port.byZone') }}</div>
               <div ref="chartPortZoneEl" style="height:288px;"></div>
             </div>
           </div>
@@ -335,20 +341,20 @@ onUnmounted(() => {
               <span class="ttl-ico" style="background:rgba(220,38,38,0.08); color:#DC2626;">
                 <svg width="14" height="14" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2L2 14h14L9 2z"/><path d="M9 7v3.5"/><circle cx="9" cy="12.5" r=".8" fill="currentColor" stroke="none"/></svg>
               </span>
-              危险端口告警
+              {{ t('dashboard.charts.dangerousPorts') }}
             </div>
             <div class="sev-counts">
-              <span class="sev-tag h">高危 {{ highCount }}</span>
-              <span class="sev-tag m">中危 {{ medCount }}</span>
+              <span class="sev-tag h">{{ t('dashboard.alert.highRisk') }} {{ highCount }}</span>
+              <span class="sev-tag m">{{ t('dashboard.alert.medRisk') }} {{ medCount }}</span>
             </div>
           </div>
           <div class="alert-thead">
             <div style="width:3px; flex-shrink:0;"></div>
-            <div class="th-ip">IP</div>
-            <div class="th-port">端口</div>
-            <div class="th-svc">服务</div>
-            <div class="th-zone">区域</div>
-            <div class="th-lvl">级别</div>
+            <div class="th-ip">{{ t('dashboard.alert.ip') }}</div>
+            <div class="th-port">{{ t('dashboard.alert.port') }}</div>
+            <div class="th-svc">{{ t('dashboard.alert.service') }}</div>
+            <div class="th-zone">{{ t('dashboard.alert.zone') }}</div>
+            <div class="th-lvl">{{ t('dashboard.alert.level') }}</div>
           </div>
           <div class="alert-table-wrap" style="flex:1;">
             <ul
@@ -367,9 +373,9 @@ onUnmounted(() => {
                 <div class="port">{{ item.port_number }}/{{ item.protocol }}</div>
                 <div class="svc">{{ item.service_name || '-' }}</div>
                 <div class="zone">{{ zoneLabel(item.network_zone) }}</div>
-                <div class="lvl">{{ item.severity === 'high' ? '🔴 高危' : '🟠 中危' }}</div>
+                <div class="lvl">{{ item.severity === 'high' ? '🔴 ' + t('dashboard.alert.highRisk') : '🟠 ' + t('dashboard.alert.medRisk') }}</div>
               </li>
-              <li v-if="!dangerousPorts.length" class="alert-row" style="justify-content:center; color:var(--neutral-400);">暂无危险端口</li>
+              <li v-if="!dangerousPorts.length" class="alert-row" style="justify-content:center; color:var(--neutral-400);">{{ t('dashboard.alert.noDangerous') }}</li>
             </ul>
           </div>
         </div>

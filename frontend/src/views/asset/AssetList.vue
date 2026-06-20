@@ -5,11 +5,15 @@
  */
 import { ref, reactive, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { fetchAssetList, decommissionAsset, exportAssetsCsv, exportAssetsForThreatHunting, updateAsset } from '@/api/asset'
 import type { AssetListItem, AssetListResponse, AssetQueryParams } from '@/types/asset'
+import { useTranslatedLabels } from '@/composables/useTranslatedLabels'
 
 const router = useRouter()
+const { t } = useI18n()
+const { zoneLabel, importanceLabel, statusLabel, typeLabel } = useTranslatedLabels()
 
 // 数据
 const loading = ref(false)
@@ -85,23 +89,23 @@ function goCreate() {
 
 async function handleDecommission(row: AssetListItem) {
   await ElMessageBox.confirm(
-    `确认将资产 ${row.asset_no}（${row.ip_address}）标记为下线？`,
-    '下线确认',
-    { confirmButtonText: '确认下线', cancelButtonText: '取消', type: 'warning' }
+    t('asset.list.decommissionConfirm', { no: row.asset_no, ip: row.ip_address }),
+    t('asset.list.decommissionTitle'),
+    { confirmButtonText: t('asset.list.decommissionBtn'), cancelButtonText: t('common.cancel'), type: 'warning' }
   )
   await decommissionAsset(row.id)
-  ElMessage.success('资产已下线')
+  ElMessage.success(t('asset.list.decommissionSuccess'))
   loadData()
 }
 
 async function handleRestore(row: AssetListItem) {
   await ElMessageBox.confirm(
-    `确认将资产 ${row.asset_no}（${row.ip_address}）恢复为在线？`,
-    '恢复上线',
-    { confirmButtonText: '确认恢复', cancelButtonText: '取消', type: 'info' }
+    t('asset.list.restoreConfirm', { no: row.asset_no, ip: row.ip_address }),
+    t('asset.list.restoreTitle'),
+    { confirmButtonText: t('asset.list.restoreBtn'), cancelButtonText: t('common.cancel'), type: 'info' }
   )
   await updateAsset(row.id, { status: 'online' })
-  ElMessage.success('资产已恢复上线')
+  ElMessage.success(t('asset.list.restoreSuccess'))
   loadData()
 }
 
@@ -124,7 +128,7 @@ async function handleExportThreatHunting() {
   a.download = `cmdb_threat_hunting_${today}.csv`
   a.click()
   URL.revokeObjectURL(url)
-  ElMessage.success('已导出威胁狩猎助手兼容格式，按当前筛选条件导出资产×应用展开行')
+  ElMessage.success(t('asset.list.exportThreatHuntingSuccess'))
 }
 
 function handleExportCommand(command: string) {
@@ -153,45 +157,6 @@ function zoneClass(zone: string): string {
   return map[zone] || 'zone-other'
 }
 
-function zoneLabel(zone: string): string {
-  const map: Record<string, string> = {
-    intranet: '内网',
-    dmz: 'DMZ',
-    office: '办公网',
-    management: '管理网',
-    other: '其他',
-    aliyun: '阿里云',
-    tencent: '腾讯云',
-    huawei: '华为云',
-    aws: 'AWS',
-    azure: 'Azure',
-    gcp: 'Google Cloud',
-    other_cloud: '其他云',
-  }
-  return map[zone] || zone
-}
-
-function importanceLabel(imp: string): string {
-  const map: Record<string, string> = { core: '核心', important: '重要', normal: '普通' }
-  return map[imp] || imp
-}
-
-function statusLabel(s: string): string {
-  const map: Record<string, string> = { online: '在线', offline: '离线', decommissioned: '已下线' }
-  return map[s] || s
-}
-
-function typeLabel(t: string): string {
-  const map: Record<string, string> = {
-    physical: '物理服务器',
-    virtual: '虚拟机',
-    cloud_server: '云服务器',
-    network_device: '网络设备',
-    other: '其他',
-  }
-  return map[t] || t
-}
-
 // 派生统计：在线/离线计数（用于页头）
 const onlineCount = computed(() =>
   tableData.value.filter((a) => a.status === 'online').length
@@ -206,28 +171,28 @@ onMounted(loadData)
     <div class="ui-page-head">
       <div>
         <h1 class="ui-page-title">
-          资产列表
-          <span class="ui-page-count">共 <b>{{ total }}</b> 项</span>
+          {{ t('asset.list.title') }}
+          <span class="ui-page-count">{{ t('asset.list.total', { count: total }) }}</span>
         </h1>
-        <p class="ui-page-subtitle">本页 {{ tableData.length }} 项 · 在线 {{ onlineCount }} 项</p>
+        <p class="ui-page-subtitle">{{ t('asset.list.pageSummary', { pageItems: tableData.length, onlineCount: onlineCount }) }}</p>
       </div>
       <div class="ui-page-actions">
         <el-dropdown trigger="click" @command="handleExportCommand">
           <el-button>
             <el-icon><Download /></el-icon>
-            导出 CSV
+            {{ t('asset.list.exportCsv') }}
             <el-icon class="el-icon--right"><ArrowDown /></el-icon>
           </el-button>
           <template #dropdown>
             <el-dropdown-menu>
-              <el-dropdown-item command="standard">Z-CMDB 标准格式</el-dropdown-item>
-              <el-dropdown-item command="threat-hunting">威胁狩猎助手格式</el-dropdown-item>
+              <el-dropdown-item command="standard">{{ t('asset.list.standardFormat') }}</el-dropdown-item>
+              <el-dropdown-item command="threat-hunting">{{ t('asset.list.threatHuntingFormat') }}</el-dropdown-item>
             </el-dropdown-menu>
           </template>
         </el-dropdown>
         <el-button type="primary" @click="goCreate">
           <el-icon><Plus /></el-icon>
-          新增资产
+          {{ t('asset.list.newAsset') }}
         </el-button>
       </div>
     </div>
@@ -236,7 +201,7 @@ onMounted(loadData)
     <div class="ui-filter-bar">
       <el-input
         v-model="query.search"
-        placeholder="搜索 IP / 主机名 / 资产编号 / 业务系统 / 应用（如 nginx, mysql）"
+        :placeholder="t('asset.list.searchPlaceholder')"
         clearable
         style="width: 380px"
         @keyup.enter="handleSearch"
@@ -247,48 +212,48 @@ onMounted(loadData)
         </template>
       </el-input>
 
-      <el-select v-model="query.network_zone" placeholder="网络区域" clearable @change="handleSearch" style="width: 140px">
-        <el-option-group label="传统区域">
-          <el-option label="内网" value="intranet" />
+      <el-select v-model="query.network_zone" :placeholder="t('asset.list.filterZone')" clearable @change="handleSearch" style="width: 140px">
+        <el-option-group :label="t('asset.list.traditionalZones')">
+          <el-option :label="t('constants.zones.intranet')" value="intranet" />
           <el-option label="DMZ" value="dmz" />
-          <el-option label="办公网" value="office" />
-          <el-option label="管理网" value="management" />
-          <el-option label="其他" value="other" />
+          <el-option :label="t('constants.zones.office')" value="office" />
+          <el-option :label="t('constants.zones.management')" value="management" />
+          <el-option :label="t('constants.zones.other')" value="other" />
         </el-option-group>
-        <el-option-group label="云服务商">
-          <el-option label="阿里云" value="aliyun" />
-          <el-option label="腾讯云" value="tencent" />
-          <el-option label="华为云" value="huawei" />
+        <el-option-group :label="t('asset.list.cloudProviders')">
+          <el-option :label="t('constants.zones.aliyun')" value="aliyun" />
+          <el-option :label="t('constants.zones.tencent')" value="tencent" />
+          <el-option :label="t('constants.zones.huawei')" value="huawei" />
           <el-option label="AWS" value="aws" />
           <el-option label="Azure" value="azure" />
           <el-option label="Google Cloud" value="gcp" />
-          <el-option label="其他云" value="other_cloud" />
+          <el-option :label="t('constants.zones.other_cloud')" value="other_cloud" />
         </el-option-group>
       </el-select>
 
-      <el-select v-model="query.asset_type" placeholder="资产类型" clearable @change="handleSearch" style="width: 140px">
-        <el-option label="物理服务器" value="physical" />
-        <el-option label="虚拟机" value="virtual" />
-        <el-option label="云服务器" value="cloud_server" />
-        <el-option label="网络设备" value="network_device" />
-        <el-option label="其他" value="other" />
+      <el-select v-model="query.asset_type" :placeholder="t('asset.list.filterType')" clearable @change="handleSearch" style="width: 140px">
+        <el-option :label="t('constants.assetTypes.physical')" value="physical" />
+        <el-option :label="t('constants.assetTypes.virtual')" value="virtual" />
+        <el-option :label="t('constants.assetTypes.cloud_server')" value="cloud_server" />
+        <el-option :label="t('constants.assetTypes.network_device')" value="network_device" />
+        <el-option :label="t('constants.assetTypes.other')" value="other" />
       </el-select>
 
-      <el-select v-model="query.importance" placeholder="重要性" clearable @change="handleSearch" style="width: 120px">
-        <el-option label="核心" value="core" />
-        <el-option label="重要" value="important" />
-        <el-option label="普通" value="normal" />
+      <el-select v-model="query.importance" :placeholder="t('asset.list.filterImportance')" clearable @change="handleSearch" style="width: 120px">
+        <el-option :label="t('constants.importance.core')" value="core" />
+        <el-option :label="t('constants.importance.important')" value="important" />
+        <el-option :label="t('constants.importance.normal')" value="normal" />
       </el-select>
 
-      <el-select v-model="query.status" placeholder="状态" clearable @change="handleSearch" style="width: 120px">
-        <el-option label="在线" value="online" />
-        <el-option label="离线" value="offline" />
-        <el-option label="已下线" value="decommissioned" />
+      <el-select v-model="query.status" :placeholder="t('asset.list.filterStatus')" clearable @change="handleSearch" style="width: 120px">
+        <el-option :label="t('common.status.online')" value="online" />
+        <el-option :label="t('common.status.offline')" value="offline" />
+        <el-option :label="t('common.status.decommissioned')" value="decommissioned" />
       </el-select>
 
       <el-button @click="handleReset">
         <el-icon><Refresh /></el-icon>
-        重置
+        {{ t('asset.list.reset') }}
       </el-button>
     </div>
 
@@ -303,31 +268,31 @@ onMounted(loadData)
         :row-style="{ cursor: 'pointer' }"
         @row-click="(row: AssetListItem) => goDetail(row.id)"
       >
-        <el-table-column prop="asset_no" label="资产编号" width="160">
+        <el-table-column prop="asset_no" :label="t('asset.list.columns.assetNo')" width="160">
           <template #default="{ row }">
             <span class="ui-id-link">{{ row.asset_no }}</span>
           </template>
         </el-table-column>
 
-        <el-table-column prop="ip_address" label="IP 地址" width="140">
+        <el-table-column prop="ip_address" :label="t('asset.list.columns.ip')" width="140">
           <template #default="{ row }">
             <span class="ui-mono">{{ row.ip_address }}</span>
           </template>
         </el-table-column>
 
-        <el-table-column prop="hostname" label="主机名" width="180" show-overflow-tooltip>
+        <el-table-column prop="hostname" :label="t('asset.list.columns.hostname')" width="180" show-overflow-tooltip>
           <template #default="{ row }">
             <span style="color: var(--neutral-700)">{{ row.hostname || '-' }}</span>
           </template>
         </el-table-column>
 
-        <el-table-column prop="asset_type" label="类型" width="110">
+        <el-table-column prop="asset_type" :label="t('asset.list.columns.type')" width="110">
           <template #default="{ row }">
             <el-tag size="small" effect="plain">{{ typeLabel(row.asset_type) }}</el-tag>
           </template>
         </el-table-column>
 
-        <el-table-column prop="network_zone" label="区域" width="110">
+        <el-table-column prop="network_zone" :label="t('asset.list.columns.zone')" width="110">
           <template #default="{ row }">
             <span class="ui-zone" :class="zoneClass(row.network_zone)">
               {{ zoneLabel(row.network_zone) }}
@@ -335,27 +300,27 @@ onMounted(loadData)
           </template>
         </el-table-column>
 
-        <el-table-column prop="business_system" label="业务系统" width="140" show-overflow-tooltip>
+        <el-table-column prop="business_system" :label="t('asset.list.columns.businessSystem')" width="140" show-overflow-tooltip>
           <template #default="{ row }">
             <span v-if="row.business_system" class="ui-mono" style="color: var(--neutral-700)">{{ row.business_system }}</span>
             <span v-else class="ui-mono-muted" style="font-size: 12px">-</span>
           </template>
         </el-table-column>
 
-        <el-table-column prop="os_info" label="操作系统" width="160" show-overflow-tooltip>
+        <el-table-column prop="os_info" :label="t('asset.list.columns.os')" width="160" show-overflow-tooltip>
           <template #default="{ row }">
             <span v-if="row.os_info" style="color: var(--neutral-700)">{{ row.os_info }}</span>
-            <span v-else class="ui-mono-muted" style="font-size: 12px">未识别</span>
+            <span v-else class="ui-mono-muted" style="font-size: 12px">{{ t('asset.list.osUnidentified') }}</span>
           </template>
         </el-table-column>
 
-        <el-table-column prop="importance" label="重要性" width="100">
+        <el-table-column prop="importance" :label="t('asset.list.columns.importance')" width="100">
           <template #default="{ row }">
             <span class="ui-imp" :class="'is-' + row.importance">{{ importanceLabel(row.importance) }}</span>
           </template>
         </el-table-column>
 
-        <el-table-column prop="status" label="状态" width="110">
+        <el-table-column prop="status" :label="t('asset.list.columns.status')" width="110">
           <template #default="{ row }">
             <span class="ui-status" :class="'is-' + row.status">
               {{ statusLabel(row.status) }}
@@ -363,12 +328,12 @@ onMounted(loadData)
           </template>
         </el-table-column>
 
-        <el-table-column prop="owner" label="负责人" width="100" />
+        <el-table-column prop="owner" :label="t('asset.list.columns.owner')" width="100" />
 
-        <el-table-column label="操作" width="160" fixed="right">
+        <el-table-column :label="t('asset.list.columns.actions')" width="160" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" size="small" @click.stop="router.push(`/assets/${row.id}/edit`)">
-              编辑
+              {{ t('asset.list.edit') }}
             </el-button>
             <el-button
               v-if="row.status !== 'decommissioned' && row.status !== 'offline'"
@@ -377,7 +342,7 @@ onMounted(loadData)
               size="small"
               @click.stop="handleDecommission(row)"
             >
-              下线
+              {{ t('asset.list.decommission') }}
             </el-button>
             <el-button
               v-if="row.status === 'decommissioned' || row.status === 'offline'"
@@ -386,14 +351,14 @@ onMounted(loadData)
               size="small"
               @click.stop="handleRestore(row)"
             >
-              恢复上线
+              {{ t('asset.list.restore') }}
             </el-button>
           </template>
         </el-table-column>
       </el-table>
 
       <div class="ui-pagination-bar">
-        <span class="ui-pagination-info">共 {{ total }} 条 · 第 {{ query.page }} / {{ totalPages }} 页</span>
+        <span class="ui-pagination-info">{{ t('asset.list.pagination', { total, page: query.page, totalPages }) }}</span>
         <el-pagination
           v-model:current-page="query.page"
           v-model:page-size="query.page_size"

@@ -5,6 +5,7 @@
  */
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
 import type { UserRole } from '@/types/auth'
 
@@ -28,60 +29,61 @@ const props = defineProps<{
 
 const route = useRoute()
 const authStore = useAuthStore()
+const { t } = useI18n()
 
-const navGroups: NavGroup[] = [
+const navGroups = computed<NavGroup[]>(() => [
   {
-    title: '资产总览',
+    title: t('layout.sidebar.overview'),
     items: [
-      { title: '资产总览', route: '/dashboard', icon: 'Odometer' },
+      { title: t('layout.sidebar.overview'), route: '/dashboard', icon: 'Odometer' },
     ],
   },
   {
-    title: '资产管理',
+    title: t('layout.sidebar.assetManagement'),
     items: [
-      { title: '资产列表', route: '/assets', icon: 'Monitor' },
+      { title: t('layout.sidebar.assetList'), route: '/assets', icon: 'Monitor' },
     ],
   },
   {
-    title: '扫描导入',
+    title: t('layout.sidebar.scanImport'),
     items: [
-      { title: '扫描批次', route: '/scans', icon: 'Upload' },
+      { title: t('layout.sidebar.scanBatches'), route: '/scans', icon: 'Upload' },
     ],
   },
   {
-    title: '拓扑图',
+    title: t('layout.sidebar.topology'),
     items: [
-      { title: '拓扑图', route: '/topology', icon: 'Share' },
+      { title: t('layout.sidebar.topology'), route: '/topology', icon: 'Share' },
     ],
   },
   {
-    title: '安全报表',
+    title: t('layout.sidebar.securityReports'),
     items: [
-      { title: '安全报表', route: '/reports', icon: 'DataAnalysis' },
+      { title: t('layout.sidebar.securityReports'), route: '/reports', icon: 'DataAnalysis' },
     ],
   },
   {
-    title: '审计',
+    title: t('layout.sidebar.audit'),
     requiredRoles: ['super_admin', 'auditor'],
     items: [
-      { title: '审计日志', route: '/audit', icon: 'Document', requiredRoles: ['super_admin', 'auditor'] },
+      { title: t('layout.sidebar.auditLog'), route: '/audit', icon: 'Document', requiredRoles: ['super_admin', 'auditor'] },
     ],
   },
   {
-    title: '系统管理',
+    title: t('layout.sidebar.systemAdmin'),
     requiredRoles: ['super_admin'],
     items: [
-      { title: '用户管理', route: '/users', icon: 'User', requiredRoles: ['super_admin'] },
-      { title: '系统配置', route: '/settings', icon: 'Setting', requiredRoles: ['super_admin'] },
+      { title: t('layout.sidebar.userManagement'), route: '/users', icon: 'User', requiredRoles: ['super_admin'] },
+      { title: t('layout.sidebar.systemConfig'), route: '/settings', icon: 'Setting', requiredRoles: ['super_admin'] },
     ],
   },
-]
+])
 
 const visibleGroups = computed(() => {
   const role = authStore.role
   if (!role) return []
 
-  return navGroups
+  return navGroups.value
     .filter((g) => !g.requiredRoles || g.requiredRoles.includes(role))
     .map((g) => ({
       ...g,
@@ -128,7 +130,7 @@ function isActive(itemRoute: string) {
     <!-- 底部版权区 -->
     <div v-if="!props.collapsed" class="sidebar-foot">
       <span class="foot-line">Z-CMDB Lite</span>
-      <span class="foot-meta">v0.1.0 · 中小团队 · 准确性优先</span>
+      <span class="foot-meta">{{ t('layout.sidebar.footer') }}</span>
     </div>
   </aside>
 </template>

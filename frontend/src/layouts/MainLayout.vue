@@ -5,20 +5,28 @@
  */
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { ElMessageBox } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
 import { logout } from '@/api/auth'
+import { setLocale } from '@/i18n'
+import { useTranslatedLabels } from '@/composables/useTranslatedLabels'
 import AppSidebar from '@/components/common/AppSidebar.vue'
 import ChangePasswordDialog from '@/components/common/ChangePasswordDialog.vue'
 
 const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
+const { t, locale } = useI18n()
+const { roleLabel: getRoleLabel } = useTranslatedLabels()
 
 const collapsed = ref(false)
 const showChangePwd = ref(false)
 
-const pageTitle = computed(() => (route.meta.title as string) || '')
+const pageTitle = computed(() => {
+  const key = route.meta.title as string
+  return key ? t(key) : ''
+})
 
 const avatarText = computed(() => {
   const name = authStore.userInfo?.full_name || authStore.userInfo?.username || ''
@@ -39,9 +47,9 @@ watch(showChangePwd, (newVal) => {
 })
 
 async function handleLogout() {
-  await ElMessageBox.confirm('确认退出登录？', '退出', {
-    confirmButtonText: '退出',
-    cancelButtonText: '取消',
+  await ElMessageBox.confirm(t('layout.topbar.confirmLogout'), t('layout.topbar.logoutTitle'), {
+    confirmButtonText: t('layout.topbar.logoutConfirm'),
+    cancelButtonText: t('common.cancel'),
     type: 'warning',
   })
   await logout()
@@ -54,14 +62,11 @@ function handleCommand(cmd: string) {
   if (cmd === 'change-pwd') showChangePwd.value = true
 }
 
-const roleLabel = computed(() => {
-  const map: Record<string, string> = {
-    super_admin: '超级管理员',
-    admin: '管理员',
-    auditor: '审计员',
-  }
-  return map[authStore.role || ''] || authStore.role || ''
-})
+const roleLabel = computed(() => getRoleLabel(authStore.role || ''))
+
+function toggleLocale() {
+  setLocale(locale.value === 'zh' ? 'en' : 'zh')
+}
 </script>
 
 <template>
@@ -83,13 +88,13 @@ const roleLabel = computed(() => {
       <div class="topbar-left">
         <button
           class="icon-btn"
-          :title="collapsed ? '展开侧边栏' : '折叠侧边栏'"
+          :title="collapsed ? t('layout.topbar.expandSidebar') : t('layout.topbar.collapseSidebar')"
           @click="collapsed = !collapsed"
         >
           <el-icon size="18"><Fold v-if="!collapsed" /><Expand v-else /></el-icon>
         </button>
 
-        <nav class="crumb" aria-label="面包屑">
+        <nav class="crumb" :aria-label="t('layout.topbar.breadcrumb')">
           <span class="crumb-prefix">CMDB</span>
           <span class="crumb-sep">/</span>
           <span class="crumb-here">{{ pageTitle }}</span>
@@ -102,14 +107,18 @@ const roleLabel = computed(() => {
       <div class="topbar-right">
         <span class="env-chip">
           <span class="env-dot" />
-          v0.1
+          v0.3
         </span>
+
+        <button class="lang-toggle" @click="toggleLocale" :title="t('layout.topbar.switchLanguage')">
+          {{ locale === 'zh' ? 'EN' : '中' }}
+        </button>
 
         <el-dropdown @command="handleCommand">
           <div class="user-chip">
             <div class="user-avatar">{{ avatarText }}</div>
             <div class="user-info">
-              <span class="user-name">{{ authStore.userInfo?.full_name || authStore.userInfo?.username || '用户' }}</span>
+              <span class="user-name">{{ authStore.userInfo?.full_name || authStore.userInfo?.username || t('layout.topbar.user') }}</span>
               <span class="role-badge" :class="authStore.role">
                 <span class="role-dot" />
                 {{ roleLabel }}
@@ -121,11 +130,11 @@ const roleLabel = computed(() => {
             <el-dropdown-menu>
               <el-dropdown-item command="change-pwd">
                 <el-icon><Lock /></el-icon>
-                修改密码
+                {{ t('layout.topbar.changePassword') }}
               </el-dropdown-item>
               <el-dropdown-item divided command="logout" style="color: var(--color-danger)">
                 <el-icon><SwitchButton /></el-icon>
-                退出登录
+                {{ t('layout.topbar.logout') }}
               </el-dropdown-item>
             </el-dropdown-menu>
           </template>
@@ -317,6 +326,29 @@ const roleLabel = computed(() => {
   font-size: 12px;
   font-family: var(--font-mono);
   font-weight: 500;
+}
+
+/* 语言切换按钮 */
+.lang-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 28px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--neutral-200);
+  background: var(--surface-base);
+  color: var(--neutral-700);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color var(--dur-fast) var(--ease-out),
+              border-color var(--dur-fast) var(--ease-out);
+}
+.lang-toggle:hover {
+  background: var(--color-primary-50);
+  border-color: var(--color-primary-300);
+  color: var(--color-primary-700);
 }
 .env-dot {
   width: 6px;

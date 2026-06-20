@@ -1,4 +1,4 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 /**
  * 用户管理页
  * 2026 UI Redesign：升级用户头像与角色徽标，逻辑保持不变
@@ -8,6 +8,11 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { fetchUsers, createUser, updateUser, disableUser } from '@/api/user'
 import type { UserInfo } from '@/types/auth'
 import type { UserCreateRequest, UserUpdateRequest } from '@/api/user'
+import { useI18n } from 'vue-i18n'
+import { useTranslatedLabels } from '@/composables/useTranslatedLabels'
+
+const { t } = useI18n()
+const { roleLabel } = useTranslatedLabels()
 
 const loading = ref(false)
 const tableData = ref<UserInfo[]>([])
@@ -45,7 +50,7 @@ async function handleCreate() {
   creating.value = true
   try {
     await createUser(newUser.value)
-    ElMessage.success('用户创建成功')
+    ElMessage.success(t('user.createDialog.success'))
     showCreateDialog.value = false
     newUser.value = { username: '', password: '', role: 'admin', full_name: '', email: '' }
     loadData()
@@ -70,7 +75,7 @@ async function handleEdit() {
   try {
     const { id, ...data } = editUser.value
     await updateUser(id, data)
-    ElMessage.success('用户信息已更新')
+    ElMessage.success(t('user.editDialog.success'))
     showEditDialog.value = false
     loadData()
   } finally {
@@ -80,18 +85,13 @@ async function handleEdit() {
 
 async function handleDisable(user: UserInfo) {
   await ElMessageBox.confirm(
-    `确认禁用用户 ${user.username}？禁用后该用户将无法登录。`,
-    '禁用确认',
-    { confirmButtonText: '确认禁用', cancelButtonText: '取消', type: 'warning' }
+    t('user.disableConfirm', { username: user.username }),
+    t('user.disableTitle'),
+    { confirmButtonText: t('user.disableBtn'), cancelButtonText: t('common.cancel'), type: 'warning' }
   )
   await disableUser(user.id)
-  ElMessage.success('用户已禁用')
+  ElMessage.success(t('user.disableSuccess'))
   loadData()
-}
-
-function roleLabel(role: string): string {
-  const map: Record<string, string> = { super_admin: '超级管理员', admin: '管理员', auditor: '审计员' }
-  return map[role] || role
 }
 
 function roleBadgeClass(role: string): string {
@@ -119,32 +119,32 @@ onMounted(loadData)
     <div class="ui-page-head">
       <div>
         <h1 class="ui-page-title">
-          用户管理
-          <span class="ui-page-count">共 <b>{{ tableData.length }}</b> 项</span>
+          {{ t('user.title') }}
+          <span class="ui-page-count">{{ t('user.total', { count: tableData.length }) }}</span>
         </h1>
         <p class="ui-page-subtitle">
-          活跃 {{ activeCount }} 人 · 审计员 {{ auditorCount }} 人
+          {{ t('user.summary', { active: activeCount, auditors: auditorCount }) }}
           <span v-if="auditorCount === 0" style="color: var(--color-warning); margin-left: 8px">
-            ⚠ 必须创建至少一个审计员才能解锁完整功能
+            {{ t('user.auditorWarning') }}
           </span>
         </p>
       </div>
       <div class="ui-page-actions">
         <el-button type="primary" @click="showCreateDialog = true">
           <el-icon><Plus /></el-icon>
-          新增用户
+          {{ t('user.newUser') }}
         </el-button>
       </div>
     </div>
 
     <div class="ui-table-card">
       <el-table v-loading="loading" :data="tableData" stripe style="width: 100%">
-        <el-table-column prop="id" label="ID" width="80">
+        <el-table-column prop="id" :label="t('user.columns.id')" width="80">
           <template #default="{ row }">
             <span class="ui-mono ui-mono-muted">#{{ row.id }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="用户" min-width="220">
+        <el-table-column :label="t('user.columns.user')" min-width="220">
           <template #default="{ row }">
             <div class="user-cell">
               <div class="user-avatar" :class="row.role">{{ getInitials(row) }}</div>
@@ -155,12 +155,12 @@ onMounted(loadData)
             </div>
           </template>
         </el-table-column>
-        <el-table-column prop="email" label="邮箱" min-width="200">
+        <el-table-column prop="email" :label="t('user.columns.email')" min-width="200">
           <template #default="{ row }">
             <span class="ui-mono ui-mono-muted">{{ row.email || '-' }}</span>
           </template>
         </el-table-column>
-        <el-table-column prop="role" label="角色" width="140">
+        <el-table-column prop="role" :label="t('user.columns.role')" width="140">
           <template #default="{ row }">
             <span class="ui-badge" :class="roleBadgeClass(row.role)">
               <span class="ui-badge-dot" />
@@ -168,18 +168,18 @@ onMounted(loadData)
             </span>
           </template>
         </el-table-column>
-        <el-table-column prop="status" label="状态" width="100">
+        <el-table-column prop="status" :label="t('user.columns.status')" width="100">
           <template #default="{ row }">
             <span class="ui-badge" :class="row.status === 'active' ? 'is-success' : 'is-neutral'">
               <span class="ui-badge-dot" />
-              {{ row.status === 'active' ? '正常' : '已禁用' }}
+              {{ row.status === 'active' ? t('user.statusLabels.active') : t('user.statusLabels.disabled') }}
             </span>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="160">
+        <el-table-column :label="t('user.columns.actions')" width="160">
           <template #default="{ row }">
             <el-button link type="primary" size="small" @click="openEdit(row)">
-              编辑
+              {{ t('user.edit') }}
             </el-button>
             <el-button
               v-if="row.status === 'active'"
@@ -188,7 +188,7 @@ onMounted(loadData)
               size="small"
               @click="handleDisable(row)"
             >
-              禁用
+              {{ t('user.disable') }}
             </el-button>
           </template>
         </el-table-column>
@@ -196,60 +196,60 @@ onMounted(loadData)
     </div>
 
     <!-- 新增用户弹窗 -->
-    <el-dialog v-model="showCreateDialog" title="新增用户" width="480px">
+    <el-dialog v-model="showCreateDialog" :title="t('user.createDialog.title')" width="480px">
       <el-form label-width="80px">
-        <el-form-item label="用户名" required>
-          <el-input v-model="newUser.username" placeholder="登录用户名" />
+        <el-form-item :label="t('user.createDialog.username')" required>
+          <el-input v-model="newUser.username" :placeholder="t('user.createDialog.usernamePlaceholder')" />
         </el-form-item>
-        <el-form-item label="密码" required>
-          <el-input v-model="newUser.password" type="password" show-password placeholder="至少 12 位，含大小写数字符号" />
+        <el-form-item :label="t('user.createDialog.password')" required>
+          <el-input v-model="newUser.password" type="password" show-password :placeholder="t('user.createDialog.passwordPlaceholder')" />
         </el-form-item>
-        <el-form-item label="角色" required>
+        <el-form-item :label="t('user.createDialog.role')" required>
           <el-select v-model="newUser.role" style="width: 100%">
-            <el-option label="管理员" value="admin" />
-            <el-option label="审计员" value="auditor" />
-            <el-option label="超级管理员" value="super_admin" />
+            <el-option :label="t('user.roles.admin')" value="admin" />
+            <el-option :label="t('user.roles.auditor')" value="auditor" />
+            <el-option :label="t('user.roles.superAdmin')" value="super_admin" />
           </el-select>
         </el-form-item>
-        <el-form-item label="姓名">
-          <el-input v-model="newUser.full_name" placeholder="真实姓名" />
+        <el-form-item :label="t('user.createDialog.fullName')">
+          <el-input v-model="newUser.full_name" :placeholder="t('user.createDialog.fullNamePlaceholder')" />
         </el-form-item>
-        <el-form-item label="邮箱">
-          <el-input v-model="newUser.email" placeholder="邮箱地址" />
+        <el-form-item :label="t('user.createDialog.email')">
+          <el-input v-model="newUser.email" :placeholder="t('user.createDialog.emailPlaceholder')" />
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="showCreateDialog = false">取消</el-button>
-        <el-button type="primary" :loading="creating" @click="handleCreate">创建</el-button>
+        <el-button @click="showCreateDialog = false">{{ t('common.cancel') }}</el-button>
+        <el-button type="primary" :loading="creating" @click="handleCreate">{{ t('user.createDialog.create') }}</el-button>
       </template>
     </el-dialog>
 
     <!-- 编辑用户弹窗 -->
-    <el-dialog v-model="showEditDialog" title="编辑用户" width="480px">
+    <el-dialog v-model="showEditDialog" :title="t('user.editDialog.title')" width="480px">
       <el-form label-width="80px">
-        <el-form-item label="角色">
+        <el-form-item :label="t('user.createDialog.role')">
           <el-select v-model="editUser.role" style="width: 100%">
-            <el-option label="管理员" value="admin" />
-            <el-option label="审计员" value="auditor" />
-            <el-option label="超级管理员" value="super_admin" />
+            <el-option :label="t('user.roles.admin')" value="admin" />
+            <el-option :label="t('user.roles.auditor')" value="auditor" />
+            <el-option :label="t('user.roles.superAdmin')" value="super_admin" />
           </el-select>
         </el-form-item>
-        <el-form-item label="姓名">
-          <el-input v-model="editUser.full_name" placeholder="真实姓名" />
+        <el-form-item :label="t('user.createDialog.fullName')">
+          <el-input v-model="editUser.full_name" :placeholder="t('user.createDialog.fullNamePlaceholder')" />
         </el-form-item>
-        <el-form-item label="邮箱">
-          <el-input v-model="editUser.email" placeholder="邮箱地址" />
+        <el-form-item :label="t('user.createDialog.email')">
+          <el-input v-model="editUser.email" :placeholder="t('user.createDialog.emailPlaceholder')" />
         </el-form-item>
-        <el-form-item label="状态">
+        <el-form-item :label="t('user.columns.status')">
           <el-select v-model="editUser.status" style="width: 100%">
-            <el-option label="正常" value="active" />
-            <el-option label="禁用" value="disabled" />
+            <el-option :label="t('user.statusLabels.active')" value="active" />
+            <el-option :label="t('common.disable')" value="disabled" />
           </el-select>
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="showEditDialog = false">取消</el-button>
-        <el-button type="primary" :loading="editing" @click="handleEdit">保存</el-button>
+        <el-button @click="showEditDialog = false">{{ t('common.cancel') }}</el-button>
+        <el-button type="primary" :loading="editing" @click="handleEdit">{{ t('user.editDialog.save') }}</el-button>
       </template>
     </el-dialog>
   </div>

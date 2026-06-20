@@ -1,4 +1,4 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 /**
  * 系统配置页
  * 复用 AssetForm（Design 06）的分段卡片布局
@@ -6,6 +6,10 @@
 import { ref, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { fetchConfig, updateConfig } from '@/api/config'
+import { useI18n } from 'vue-i18n'
+import { setLocale } from '@/i18n'
+
+const { t, locale } = useI18n()
 
 interface ConfigItem {
   value: string
@@ -21,50 +25,23 @@ const config = ref<Record<string, ConfigItem>>({})
 const groups = [
   {
     num: '01',
-    title: '扫描与资产',
-    desc: '扫描批次和资产管理相关参数',
+    titleKey: 'settings.groups.scan.title',
+    descKey: 'settings.groups.scan.desc',
     keys: ['missing_threshold', 'upload_max_size_mb', 'asset_no_prefix'],
   },
   {
     num: '02',
-    title: '会话与安全',
-    desc: '用户会话超时设置',
+    titleKey: 'settings.groups.session.title',
+    descKey: 'settings.groups.session.desc',
     keys: ['session_timeout_minutes'],
   },
   {
     num: '03',
-    title: 'LLM 配置',
-    desc: '拓扑图生成所用的大语言模型配置',
+    titleKey: 'settings.groups.llm.title',
+    descKey: 'settings.groups.llm.desc',
     keys: ['llm_provider', 'llm_base_url', 'llm_api_key', 'llm_model', 'llm_ollama_model', 'llm_cloud_enabled', 'llm_route_core_to_local'],
   },
 ]
-
-// 配置项中文标签覆盖（替代后端 description）
-const labelMap: Record<string, string> = {
-  missing_threshold: '消失保护阈值',
-  upload_max_size_mb: '上传文件上限 (MB)',
-  asset_no_prefix: '资产编号前缀',
-  session_timeout_minutes: 'Session 超时 (分钟)',
-  llm_provider: 'LLM 提供方',
-  llm_api_key: 'API Key',
-  llm_model: '模型名称',
-  llm_base_url: 'API 地址',
-  llm_ollama_model: '本地模型名称',
-  llm_route_core_to_local: '核心资产路由本地',
-  llm_cloud_enabled: '允许使用云端 LLM',
-}
-
-// 配置项占位提示
-const placeholderMap: Record<string, string> = {
-  missing_threshold: '默认 3，连续未扫到 N 次后标记离线',
-  upload_max_size_mb: '默认 50',
-  asset_no_prefix: '默认 CMDB',
-  session_timeout_minutes: '默认 30',
-  llm_api_key: '加密存储，留空则不更新',
-  llm_model: '例如 deepseek-chat / gpt-4o / claude-3-5-sonnet',
-  llm_base_url: '例如 https://api.deepseek.com/v1',
-  llm_ollama_model: '默认 qwen2.5',
-}
 
 // 布尔类型配置项（渲染为开关而非输入框）
 const booleanKeys = new Set(['llm_cloud_enabled', 'llm_route_core_to_local'])
@@ -83,11 +60,11 @@ function isPasswordKey(key: string): boolean {
 }
 
 function getLabel(key: string): string {
-  return labelMap[key] || config.value[key]?.description || key
+  return t(`settings.labels.${key}`)
 }
 
 function getPlaceholder(key: string): string {
-  return placeholderMap[key] || ''
+  return t(`settings.placeholders.${key}`)
 }
 
 // 布尔值适配（从字符串 'true'/'false' 转布尔）
@@ -119,7 +96,7 @@ async function handleSave() {
       data[key] = item.value
     }
     await updateConfig(data)
-    ElMessage.success('配置已保存')
+    ElMessage.success(t('settings.saveSuccess'))
     loadConfig()
   } finally {
     saving.value = false
@@ -135,22 +112,43 @@ onMounted(loadConfig)
       <!-- 页头 -->
       <div class="ui-page-head" style="margin-bottom: var(--space-6)">
         <div>
-          <h1 class="ui-page-title">系统配置</h1>
-          <p class="ui-page-subtitle">调整运行时参数 · 配置项立即生效，无需重启服务</p>
+          <h1 class="ui-page-title">{{ t('settings.title') }}</h1>
+          <p class="ui-page-subtitle">{{ t('settings.subtitle') }}</p>
         </div>
         <div class="ui-page-actions">
           <el-button @click="loadConfig">
             <el-icon><Refresh /></el-icon>
-            重置
+            {{ t('settings.reset') }}
           </el-button>
           <el-button type="primary" :loading="saving" @click="handleSave">
             <el-icon><Check /></el-icon>
-            保存配置
+            {{ t('settings.save') }}
           </el-button>
         </div>
       </div>
 
       <el-form label-width="160px" label-position="right">
+        <!-- 语言设置 section 00 -->
+        <div class="sec-card">
+          <div class="sec-head">
+            <span class="sec-num">00</span>
+            <span class="sec-title">{{ t('settings.groups.language.title') }}</span>
+            <span class="sec-desc">{{ t('settings.groups.language.desc') }}</span>
+          </div>
+          <div class="sec-body">
+            <el-form-item :label="t('settings.groups.language.label')">
+              <el-select
+                :model-value="locale"
+                @update:model-value="(val: string) => setLocale(val as 'en' | 'zh')"
+                style="width: 240px"
+              >
+                <el-option label="English" value="en" />
+                <el-option label="中文" value="zh" />
+              </el-select>
+            </el-form-item>
+          </div>
+        </div>
+
         <!-- 各分组段卡片 -->
         <div
           v-for="group in groups"
@@ -159,8 +157,8 @@ onMounted(loadConfig)
         >
           <div class="sec-head">
             <span class="sec-num">{{ group.num }}</span>
-            <span class="sec-title">{{ group.title }}</span>
-            <span class="sec-desc">{{ group.desc }}</span>
+            <span class="sec-title">{{ t(group.titleKey) }}</span>
+            <span class="sec-desc">{{ t(group.descKey) }}</span>
           </div>
           <div class="sec-body">
             <template v-for="key in group.keys" :key="key">
@@ -178,8 +176,8 @@ onMounted(loadConfig)
                       v-model="config[key].value"
                       style="width: 240px"
                     >
-                      <el-option label="自定义" value="openrouter" />
-                      <el-option label="本地 (Ollama)" value="ollama" />
+                      <el-option :label="t('settings.providers.custom')" value="openrouter" />
+                      <el-option :label="t('settings.providers.local')" value="ollama" />
                     </el-select>
                     <span class="config-key">{{ key }}</span>
                   </template>
@@ -252,7 +250,7 @@ onMounted(loadConfig)
       <!-- 底部提示 -->
       <div class="hint-card">
         <el-icon size="14" color="var(--neutral-400)"><InfoFilled /></el-icon>
-        <span>API Key 等敏感字段在数据库中以 <b>Fernet 加密</b>方式存储；显示时已脱敏。</span>
+        <span v-html="t('settings.hint')" />
       </div>
     </div>
   </div>

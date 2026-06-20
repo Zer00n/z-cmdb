@@ -1,0 +1,15 @@
+export default {
+  dashboard: 'Dashboard',
+  assetList: 'Asset Management',
+  assetCreate: 'New Asset',
+  assetDetail: 'Asset Detail',
+  assetEdit: 'Edit Asset',
+  scanBatches: 'Scan Batches',
+  scanConfirm: 'Batch Confirm',
+  topology: 'Topology',
+  reports: 'Security Reports',
+  audit: 'Audit Log',
+  users: 'User Management',
+  settings: 'System Config',
+  help: 'Help',
+}
