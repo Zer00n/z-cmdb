@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /**
- * 主框架布局
- * 2026 UI Redesign：升级视觉（毛玻璃顶栏 + 侧边栏柔光），保持原有逻辑不变
+ * Main framework layout
+ * 2026 UI Redesign: upgraded visuals (frosted glass topbar + soft sidebar glow), logic unchanged
  */
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
@@ -39,7 +39,7 @@ onMounted(() => {
   if (authStore.mustChangePassword) {
     showChangePwd.value = true
   }
-  // 拉取功能特性开关状态
+  // Fetch feature flag states
   featureStore.fetchFeatureFlags()
 })
 
@@ -75,12 +75,12 @@ function toggleLocale() {
 
 <template>
   <div class="app" :class="{ collapsed }">
-    <!-- 背景装饰：极弱的网格 + 顶部光晕 -->
+    <!-- Background decoration: faint grid + top halo -->
     <div class="app-bg" aria-hidden="true" />
 
-    <!-- ── 顶部栏 ─────────────────────────────────────────── -->
+    <!-- ── Top bar ─────────────────────────────────────────── -->
     <header class="topbar">
-      <!-- 品牌区 -->
+      <!-- Brand zone -->
       <div class="brand-zone">
         <span class="brand-logo" aria-hidden="true">
           <span class="brand-logo-inner" />
@@ -88,7 +88,7 @@ function toggleLocale() {
         <span v-if="!collapsed" class="brand-word">Z-CMDB <em>Lite</em></span>
       </div>
 
-      <!-- 左：折叠按钮 + 面包屑 -->
+      <!-- Left: collapse button + breadcrumb -->
       <div class="topbar-left">
         <button
           class="icon-btn"
@@ -107,7 +107,7 @@ function toggleLocale() {
 
       <div class="topbar-spacer" />
 
-      <!-- 右：环境标签 + 用户菜单 -->
+      <!-- Right: environment badge + user menu -->
       <div class="topbar-right">
         <span class="env-chip">
           <span class="env-dot" />
@@ -146,7 +146,7 @@ function toggleLocale() {
       </div>
     </header>
 
-    <!-- ── 主体：侧边栏 + 内容区 ─────────────────────────── -->
+    <!-- ── Body: sidebar + content area ─────────────────────── -->
     <div class="body-grid">
       <AppSidebar :collapsed="collapsed" />
 
@@ -171,7 +171,7 @@ function toggleLocale() {
   --sidebar-w: 60px;
 }
 
-/* 背景装饰：在最底层放一层柔光网格 */
+/* Background decoration: soft grid at the lowest layer */
 .app-bg {
   position: fixed;
   inset: 0;
@@ -192,7 +192,7 @@ function toggleLocale() {
   -webkit-mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.55) 0%, rgba(0, 0, 0, 0) 70%);
 }
 
-/* ── 顶部栏：半透明 + 模糊背景 ── */
+/* ── Top bar: translucent + blurred backdrop ── */
 .topbar {
   position: sticky;
   top: 0;
@@ -317,7 +317,7 @@ function toggleLocale() {
   gap: var(--space-3);
 }
 
-/* 环境徽标 */
+/* Environment badge */
 .env-chip {
   display: inline-flex;
   align-items: center;
@@ -332,7 +332,7 @@ function toggleLocale() {
   font-weight: 500;
 }
 
-/* 语言切换按钮 */
+/* Language toggle button */
 .lang-toggle {
   display: inline-flex;
   align-items: center;
@@ -362,7 +362,7 @@ function toggleLocale() {
   box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.18);
 }
 
-/* 用户区 */
+/* User area */
 .user-chip {
   display: inline-flex;
   align-items: center;
@@ -436,7 +436,7 @@ function toggleLocale() {
   background: currentColor;
 }
 
-/* ── 主体 ── */
+/* ── Main body ── */
 .body-grid {
   position: relative;
   z-index: 1;

@@ -1,7 +1,7 @@
 """
-系统配置路由
-GET   /api/config     读取所有配置
-PATCH /api/config     修改配置（super_admin）
+System configuration routes
+GET   /api/config     Read all configurations
+PATCH /api/config     Update configuration (super_admin)
 """
 import logging
 from datetime import datetime, timezone
@@ -19,39 +19,39 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/config", tags=["config"])
 
-# 默认配置项
+# Default configuration items
 DEFAULT_CONFIGS = {
-    "missing_threshold": {"value": "3", "description": "消失保护阈值（连续未扫到次数）"},
-    "upload_max_size_mb": {"value": "50", "description": "上传文件大小上限（MB）"},
-    "session_timeout_minutes": {"value": "30", "description": "Session 超时时间（分钟）"},
-    "asset_no_prefix": {"value": "CMDB", "description": "资产编号前缀"},
-    "llm_provider": {"value": "", "description": "LLM 提供方（deepseek/openrouter/ollama）"},
-    "llm_api_key": {"value": "", "description": "LLM API Key（加密存储）"},
-    "llm_model": {"value": "", "description": "LLM 模型名称"},
-    "llm_base_url": {"value": "", "description": "LLM API 地址（Ollama 等自定义地址）"},
-    "llm_route_core_to_local": {"value": "true", "description": "核心资产是否路由到本地 LLM"},
-    "llm_ollama_model": {"value": "qwen2.5", "description": "本地 Ollama 模型名称（路由到本地时使用）"},
-    "llm_cloud_enabled": {"value": "true", "description": "是否允许使用云端 LLM（super_admin 可全局禁用）"},
-    # 大屏配置
-    "dashboard_refresh_seconds": {"value": "30", "description": "大屏自动刷新间隔（秒）"},
-    "dashboard_list_limit": {"value": "50", "description": "大屏各滚动列表返回上限"},
+    "missing_threshold": {"value": "3", "description": "Disappearance protection threshold (consecutive scan misses)"},
+    "upload_max_size_mb": {"value": "50", "description": "Max upload file size (MB)"},
+    "session_timeout_minutes": {"value": "30", "description": "Session timeout (minutes)"},
+    "asset_no_prefix": {"value": "CMDB", "description": "Asset number prefix"},
+    "llm_provider": {"value": "", "description": "LLM provider (deepseek/openrouter/ollama)"},
+    "llm_api_key": {"value": "", "description": "LLM API Key (stored encrypted)"},
+    "llm_model": {"value": "", "description": "LLM model name"},
+    "llm_base_url": {"value": "", "description": "LLM API endpoint (for Ollama or custom endpoints)"},
+    "llm_route_core_to_local": {"value": "true", "description": "Whether to route core assets to local LLM"},
+    "llm_ollama_model": {"value": "qwen2.5", "description": "Local Ollama model name (used when routing to local)"},
+    "llm_cloud_enabled": {"value": "true", "description": "Allow cloud LLM usage (super_admin can disable globally)"},
+    # Dashboard configuration
+    "dashboard_refresh_seconds": {"value": "30", "description": "Dashboard auto-refresh interval (seconds)"},
+    "dashboard_list_limit": {"value": "50", "description": "Dashboard scrolling list max items"},
     "dangerous_ports_list": {
         "value": '[21,22,23,135,139,445,1433,1521,2375,3306,3389,5432,5984,6379,8080,8888,9200,11211,27017]',
-        "description": "危险端口清单（JSON 数组）",
+        "description": "Dangerous port list (JSON array)",
     },
     "dangerous_zones": {
         'value': '["dmz","office"]',
-        "description": "高危区域（JSON 数组，暴露在这些区域的危险端口为 high）",
+        "description": "High-risk zones (JSON array; dangerous ports exposed in these zones are marked high)",
     },
-    "shadow_offline_days": {"value": "30", "description": "长期离线判定天数"},
-    "dashboard_default_layout": {"value": "", "description": "大屏全局默认布局 JSON"},
-    # V0.4 成本核算
-    "feature_cost_accounting_enabled": {"value": "false", "description": "启用资产成本核算（super_admin 可切换，关闭后数据保留）"},
+    "shadow_offline_days": {"value": "30", "description": "Long-term offline threshold (days)"},
+    "dashboard_default_layout": {"value": "", "description": "Dashboard global default layout JSON"},
+    # V0.4 Cost accounting
+    "feature_cost_accounting_enabled": {"value": "false", "description": "Enable asset cost accounting (super_admin can toggle; data is retained when disabled)"},
 }
 
 
 def ensure_defaults(db: Session) -> None:
-    """确保默认配置项存在"""
+    """Ensure default configuration items exist"""
     for key, meta in DEFAULT_CONFIGS.items():
         existing = db.get(SystemConfig, key)
         if existing is None:
@@ -69,14 +69,14 @@ def get_config(
     _current_user: AnyUser = None,
     db: Session = Depends(get_db),
 ) -> dict:
-    """读取所有系统配置"""
+    """Read all system configurations"""
     ensure_defaults(db)
     db.commit()
 
     configs = list(db.scalars(select(SystemConfig)).all())
     result = {}
     for cfg in configs:
-        # 隐藏敏感字段的值
+        # Hide sensitive field values
         value = cfg.value
         if "api_key" in cfg.key and value:
             value = value[:4] + "****" + value[-4:] if len(value) > 8 else "****"
@@ -95,7 +95,7 @@ def update_config(
     current_user: SuperAdminUser = None,
     db: Session = Depends(get_db),
 ) -> dict:
-    """修改系统配置（super_admin）"""
+    """Update system configuration (super_admin)"""
     from app.core.encryption import encrypt_value
 
     ensure_defaults(db)
@@ -104,13 +104,13 @@ def update_config(
     for key, value in body.items():
         cfg = db.get(SystemConfig, key)
         if cfg is None:
-            # 只允许修改已存在的配置项
+            # Only allow modifying existing configuration items
             continue
         str_value = str(value) if value is not None else ""
-        # 敏感字段：跳过掩码值（防止把 **** 当真实值存入）
+        # Sensitive fields: skip masked values (to avoid storing **** as the real value)
         if "api_key" in key:
             if "****" in str_value:
-                continue  # 掩码值，不更新
+                continue  # Masked value, skip update
             if str_value:
                 str_value = encrypt_value(str_value)
         cfg.value = str_value
@@ -126,4 +126,4 @@ def update_config(
         )
 
     db.commit()
-    return {"message": f"已更新 {len(updated_keys)} 项配置", "updated": updated_keys}
+    return {"message": f"Updated {len(updated_keys)} configuration items", "updated": updated_keys}

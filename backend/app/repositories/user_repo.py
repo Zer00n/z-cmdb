@@ -1,6 +1,6 @@
 """
-用户数据访问层
-所有数据库操作集中在此，Service 层不直接操作 ORM
+User data access layer
+All database operations are concentrated here; the Service layer does not directly operate the ORM
 """
 import logging
 from datetime import datetime, timezone
@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 def get_by_id(db: Session, user_id: int) -> User:
     user = db.get(User, user_id)
     if user is None:
-        raise UserNotFoundError(f"用户 ID {user_id} 不存在")
+        raise UserNotFoundError(f"User ID {user_id} not found")
     return user
 
 
@@ -29,7 +29,7 @@ def get_by_username(db: Session, username: str) -> User | None:
 def get_by_username_or_raise(db: Session, username: str) -> User:
     user = get_by_username(db, username)
     if user is None:
-        raise UserNotFoundError(f"用户 {username} 不存在")
+        raise UserNotFoundError(f"User {username} not found")
     return user
 
 
@@ -51,9 +51,9 @@ def create_user(
     full_name: str | None = None,
     email: str | None = None,
 ) -> User:
-    # 检查用户名唯一性
+    # Check username uniqueness
     if get_by_username(db, username) is not None:
-        raise DuplicateError(f"用户名 {username} 已存在")
+        raise DuplicateError(f"Username {username} already exists")
 
     user = User(
         username=username,
@@ -65,7 +65,7 @@ def create_user(
         failed_login_count=0,
     )
     db.add(user)
-    db.flush()  # 获取 id，不 commit（由 Service 层控制事务）
+    db.flush()  # Get id without committing (transaction controlled by Service layer)
     logger.info("user created", extra={"user_id": user.id, "username": username, "role": role})
     return user
 

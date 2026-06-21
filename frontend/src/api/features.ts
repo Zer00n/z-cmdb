@@ -1,5 +1,5 @@
 /**
- * 功能特性开关 API
+ * Feature flags API
  */
 import request from './request'
 

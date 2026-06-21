@@ -1,6 +1,6 @@
 /**
- * axios 实例 + 统一拦截器
- * 错误处理统一在此，业务组件不写 try/catch 处理 HTTP 错误
+ * Axios instance + unified interceptors
+ * Error handling is centralized here; business components don't need try/catch for HTTP errors
  */
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
@@ -8,10 +8,10 @@ import { ElMessage } from 'element-plus'
 const request = axios.create({
   baseURL: '/',
   timeout: 30000,
-  withCredentials: true, // 携带 cookie（refresh_token）
+  withCredentials: true, // Send cookies (refresh_token)
 })
 
-// ── 请求拦截器：注入 access_token ────────────────────────────
+// ── Request interceptor: inject access_token ────────────────────────────
 request.interceptors.request.use((config) => {
   const token = sessionStorage.getItem('access_token')
   if (token) {
@@ -20,23 +20,23 @@ request.interceptors.request.use((config) => {
   return config
 })
 
-// ── 响应拦截器：统一错误处理 ─────────────────────────────────
+// ── Response interceptor: unified error handling ─────────────────────────────────
 request.interceptors.response.use(
   (response) => response.data,
   (error) => {
     const status = error.response?.status
     const message =
       error.response?.data?.message ||
-      // FastAPI 422 Pydantic 校验错误：detail 为数组
+      // FastAPI 422 Pydantic validation error: detail is an array
       (Array.isArray(error.response?.data?.detail)
         ? error.response.data.detail.map((d: any) => d.msg).join('；')
         : error.response?.data?.detail) ||
       '请求失败，请稍后重试'
 
     if (status === 401) {
-      // 清除本地 token，跳转登录页
+      // Clear local token, redirect to login page
       sessionStorage.removeItem('access_token')
-      // 避免循环跳转
+      // Prevent redirect loop
       if (window.location.pathname !== '/login') {
         window.location.href = '/login'
       }

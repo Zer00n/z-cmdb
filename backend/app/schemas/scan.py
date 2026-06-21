@@ -1,5 +1,5 @@
 """
-扫描批次相关 Pydantic v2 Schema
+Scan batch related Pydantic v2 schemas
 """
 from datetime import datetime
 
@@ -29,15 +29,15 @@ class ScanBatchListResponse(BaseModel):
 
 
 class ScanConfirmRequest(BaseModel):
-    """确认导入请求：包含新资产的补充字段"""
+    """Confirm import request: contains supplementary fields for new assets"""
     new_assets: list[dict] = []
 
 
-# ── 差异详情 Schema ──────────────────────────────────────────
+# ── Diff detail Schemas ─────────────────────────────────────────
 
 
 class DiffPortRead(BaseModel):
-    """端口级别差异"""
+    """Port-level diff"""
     port_number: int
     protocol: str
     service_name: str | None = None
@@ -46,7 +46,7 @@ class DiffPortRead(BaseModel):
 
 
 class DiffHostPortChange(BaseModel):
-    """端口变更详情"""
+    """Port change detail"""
     port_number: int
     protocol: str
     old_service: str | None = None
@@ -59,7 +59,7 @@ class DiffHostPortChange(BaseModel):
 
 
 class DiffNewHost(BaseModel):
-    """新发现主机"""
+    """Newly discovered host"""
     ip_address: str
     mac_address: str | None = None
     hostname: str | None = None
@@ -68,7 +68,7 @@ class DiffNewHost(BaseModel):
 
 
 class DiffChangedHost(BaseModel):
-    """变更主机"""
+    """Changed host"""
     ip_address: str
     mac_address: str | None = None
     hostname: str | None = None
@@ -81,7 +81,7 @@ class DiffChangedHost(BaseModel):
 
 
 class DiffMissingHost(BaseModel):
-    """消失主机"""
+    """Missing host"""
     ip_address: str
     mac_address: str | None = None
     hostname: str | None = None
@@ -91,7 +91,7 @@ class DiffMissingHost(BaseModel):
 
 
 class ScanDiffResponse(BaseModel):
-    """扫描批次差异详情"""
+    """Scan batch diff detail"""
     batch_id: int
     batch_name: str | None = None
     status: str

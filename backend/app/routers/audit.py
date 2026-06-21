@@ -1,7 +1,7 @@
 """
-审计日志路由
-GET  /api/audit/logs     操作日志列表（super_admin + auditor）
-POST /api/audit/export   导出审计报告（仅 auditor）
+Audit log routes
+GET  /api/audit/logs     Operation log list (super_admin + auditor)
+POST /api/audit/export   Export audit report (auditor only)
 """
 import csv
 import io
@@ -34,11 +34,11 @@ def list_audit_logs(
     db: Session = Depends(get_db),
 ) -> AuditLogListResponse:
     """
-    查看操作日志。
-    权限：super_admin 和 auditor 可查看。
+    View operation logs.
+    Permission: super_admin and auditor can view.
     """
     if current_user.role not in ("super_admin", "auditor"):
-        raise PermissionDeniedError("仅超级管理员和审计员可查看操作日志")
+        raise PermissionDeniedError("Only super_admin and auditor can view operation logs")
 
     logs, total = audit_service.list_logs(
         db, page=page, page_size=page_size,
@@ -58,16 +58,16 @@ def export_audit_report(
     db: Session = Depends(get_db),
 ) -> Response:
     """
-    导出审计报告（CSV）。
-    权限：仅 auditor。
+    Export audit report (CSV).
+    Permission: auditor only.
     """
     logs, _ = audit_service.list_logs(db, page=1, page_size=100000)
 
     output = io.StringIO()
     writer = csv.writer(output)
     writer.writerow([
-        "ID", "时间", "用户ID", "用户名", "角色",
-        "操作类型", "目标类型", "目标ID", "来源IP", "结果", "详情",
+        "ID", "Timestamp", "UserID", "Username", "Role",
+        "ActionType", "TargetType", "TargetID", "SourceIP", "Result", "Details",
     ])
     for log in logs:
         writer.writerow([
@@ -77,7 +77,7 @@ def export_audit_report(
             log.result, log.details or "",
         ])
 
-    # 记录导出操作本身
+    # Log the export operation itself
     audit_service.log_action(
         db, action_type="EXPORT", user=current_user,  # type: ignore[arg-type]
         target_type="audit_report", details={"count": len(logs)},
@@ -97,8 +97,8 @@ def export_audit_report_pdf(
     db: Session = Depends(get_db),
 ) -> Response:
     """
-    导出审计报告（PDF）。
-    权限：仅 auditor。
+    Export audit report (PDF).
+    Permission: auditor only.
     """
     from fpdf import FPDF
 
@@ -108,14 +108,14 @@ def export_audit_report_pdf(
     pdf.add_page()
     pdf.set_auto_page_break(auto=True, margin=15)
 
-    # 标题
+    # Title
     pdf.set_font("Helvetica", "B", 16)
     pdf.cell(0, 10, "Z-CMDB Lite Audit Report", ln=True, align="C")
     pdf.set_font("Helvetica", "", 10)
     pdf.cell(0, 8, f"Total records: {len(logs)}", ln=True, align="C")
     pdf.ln(5)
 
-    # 表头
+    # Table headers
     pdf.set_font("Helvetica", "B", 8)
     col_widths = [12, 30, 20, 18, 20, 20, 20, 25, 25]
     headers = ["ID", "Timestamp", "User", "Role", "Action", "Target", "TargetID", "IP", "Result"]
@@ -123,9 +123,9 @@ def export_audit_report_pdf(
         pdf.cell(col_widths[i], 6, h, border=1)
     pdf.ln()
 
-    # 数据行
+    # Data rows
     pdf.set_font("Helvetica", "", 7)
-    for log in logs[:500]:  # 限制 500 行避免 PDF 过大
+    for log in logs[:500]:  # Limit to 500 rows to keep PDF size reasonable
         row = [
             str(log.id),
             log.timestamp.strftime("%Y-%m-%d %H:%M") if log.timestamp else "",
@@ -141,7 +141,7 @@ def export_audit_report_pdf(
             pdf.cell(col_widths[i], 5, val[:15], border=1)
         pdf.ln()
 
-    # 记录导出操作
+    # Log the export operation
     audit_service.log_action(
         db, action_type="EXPORT", user=current_user,  # type: ignore[arg-type]
         target_type="audit_report", details={"format": "pdf", "count": len(logs)},
@@ -164,11 +164,11 @@ def list_llm_logs(
     db: Session = Depends(get_db),
 ) -> dict:
     """
-    LLM 调用日志列表。
-    权限：super_admin 和 auditor 可查看。
+    LLM call log list.
+    Permission: super_admin and auditor can view.
     """
     if current_user.role not in ("super_admin", "auditor"):
-        raise PermissionDeniedError("仅超级管理员和审计员可查看 LLM 调用日志")
+        raise PermissionDeniedError("Only super_admin and auditor can view LLM call logs")
 
     from sqlalchemy import func, select
 

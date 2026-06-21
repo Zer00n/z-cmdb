@@ -1,6 +1,6 @@
 """
-数据库连接模块
-SQLAlchemy 2.0 风格，SQLite WAL 模式
+Database connection module
+SQLAlchemy 2.0 style, SQLite WAL mode
 """
 from datetime import datetime, timezone
 from pathlib import Path
@@ -13,9 +13,9 @@ from app.core.config import settings
 
 
 def _get_engine():
-    """创建 SQLAlchemy engine，确保数据库目录存在，开启 WAL 模式"""
+    """Create SQLAlchemy engine, ensure the database directory exists, enable WAL mode"""
     db_path = settings.db_path
-    # 确保目录存在（跨平台）
+    # Ensure directory exists (cross-platform)
     db_path.parent.mkdir(parents=True, exist_ok=True)
 
     engine = create_engine(
@@ -24,7 +24,7 @@ def _get_engine():
         echo=settings.APP_ENV == "development",
     )
 
-    # 开启 WAL 模式，提高并发读性能，防止意外断电损坏
+    # Enable WAL mode for better concurrent read performance and crash safety
     @event.listens_for(engine, "connect")
     def set_wal_mode(dbapi_connection, connection_record):  # type: ignore[misc]
         cursor = dbapi_connection.cursor()
@@ -46,17 +46,17 @@ SessionLocal = sessionmaker(
 
 
 class Base(DeclarativeBase):
-    """所有 SQLAlchemy 模型的基类"""
+    """Base class for all SQLAlchemy models"""
     pass
 
 
 def utc_now() -> datetime:
-    """timezone-aware UTC 时间戳，替代已弃用的 datetime.utcnow()"""
+    """Timezone-aware UTC timestamp, replacing the deprecated datetime.utcnow()"""
     return datetime.now(timezone.utc)
 
 
 def get_db() -> Generator[Session, None, None]:
-    """FastAPI 依赖注入：获取数据库 Session"""
+    """FastAPI dependency injection: get a database Session"""
     db = SessionLocal()
     try:
         yield db

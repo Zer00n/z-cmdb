@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /**
- * 用户管理页
- * 2026 UI Redesign：升级用户头像与角色徽标，逻辑保持不变
+ * User management page
+ * 2026 UI Redesign: upgraded user avatars and role badges, logic unchanged
  */
 import { ref, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -195,7 +195,7 @@ onMounted(loadData)
       </el-table>
     </div>
 
-    <!-- 新增用户弹窗 -->
+    <!-- Create user dialog -->
     <el-dialog v-model="showCreateDialog" :title="t('user.createDialog.title')" width="480px">
       <el-form label-width="80px">
         <el-form-item :label="t('user.createDialog.username')" required>
@@ -224,7 +224,7 @@ onMounted(loadData)
       </template>
     </el-dialog>
 
-    <!-- 编辑用户弹窗 -->
+    <!-- Edit user dialog -->
     <el-dialog v-model="showEditDialog" :title="t('user.editDialog.title')" width="480px">
       <el-form label-width="80px">
         <el-form-item :label="t('user.createDialog.role')">

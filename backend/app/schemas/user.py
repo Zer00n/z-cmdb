@@ -1,5 +1,5 @@
 """
-用户相关 Pydantic v2 Schema
+User-related Pydantic v2 schemas
 """
 from datetime import datetime
 from typing import Literal
@@ -7,7 +7,7 @@ from typing import Literal
 from pydantic import BaseModel, EmailStr, Field, field_validator
 
 
-# ── 请求 Schema ──────────────────────────────────────────────
+# ── Request Schemas ──────────────────────────────────────────────
 
 
 class LoginRequest(BaseModel):
@@ -22,13 +22,13 @@ class ChangePasswordRequest(BaseModel):
     @field_validator("new_password")
     @classmethod
     def validate_password_strength(cls, v: str) -> str:
-        """密码策略：最小 12 位，必含大小写数字符号"""
+        """Password policy: minimum 12 characters, must include upper/lower/digit/symbol"""
         has_upper = any(c.isupper() for c in v)
         has_lower = any(c.islower() for c in v)
         has_digit = any(c.isdigit() for c in v)
         has_symbol = any(not c.isalnum() for c in v)
         if not (has_upper and has_lower and has_digit and has_symbol):
-            raise ValueError("密码必须包含大写字母、小写字母、数字和特殊符号")
+            raise ValueError("Password must contain uppercase, lowercase, digit, and special character")
         return v
 
 
@@ -47,7 +47,7 @@ class UserCreate(BaseModel):
         has_digit = any(c.isdigit() for c in v)
         has_symbol = any(not c.isalnum() for c in v)
         if not (has_upper and has_lower and has_digit and has_symbol):
-            raise ValueError("密码必须包含大写字母、小写字母、数字和特殊符号")
+            raise ValueError("Password must contain uppercase, lowercase, digit, and special character")
         return v
 
 
@@ -58,7 +58,7 @@ class UserUpdate(BaseModel):
     status: Literal["active", "disabled"] | None = None
 
 
-# ── 响应 Schema ──────────────────────────────────────────────
+# ── Response Schemas ─────────────────────────────────────────────
 
 
 class UserRead(BaseModel):

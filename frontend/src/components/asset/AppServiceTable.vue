@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /**
- * 应用服务清单表格组件
- * 用于资产详情页"应用"Tab
+ * Application service list table component
+ * Used in the "Applications" tab of asset detail page
  */
 import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'

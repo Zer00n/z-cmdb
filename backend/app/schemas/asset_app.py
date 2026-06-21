@@ -1,5 +1,5 @@
 """
-应用服务清单 Pydantic v2 Schema
+Application/service inventory Pydantic v2 schemas
 """
 from datetime import datetime
 from typing import Literal
@@ -12,19 +12,19 @@ AppStatus = Literal["active", "decommissioned"]
 
 
 class AssetAppCreate(BaseModel):
-    """新增应用"""
-    name: str = Field(..., max_length=100, description="应用名称，如 nginx、mysql-server")
-    version: str | None = Field(None, max_length=100, description="版本号")
-    category: str | None = Field(None, max_length=50, description="应用大类")
-    port: int | None = Field(None, ge=1, le=65535, description="主要监听端口")
-    protocol: str | None = Field(None, pattern=r"^(tcp|udp)$", description="协议 tcp/udp")
-    install_path: str | None = Field(None, max_length=255, description="安装路径")
-    config_path: str | None = Field(None, max_length=255, description="配置文件路径")
-    notes: str | None = Field(None, description="备注")
+    """Create application"""
+    name: str = Field(..., max_length=100, description="Application name, e.g. nginx, mysql-server")
+    version: str | None = Field(None, max_length=100, description="Version number")
+    category: str | None = Field(None, max_length=50, description="Application category")
+    port: int | None = Field(None, ge=1, le=65535, description="Primary listening port")
+    protocol: str | None = Field(None, pattern=r"^(tcp|udp)$", description="Protocol tcp/udp")
+    install_path: str | None = Field(None, max_length=255, description="Installation path")
+    config_path: str | None = Field(None, max_length=255, description="Configuration file path")
+    notes: str | None = Field(None, description="Notes")
 
 
 class AssetAppUpdate(BaseModel):
-    """更新应用（PATCH，所有字段可选）"""
+    """Update application (PATCH, all fields optional)"""
     name: str | None = Field(None, max_length=100)
     version: str | None = Field(None, max_length=100)
     category: str | None = Field(None, max_length=50)
@@ -37,7 +37,7 @@ class AssetAppUpdate(BaseModel):
 
 
 class AssetAppRead(BaseModel):
-    """应用响应"""
+    """Application response"""
     model_config = {"from_attributes": True}
 
     id: int
@@ -58,13 +58,13 @@ class AssetAppRead(BaseModel):
 
 
 class AssetAppListResponse(BaseModel):
-    """应用列表响应"""
+    """Application list response"""
     items: list[AssetAppRead]
     total: int
 
 
 class AppSearchItem(BaseModel):
-    """全局应用搜索结果项"""
+    """Global application search result item"""
     model_config = {"from_attributes": True}
 
     id: int
@@ -73,13 +73,13 @@ class AppSearchItem(BaseModel):
     version: str | None
     category: str | None
     port: int | None
-    # 关联资产信息
+    # Associated asset info
     asset_no: str
     ip_address: str
     hostname: str | None
 
 
 class AppSearchResponse(BaseModel):
-    """全局应用搜索响应"""
+    """Global application search response"""
     items: list[AppSearchItem]
     total: int

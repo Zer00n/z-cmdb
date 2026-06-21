@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /**
- * 帮助页面 - nmap 命令一键复制
- * 2026 UI Redesign：升级命令卡视觉，逻辑保持不变
+ * Help page — nmap command one-click copy
+ * 2026 UI Redesign: upgraded command card visuals, logic unchanged
  */
 import { computed } from 'vue'
 import { ElMessage } from 'element-plus'

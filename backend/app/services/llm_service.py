@@ -1,6 +1,6 @@
 """
-LLM 抽象层
-支持多 provider：OpenAI / Claude / DeepSeek / 智谱 / Ollama
+LLM abstraction layer
+Supports multiple providers: OpenAI / Claude / DeepSeek / Zhipu / Ollama
 """
 import json
 import logging
@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 
 class LLMProvider:
-    """LLM 提供方基类"""
+    """LLM provider base class"""
 
     def __init__(self, api_key: str = "", base_url: str = "", model: str = ""):
         self.api_key = api_key
@@ -24,12 +24,12 @@ class LLMProvider:
         self.model = model
 
     def call(self, prompt: str, system_prompt: str = "") -> str:
-        """调用 LLM，返回文本响应"""
+        """Call the LLM and return a text response"""
         raise NotImplementedError
 
 
 class OpenAIProvider(LLMProvider):
-    """OpenAI / DeepSeek / 智谱（兼容 OpenAI API 格式）"""
+    """OpenAI / DeepSeek / Zhipu (OpenAI API-compatible)"""
 
     def call(self, prompt: str, system_prompt: str = "") -> str:
         import httpx
@@ -50,7 +50,7 @@ class OpenAIProvider(LLMProvider):
         for attempt in range(3):
             try:
                 resp = httpx.post(url, json=body, headers=headers, timeout=300)
-                # 5xx 服务端错误也重试
+                # 5xx server errors are also retried
                 if resp.status_code >= 500:
                     last_exc = Exception(f"HTTP {resp.status_code}: {resp.text[:200]}")
                     logger.warning(
@@ -62,13 +62,13 @@ class OpenAIProvider(LLMProvider):
                 resp.raise_for_status()
                 data = resp.json()
                 msg = data["choices"][0]["message"]
-                # 推理模型（如 deepseek-reasoner/v4-flash）content 可能为空，
-                # 真正的回答在 reasoning_content 里
+                # Reasoning models (e.g. deepseek-reasoner/v4-flash) may have empty content;
+                # the actual answer is in reasoning_content
                 content = msg.get("content") or ""
                 reasoning = msg.get("reasoning_content") or ""
                 result = content if content.strip() else reasoning
                 if not result.strip():
-                    raise ValueError("LLM 返回了空响应（content 和 reasoning_content 均为空）")
+                    raise ValueError("LLM returned an empty response (both content and reasoning_content are empty)")
                 return result
             except (httpx.RemoteProtocolError, httpx.ReadTimeout, httpx.ConnectTimeout) as exc:
                 last_exc = exc
@@ -78,7 +78,7 @@ class OpenAIProvider(LLMProvider):
                 )
                 time.sleep(2 ** attempt)
             except (ValueError, KeyError) as exc:
-                # JSON 解析失败或响应结构异常（如免费模型截断响应）
+                # JSON parse failure or abnormal response structure (e.g. truncated response from free models)
                 last_exc = exc
                 logger.warning(
                     "OpenAI API response parse error, retrying",
@@ -86,9 +86,9 @@ class OpenAIProvider(LLMProvider):
                 )
                 time.sleep(2 ** attempt)
             except Exception as exc:
-                raise LLMCallError(f"OpenAI API 调用失败: {exc}") from exc
+                raise LLMCallError(f"OpenAI API call failed: {exc}") from exc
 
-        raise LLMCallError(f"OpenAI API 调用失败（重试3次）: {last_exc}") from last_exc
+        raise LLMCallError(f"OpenAI API call failed (3 retries): {last_exc}") from last_exc
 
 
 class ClaudeProvider(LLMProvider):
@@ -116,11 +116,11 @@ class ClaudeProvider(LLMProvider):
             data = resp.json()
             return data["content"][0]["text"]
         except Exception as exc:
-            raise LLMCallError(f"Claude API 调用失败: {exc}") from exc
+            raise LLMCallError(f"Claude API call failed: {exc}") from exc
 
 
 class OllamaProvider(LLMProvider):
-    """本地 Ollama"""
+    """Local Ollama"""
 
     def call(self, prompt: str, system_prompt: str = "") -> str:
         try:
@@ -137,15 +137,15 @@ class OllamaProvider(LLMProvider):
             data = resp.json()
             return data.get("response", "")
         except Exception as exc:
-            raise LLMCallError(f"Ollama 调用失败: {exc}") from exc
+            raise LLMCallError(f"Ollama call failed: {exc}") from exc
 
 
 def get_provider(provider_name: str, api_key: str, base_url: str, model: str) -> LLMProvider:
-    """根据配置获取 LLM 提供方实例"""
+    """Get an LLM provider instance based on configuration"""
     name = provider_name.lower()
     if name == "ollama":
         return OllamaProvider(api_key=api_key, base_url=base_url, model=model)
-    # 自定义模式（openrouter/deepseek 或任意名称）：使用 OpenAI 兼容接口
+    # Custom mode (openrouter/deepseek or any name): use OpenAI-compatible interface
     return OpenAIProvider(api_key=api_key, base_url=base_url, model=model)
 
 
@@ -161,9 +161,9 @@ def call_llm(
     purpose: str = "topology_generation",
 ) -> str:
     """
-    统一 LLM 调用入口，自动记录 llm_call_logs。
+    Unified LLM call entry point; automatically logs to llm_call_logs.
     """
-    from app.models.audit import AuditLog  # 避免循环导入
+    from app.models.audit import AuditLog  # Avoid circular import
 
     provider = get_provider(provider_name, api_key, base_url, model)
 
@@ -189,10 +189,10 @@ def call_llm(
     except LLMCallError:
         raise
     except Exception as exc:
-        raise LLMCallError(f"LLM 调用异常: {exc}") from exc
+        raise LLMCallError(f"LLM call exception: {exc}") from exc
     finally:
         elapsed_ms = int((time.time() - start_time) * 1000)
-        # 记录到独立 llm_call_logs 表
+        # Log to the separate llm_call_logs table
         from app.models.llm_log import LlmCallLog
         llm_log = LlmCallLog(
             timestamp=datetime.now(timezone.utc),
@@ -206,7 +206,7 @@ def call_llm(
             success=success,
         )
         db.add(llm_log)
-        # 同时记录到 audit_logs（兼容）
+        # Also log to audit_logs (for compatibility)
         from app.services.audit_service import log_action
         log_action(
             db,

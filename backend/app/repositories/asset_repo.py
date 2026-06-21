@@ -1,5 +1,5 @@
 """
-资产数据访问层
+Asset data access layer
 """
 import logging
 from datetime import datetime, timezone
@@ -25,7 +25,7 @@ def get_by_id(db: Session, asset_id: int, load_ports: bool = False) -> Asset:
     else:
         asset = db.get(Asset, asset_id)
     if asset is None:
-        raise AssetNotFoundError(f"资产 ID {asset_id} 不存在")
+        raise AssetNotFoundError(f"Asset ID {asset_id} not found")
     return asset
 
 
@@ -44,15 +44,15 @@ def get_by_mac(db: Session, mac_address: str) -> Asset | None:
 
 
 def list_assets(db: Session, params: AssetQueryParams) -> tuple[list[Asset], int]:
-    """返回 (资产列表, 总数)"""
+    """Return (asset list, total count)"""
     stmt = select(Asset)
     count_stmt = select(func.count()).select_from(Asset)
 
-    # 筛选条件
+    # Filter conditions
     filters = []
     if params.search:
         kw = f"%{params.search}%"
-        # v2.5: 搜索范围扩展到 business_system + 应用名/版本
+        # v2.5: search scope extended to business_system + app name/version
         from sqlalchemy import exists
         from app.models.asset_app import AssetApp
 
@@ -62,7 +62,7 @@ def list_assets(db: Session, params: AssetQueryParams) -> tuple[list[Asset], int
             Asset.asset_no.like(kw),
             Asset.remark.like(kw),
             Asset.owner.like(kw),
-            Asset.business_system.like(kw),  # v2.5 新增
+            Asset.business_system.like(kw),  # v2.5 addition
         )
 
         app_match = exists().where(
@@ -95,13 +95,13 @@ def list_assets(db: Session, params: AssetQueryParams) -> tuple[list[Asset], int
         stmt = stmt.where(and_(*filters))
         count_stmt = count_stmt.where(and_(*filters))
 
-    # 排序：network_zone + ip_address
+    # Sort by: network_zone + ip_address
     stmt = stmt.order_by(Asset.network_zone, Asset.ip_address)
 
-    # 总数
+    # Total count
     total = db.scalar(count_stmt) or 0
 
-    # 分页
+    # Pagination
     offset = (params.page - 1) * params.page_size
     stmt = stmt.offset(offset).limit(params.page_size)
 
@@ -110,7 +110,7 @@ def list_assets(db: Session, params: AssetQueryParams) -> tuple[list[Asset], int
 
 
 def generate_asset_no(db: Session) -> str:
-    """生成资产编号：{prefix}-YYYYMMDD-NNN，前缀从系统配置读取"""
+    """Generate asset number: {prefix}-YYYYMMDD-NNN, prefix read from system config"""
     from datetime import date
 
     from app.services.config_service import get_asset_no_prefix
@@ -118,7 +118,7 @@ def generate_asset_no(db: Session) -> str:
     today = date.today().strftime("%Y%m%d")
     full_prefix = f"{prefix}-{today}-"
 
-    # 查找今天最大序号
+    # Find today's highest sequence number
     stmt = (
         select(Asset.asset_no)
         .where(Asset.asset_no.like(f"{full_prefix}%"))
@@ -139,7 +139,7 @@ def generate_asset_no(db: Session) -> str:
 def create_asset(db: Session, **kwargs) -> Asset:  # type: ignore[type-arg]
     asset_no = kwargs.get("asset_no")
     if asset_no and get_by_asset_no(db, asset_no):
-        raise DuplicateError(f"资产编号 {asset_no} 已存在")
+        raise DuplicateError(f"Asset number {asset_no} already exists")
 
     if not asset_no:
         kwargs["asset_no"] = generate_asset_no(db)
@@ -161,7 +161,7 @@ def update_asset(db: Session, asset: Asset, **kwargs) -> Asset:  # type: ignore[
 
 
 def decommission_asset(db: Session, asset: Asset) -> Asset:
-    """软删除：标记为 decommissioned"""
+    """Soft delete: mark as decommissioned"""
     asset.status = "decommissioned"
     asset.updated_at = datetime.now(timezone.utc)
     db.flush()
@@ -169,7 +169,7 @@ def decommission_asset(db: Session, asset: Asset) -> Asset:
     return asset
 
 
-# ── 端口操作 ─────────────────────────────────────────────────
+# ── Port operations ──────────────────────────────────────────────
 
 def upsert_port(
     db: Session,
@@ -180,7 +180,7 @@ def upsert_port(
     service_version: str | None = None,
     state: str | None = "open",
 ) -> AssetPort:
-    """插入或更新端口记录"""
+    """Insert or update a port record"""
     stmt = select(AssetPort).where(
         AssetPort.asset_id == asset_id,
         AssetPort.port_number == port_number,

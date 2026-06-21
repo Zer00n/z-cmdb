@@ -1,5 +1,5 @@
-# 统一导入所有 SQLAlchemy 模型，确保 mapper registry 完整
-# 避免 relationship 字符串引用（如 "AssetApp"）在初始化时找不到目标类
+# Import all SQLAlchemy models in one place to ensure the mapper registry is complete.
+# This prevents relationship string references (e.g. "AssetApp") from failing at init time.
 from app.models.user import User
 from app.models.asset import Asset, AssetPort
 from app.models.asset_app import AssetApp

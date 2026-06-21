@@ -1,10 +1,10 @@
 """
-扫描批次路由
-POST   /api/scans/upload       上传 XML 文件
-GET    /api/scans              批次列表
-GET    /api/scans/{id}         批次详情
-POST   /api/scans/{id}/confirm 确认导入
-DELETE /api/scans/{id}         拒绝并删除批次
+Scan batch routes
+POST   /api/scans/upload       Upload XML file
+GET    /api/scans              Batch list
+GET    /api/scans/{id}         Batch detail
+POST   /api/scans/{id}/confirm Confirm import
+DELETE /api/scans/{id}         Reject and delete batch
 """
 import logging
 from typing import Annotated
@@ -33,7 +33,7 @@ async def upload_scan(
     current_user: AdminUser = None,
     db: Session = Depends(get_db),
 ) -> ScanBatchRead:
-    """上传 nmap XML 文件，解析并创建扫描批次"""
+    """Upload nmap XML file, parse it, and create a scan batch"""
     content = await file.read()
     batch = scan_service.upload_and_parse(
         db=db,
@@ -51,7 +51,7 @@ def list_batches(
     _current_user: AnyUser = None,
     db: Session = Depends(get_db),
 ) -> ScanBatchListResponse:
-    """扫描批次列表"""
+    """Scan batch list"""
     skip = (page - 1) * page_size
     batches, total = scan_service.list_batches(db, skip=skip, limit=page_size)
     return ScanBatchListResponse(items=batches, total=total)  # type: ignore[arg-type]
@@ -63,7 +63,7 @@ def get_batch(
     _current_user: AnyUser = None,
     db: Session = Depends(get_db),
 ) -> ScanBatchRead:
-    """扫描批次详情"""
+    """Scan batch detail"""
     return scan_service.get_batch(db, batch_id)  # type: ignore[return-value]
 
 
@@ -73,7 +73,7 @@ def get_batch_diff(
     _current_user: AnyUser = None,
     db: Session = Depends(get_db),
 ) -> ScanDiffResponse:
-    """扫描批次差异详情（新发现/变更/消失主机列表）"""
+    """Scan batch diff detail (lists of newly discovered / changed / disappeared hosts)"""
     return scan_service.get_batch_diff(db, batch_id)
 
 
@@ -84,7 +84,7 @@ def confirm_batch(
     current_user: AdminUser = None,
     db: Session = Depends(get_db),
 ) -> ScanBatchRead:
-    """确认导入批次"""
+    """Confirm import batch"""
     return scan_service.confirm_batch(db, batch_id, body.new_assets or None)  # type: ignore[return-value]
 
 
@@ -94,5 +94,5 @@ def reject_batch(
     current_user: AdminUser = None,
     db: Session = Depends(get_db),
 ) -> None:
-    """拒绝并删除批次"""
+    """Reject and delete batch"""
     scan_service.reject_batch(db, batch_id)

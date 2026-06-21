@@ -1,6 +1,6 @@
 """
-大屏聚合服务
-单一接口返回全部大屏数据，SQL 聚合 + 模块级 TTL 缓存。
+Dashboard aggregation service
+Single endpoint returns all dashboard data, with SQL aggregation and module-level TTL cache.
 """
 import json
 import logging
@@ -19,7 +19,7 @@ from app.services import config_service
 
 logger = logging.getLogger(__name__)
 
-# ── 模块级缓存 ─────────────────────────────────────────────
+# ── Module-level Cache ─────────────────────────────────────────────
 _cache_lock = threading.Lock()
 _cache_payload: dict | None = None
 _cache_ts: float = 0.0
@@ -31,9 +31,9 @@ def _now_iso() -> str:
 
 def get_summary(db: Session, force: bool = False) -> dict:
     """
-    返回大屏全部聚合数据。
-    带 TTL 缓存，命中时 cache_age_seconds > 0。
-    force=True 绕过缓存。
+    Return all aggregated dashboard data.
+    Uses TTL caching; cache_age_seconds > 0 on cache hit.
+    force=True bypasses the cache.
     """
     global _cache_payload, _cache_ts
 
@@ -46,7 +46,7 @@ def get_summary(db: Session, force: bool = False) -> dict:
                 _cache_payload["cache_age_seconds"] = round(age, 1)
                 return _cache_payload
 
-    # 缓存未命中或强制刷新，重新聚合
+    # Cache miss or forced refresh, re-aggregate
     limit = config_service.get_dashboard_list_limit(db)
     dangerous_ports = config_service.get_dangerous_ports_list(db)
     dangerous_zones = config_service.get_dangerous_zones(db)
@@ -74,14 +74,14 @@ def get_summary(db: Session, force: bool = False) -> dict:
 # ── KPI ────────────────────────────────────────────────────
 
 def _build_kpi(db: Session, dangerous_ports: set[int], dangerous_zones: set[str]) -> dict:
-    # 资产计数（按 status 分组）
+    # Asset counts (grouped by status)
     status_rows = db.execute(
         select(Asset.status, func.count()).group_by(Asset.status)
     ).all()
     status_map = {row[0]: row[1] for row in status_rows}
     total = sum(status_map.values())
 
-    # 危险端口数
+    # Dangerous port count
     dp_count = db.scalar(
         select(func.count()).select_from(AssetPort)
         .join(Asset, Asset.id == AssetPort.asset_id)
@@ -90,7 +90,7 @@ def _build_kpi(db: Session, dangerous_ports: set[int], dangerous_zones: set[str]
         .where(Asset.status == "online")
     ) or 0
 
-    # 影子资产数（缺字段 + 长期离线）
+    # Shadow asset count (missing fields + long-term offline)
     incomplete = db.scalar(
         select(func.count()).select_from(Asset)
         .where(Asset.source == "scan")
@@ -104,7 +104,7 @@ def _build_kpi(db: Session, dangerous_ports: set[int], dangerous_zones: set[str]
     ) or 0
     shadow_count = incomplete + long_offline
 
-    # 本月新增+变更（已确认批次的 new + changed 快照项）
+    # New + changed this month (new + changed snapshot items from confirmed batches)
     now = datetime.now(timezone.utc)
     month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
     changes_this_month = db.scalar(
@@ -115,7 +115,7 @@ def _build_kpi(db: Session, dangerous_ports: set[int], dangerous_zones: set[str]
         .where(ScanSnapshotItem.diff_type.in_(["new", "changed"]))
     ) or 0
 
-    # 扫描覆盖率
+    # Scan coverage
     last_batch = db.scalar(
         select(ScanBatch).where(ScanBatch.status == "confirmed")
         .order_by(ScanBatch.uploaded_at.desc()).limit(1)
@@ -144,7 +144,7 @@ def _build_kpi(db: Session, dangerous_ports: set[int], dangerous_zones: set[str]
     }
 
 
-# ── 资产分布 ───────────────────────────────────────────────
+# ── Asset Distribution ───────────────────────────────────────────────
 
 def _build_asset_distribution(db: Session) -> dict:
     def _group(col):
@@ -163,7 +163,7 @@ def _build_asset_distribution(db: Session) -> dict:
     }
 
 
-# ── 端口暴露面 ─────────────────────────────────────────────
+# ── Port Exposure ─────────────────────────────────────────────
 
 def _build_port_exposure(db: Session) -> dict:
     top_ports = [
@@ -191,7 +191,7 @@ def _build_port_exposure(db: Session) -> dict:
     return {"top_ports": top_ports, "by_zone": by_zone}
 
 
-# ── 危险端口告警 ───────────────────────────────────────────
+# ── Dangerous Port Alerts ───────────────────────────────────────────
 
 def _build_dangerous_ports(
     db: Session,
@@ -224,7 +224,7 @@ def _build_dangerous_ports(
     ]
 
 
-# ── 影子资产 ───────────────────────────────────────────────
+# ── Shadow Assets ───────────────────────────────────────────────
 
 def _build_shadow_assets(db: Session, limit: int) -> dict:
     incomplete = list(db.scalars(
@@ -245,7 +245,7 @@ def _build_shadow_assets(db: Session, limit: int) -> dict:
     return {
         "missing_fields": [
             {"id": a.id, "asset_no": a.asset_no, "ip_address": a.ip_address,
-             "hostname": a.hostname, "reason": "缺少业务系统或负责人"}
+             "hostname": a.hostname, "reason": "Missing business system or owner"}
             for a in incomplete
         ],
         "missing_fields_count": len(incomplete),
@@ -258,7 +258,7 @@ def _build_shadow_assets(db: Session, limit: int) -> dict:
     }
 
 
-# ── 资产变化时间线 ─────────────────────────────────────────
+# ── Asset Change Timeline ─────────────────────────────────────────
 
 def _build_asset_changes(db: Session, limit: int) -> list[dict]:
     items = list(db.scalars(
@@ -282,7 +282,7 @@ def _build_asset_changes(db: Session, limit: int) -> list[dict]:
     ]
 
 
-# ── 区域拓扑 ───────────────────────────────────────────────
+# ── Zone Topology ───────────────────────────────────────────────
 
 def _build_zone_topology(db: Session) -> dict:
     from sqlalchemy import case
@@ -305,10 +305,10 @@ def _build_zone_topology(db: Session) -> dict:
     }
 
 
-# ── 审计与 LLM 活动流 ─────────────────────────────────────
+# ── Audit and LLM Activity Stream ─────────────────────────────────────
 
 def _build_activity(db: Session, limit: int) -> list[dict]:
-    # 合并 audit_logs + llm_call_logs，按时间倒序取前 N
+    # Merge audit_logs + llm_call_logs, take top N by reverse timestamp
     audit_items = list(db.scalars(
         select(AuditLog)
         .order_by(AuditLog.timestamp.desc())

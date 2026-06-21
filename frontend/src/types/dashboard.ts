@@ -1,9 +1,9 @@
 /**
- * 资产安全态势大屏 — TypeScript 类型定义
- * 对齐后端 /api/reports/dashboard-summary 返回结构
+ * Asset security dashboard -- TypeScript type definitions
+ * Aligned with backend /api/reports/dashboard-summary response structure
  */
 
-/** KPI 翻牌带数据 */
+/** KPI flip data */
 export interface KpiData {
   total_assets: number
   online: number
@@ -19,13 +19,13 @@ export interface KpiData {
   }
 }
 
-/** 分布项 */
+/** Distribution item */
 export interface DistributionItem {
   label: string
   count: number
 }
 
-/** 资产分布 */
+/** Asset distribution */
 export interface AssetDistribution {
   by_zone: DistributionItem[]
   by_type: DistributionItem[]
@@ -33,13 +33,13 @@ export interface AssetDistribution {
   by_os: DistributionItem[]
 }
 
-/** 端口暴露面 */
+/** Port exposure */
 export interface PortExposureData {
   top_ports: { port: number; count: number }[]
   by_zone: { zone: string; port_count: number }[]
 }
 
-/** 危险端口告警项 */
+/** Dangerous port alert item */
 export interface DangerousPortItem {
   asset_id: number
   asset_no: string
@@ -52,7 +52,7 @@ export interface DangerousPortItem {
   severity: 'high' | 'medium'
 }
 
-/** 影子资产 */
+/** Shadow assets */
 export interface ShadowAssetsData {
   missing_fields: {
     id: number
@@ -72,7 +72,7 @@ export interface ShadowAssetsData {
   long_offline_count: number
 }
 
-/** 资产变化项 */
+/** Asset change item */
 export interface AssetChangeItem {
   batch_id: number
   ip_address: string
@@ -83,7 +83,7 @@ export interface AssetChangeItem {
   diff_type: string
 }
 
-/** 区域拓扑 */
+/** Zone topology */
 export interface ZoneTopologyData {
   zones: {
     zone: string
@@ -92,7 +92,7 @@ export interface ZoneTopologyData {
   }[]
 }
 
-/** 活动流项 */
+/** Activity stream item */
 export interface ActivityItem {
   timestamp: string
   action_type: string
@@ -102,7 +102,7 @@ export interface ActivityItem {
   source: 'audit' | 'llm'
 }
 
-/** 大屏聚合数据（完整响应） */
+/** Dashboard aggregated data (full response) */
 export interface DashboardSummary {
   generated_at: string
   cache_age_seconds: number

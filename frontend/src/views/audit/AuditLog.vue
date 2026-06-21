@@ -1,7 +1,7 @@
 ﻿<script setup lang="ts">
 /**
- * 审计日志页
- * 2026 UI Redesign：升级 notice、动作徽标、视觉，业务逻辑保持不变
+ * Audit log page
+ * 2026 UI Redesign: upgraded notice, action badges, visuals, business logic unchanged
  */
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
@@ -94,13 +94,13 @@ onMounted(loadData)
 
 <template>
   <div class="ui-page">
-    <!-- 不可变提示 -->
+    <!-- Immutable notice -->
     <div class="ui-notice">
       <el-icon size="14" color="var(--color-primary-600)"><Lock /></el-icon>
       <span v-html="t('audit.notice')"></span>
     </div>
 
-    <!-- 页头 -->
+    <!-- Page header -->
     <div class="ui-page-head">
       <div>
         <h1 class="ui-page-title">
@@ -117,7 +117,7 @@ onMounted(loadData)
       </div>
     </div>
 
-    <!-- 筛选 -->
+    <!-- Filters -->
     <div class="ui-filter-bar">
       <el-select v-model="query.action_type" :placeholder="t('audit.filters.action')" clearable @change="handleSearch" style="width: 150px">
         <el-option :label="t('audit.actions.LOGIN')" value="LOGIN" />
@@ -144,7 +144,7 @@ onMounted(loadData)
       </el-button>
     </div>
 
-    <!-- 表格 -->
+    <!-- Table -->
     <div class="ui-table-card">
       <el-table v-loading="loading" :data="tableData" stripe style="width: 100%">
         <el-table-column prop="timestamp" :label="t('audit.columns.time')" width="180">
@@ -222,5 +222,5 @@ onMounted(loadData)
 </template>
 
 <style scoped>
-/* 仅依赖 ui-* 工具类，无组件特定样式 */
+/* Only uses ui-* utility classes, no component-specific styles */
 </style>

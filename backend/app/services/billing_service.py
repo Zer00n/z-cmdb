@@ -1,7 +1,7 @@
 """
-账单服务
-按部门出账：日费率 × 区间内占用天数
-计算口径见 PRD §4.5 与开发指导 §3
+Billing service
+Department billing: daily rate * days occupied within the period
+Calculation basis: see PRD section 4.5 and development guide section 3
 """
 from datetime import date, datetime
 from typing import Optional
@@ -14,7 +14,7 @@ from app.services import cost_service
 
 
 def _parse_date(d: Optional[str]) -> date:
-    """解析 ISO 日期字符串，None 则取今天"""
+    """Parse an ISO date string; None defaults to today"""
     if d is None:
         return date.today()
     return date.fromisoformat(d)
@@ -22,11 +22,11 @@ def _parse_date(d: Optional[str]) -> date:
 
 def _segment_days(effective_from: str, effective_to: Optional[str],
                   bill_from: date, bill_to: date) -> int:
-    """计算一个归属分段在账单区间内的实际占用天数"""
+    """Calculate the actual number of days an ownership segment overlaps with the billing period"""
     seg_start = _parse_date(effective_from)
     seg_end = _parse_date(effective_to)
 
-    # 取交集
+    # Take the intersection
     overlap_start = max(seg_start, bill_from)
     overlap_end = min(seg_end, bill_to)
 
@@ -42,10 +42,11 @@ def department_bill(
     granularity: str = "month",
 ) -> dict:
     """
-    计算部门账单
-    遍历该部门的 assignment 分段，按 日费率 × 段内占用天数 累加。
-    unit_price 模式按 price_book × 用量 × 天数。
-    输出：按资源明细 + 按成本类型构成。
+    Calculate a department bill.
+    Iterates through the department's assignment segments, accumulating
+    daily rate * days occupied in each segment.
+    unit_price mode uses price_book * usage * days.
+    Output: per-resource detail + cost type breakdown.
     """
     from app.models.asset import Asset
 
@@ -53,7 +54,7 @@ def department_bill(
     bill_to = _parse_date(date_to)
     bill_days = (bill_to - bill_from).days
 
-    # 获取该部门所有 assignment 分段
+    # Get all assignment segments for this department
     assignments = cost_repo.get_dept_assignments_by_dept(db, dept_id)
 
     resources = []
@@ -64,12 +65,12 @@ def department_bill(
         if asset is None:
             continue
 
-        # 获取该资产的成本数据
+        # Get cost data for this asset
         asset_cost = cost_service.compute_asset_full_cost(db, asset)
         fm = asset_cost["full_loaded_monthly"]
         dr = cost_service.daily_rate(fm)
 
-        # 计算该分段在账单区间内的占用天数
+        # Calculate how many days this segment overlaps with the billing period
         seg_days = _segment_days(
             assignment.effective_from,
             assignment.effective_to,
@@ -82,7 +83,7 @@ def department_bill(
         if assignment.billing_mode == "cost":
             period_amount = round(dr * seg_days, 2)
         else:
-            # unit_price 模式：按 price_book × 用量 × 天数
+            # unit_price mode: price_book * usage * days
             import json
             usage = json.loads(assignment.share_or_usage) if assignment.share_or_usage else {}
             unit_price = usage.get("unit_price", dr)
@@ -103,7 +104,7 @@ def department_bill(
             "cost_breakdown": asset_cost.get("cost_breakdown", {}),
         })
 
-        # 累加按成本类型
+        # Accumulate by cost type
         for ct, amt in asset_cost.get("cost_breakdown", {}).items():
             cost_type_totals[ct] = cost_type_totals.get(ct, 0) + amt
 

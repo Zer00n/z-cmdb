@@ -1,15 +1,15 @@
 /**
- * 审计日志 API 封装
+ * Audit log API wrappers
  */
 import request from './request'
 import type { AuditLogListResponse, AuditQueryParams } from '@/types/audit'
 
-/** 查询审计日志 */
+/** Query audit logs */
 export function fetchAuditLogs(params?: AuditQueryParams): Promise<AuditLogListResponse> {
   return request.get('/api/audit/logs', { params })
 }
 
-/** 导出审计报告 */
+/** Export audit report */
 export function exportAuditReport(): Promise<Blob> {
   return request.post('/api/audit/export', null, { responseType: 'blob' })
 }

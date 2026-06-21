@@ -1,6 +1,6 @@
 /**
- * Vue 应用入口
- * Element Plus 全量引入 + 全部图标全局注册
+ * Vue app entry point
+ * Element Plus full import + all icons globally registered
  */
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
@@ -11,7 +11,7 @@ import App from './App.vue'
 import router from './router'
 import i18n from './i18n'
 
-// 样式引入顺序：token → element-plus → element-theme（覆盖）→ app（全局工具类）
+// Style import order: tokens -> element-plus -> element-theme (override) -> app (global utilities)
 import '@/styles/tokens.css'
 import 'element-plus/dist/index.css'
 import '@/styles/element-theme.scss'
@@ -19,7 +19,7 @@ import '@/styles/app.css'
 
 const app = createApp(App)
 
-// 全局注册所有 Element Plus 图标
+// Globally register all Element Plus icons
 for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
   app.component(key, component)
 }

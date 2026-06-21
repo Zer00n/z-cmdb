@@ -1,8 +1,8 @@
 <script setup lang="ts">
 /**
- * 扫描批次差异确认页
- * 基于 Claude Design 07-scan-confirm.htm.html 实现
- * 三段式：新发现 / 变更 / 消失
+ * Scan batch diff confirmation page
+ * Based on Claude Design 07-scan-confirm.htm.html
+ * Three sections: newly discovered / changed / missing
  */
 import { ref, reactive, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -23,7 +23,7 @@ const activeTab = ref('new')
 
 const diffData = ref<ScanDiffResponse | null>(null)
 
-// 新发现资产的补充字段
+// Supplementary fields for newly discovered assets
 interface NewAssetForm {
   ip_address: string
   hostname: string | null
@@ -43,7 +43,7 @@ async function loadDiff() {
   loading.value = true
   try {
     diffData.value = await fetchScanDiff(batchId.value)
-    // 初始化新资产表单
+    // Initialize new asset forms
     newAssetForms.value = (diffData.value.new_hosts || []).map((h: DiffNewHost) => ({
       ip_address: h.ip_address,
       hostname: h.hostname,
@@ -61,11 +61,11 @@ async function loadDiff() {
   }
 }
 
-// 确认导入
+// Confirm import
 async function handleConfirm() {
   if (!diffData.value) return
 
-  // 校验选中的新资产必填字段
+  // Validate required fields for selected new assets
   const selectedNew = newAssetForms.value.filter(f => f.selected)
   for (const item of selectedNew) {
     if (!item.location || !item.owner || !item.business_system) {
@@ -104,7 +104,7 @@ async function handleConfirm() {
   }
 }
 
-// 拒绝批次
+// Reject batch
 async function handleReject() {
   await ElMessageBox.confirm(
     t('scan.confirm.success.rejectConfirm'),
@@ -121,7 +121,7 @@ async function handleReject() {
   }
 }
 
-// 全选/取消全选新资产
+// Select/deselect all new assets
 function toggleAllNew(checked: boolean) {
   newAssetForms.value.forEach(f => { f.selected = checked })
 }
@@ -134,7 +134,7 @@ onMounted(loadDiff)
 <template>
   <div v-loading="loading" class="scan-confirm-page">
     <template v-if="diffData">
-      <!-- 页头 -->
+      <!-- Page header -->
       <div class="ui-page-head">
         <div>
           <div class="title-row">
@@ -155,7 +155,7 @@ onMounted(loadDiff)
         </div>
       </div>
 
-      <!-- KPI 卡片 -->
+      <!-- KPI cards -->
       <div class="ui-kpi-grid">
         <div class="ui-kpi">
           <div class="ui-kpi-head">
@@ -187,10 +187,10 @@ onMounted(loadDiff)
         </div>
       </div>
 
-      <!-- Tab 区域 -->
+      <!-- Tab area -->
       <div class="ui-card" style="padding: var(--space-4) var(--space-6)">
         <el-tabs v-model="activeTab">
-          <!-- 新发现 Tab -->
+          <!-- New discovery tab -->
           <el-tab-pane :label="`${t('scan.confirm.tabs.new')} (${diffData.new_count})`" name="new">
             <div v-if="newAssetForms.length === 0" class="empty-hint">{{ t('scan.confirm.newTab.empty') }}</div>
             <template v-else>
@@ -262,7 +262,7 @@ onMounted(loadDiff)
             </template>
           </el-tab-pane>
 
-          <!-- 变更 Tab -->
+          <!-- Changes tab -->
           <el-tab-pane :label="`${t('scan.confirm.tabs.changed')} (${diffData.changed_count})`" name="changed">
             <div v-if="diffData.changed_hosts.length === 0" class="empty-hint">{{ t('scan.confirm.changedTab.empty') }}</div>
             <div v-else class="changed-list">
@@ -288,7 +288,7 @@ onMounted(loadDiff)
                     </span>
                   </div>
                 </div>
-                <!-- 三栏对比 -->
+                <!-- Three-column comparison -->
                 <div v-if="host.port_changes.length > 0" class="chg-body">
                   <div class="compare-head">
                     <div class="col-label">{{ t('scan.confirm.changedTab.field') }}</div>
@@ -315,7 +315,7 @@ onMounted(loadDiff)
             </div>
           </el-tab-pane>
 
-          <!-- 消失 Tab -->
+          <!-- Missing tab -->
           <el-tab-pane :label="`${t('scan.confirm.tabs.missing')} (${diffData.missing_count})`" name="missing">
             <div v-if="diffData.missing_hosts.length === 0" class="empty-hint">{{ t('scan.confirm.missingTab.empty') }}</div>
             <div v-else>
@@ -356,7 +356,7 @@ onMounted(loadDiff)
         </el-tabs>
       </div>
 
-      <!-- 底部操作栏 -->
+      <!-- Bottom action bar -->
       <div class="action-bar">
         <div class="action-left">
           <span class="summary-item new">{{ t('scan.confirm.action.new') }} <b>{{ newAssetForms.filter(f => f.selected).length }}</b></span>
@@ -381,7 +381,7 @@ onMounted(loadDiff)
   gap: var(--space-4);
 }
 
-/* 页头辅助 */
+/* Page header helpers */
 .title-row {
   display: flex;
   align-items: center;
@@ -405,7 +405,7 @@ onMounted(loadDiff)
   font-size: var(--fs-body);
 }
 
-/* 新发现 Tab */
+/* New discovery tab */
 .tab-toolbar {
   display: flex;
   align-items: center;
@@ -474,7 +474,7 @@ onMounted(loadDiff)
   font-weight: 500;
 }
 
-/* 变更 Tab */
+/* Changes tab */
 .changed-list {
   display: flex;
   flex-direction: column;
@@ -569,7 +569,7 @@ onMounted(loadDiff)
   font-weight: 500;
 }
 
-/* 消失 Tab */
+/* Missing tab */
 .missing-notice {
   display: flex;
   align-items: center;
@@ -585,7 +585,7 @@ onMounted(loadDiff)
 .text-warning { color: var(--color-warning); font-weight: 500; }
 .text-muted { color: var(--neutral-400); font-size: var(--fs-caption); }
 
-/* 底部操作栏（粘性） */
+/* Bottom action bar (sticky) */
 .action-bar {
   position: sticky;
   bottom: 0;

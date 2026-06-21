@@ -1,11 +1,11 @@
 /**
- * 应用大类选项
- * v2.5: 前端引导，后端不强约束
+ * App category options
+ * v2.5: Frontend-guided, backend does not enforce
  *
- * 使用：
+ * Usage:
  *   import { APP_CATEGORIES } from '@/constants/app-categories'
  *
- * 在 el-select 上开启 filterable + allow-create 支持自由输入。
+ * Enable filterable + allow-create on el-select for free input.
  */
 
 export interface AppCategoryOption {
@@ -27,7 +27,7 @@ export const APP_CATEGORIES: AppCategoryOption[] = [
   { value: 'other', label: '其他' },
 ]
 
-/** 根据 value 获取 label */
+/** Get label by value */
 export function getCategoryLabel(value: string | null): string {
   if (!value) return '-'
   const found = APP_CATEGORIES.find((c) => c.value === value)

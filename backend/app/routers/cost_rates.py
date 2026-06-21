@@ -1,7 +1,7 @@
 """
-费率字典接口（受 require_cost_feature 守卫，仅 super_admin 可写）
-GET /api/cost/rates   读取费率
-PUT /api/cost/rates   更新费率
+Cost rate dictionary API (guarded by require_cost_feature; super_admin write-only)
+GET /api/cost/rates   Read rates
+PUT /api/cost/rates   Update rates
 """
 from datetime import datetime, timezone
 
@@ -22,7 +22,7 @@ def get_cost_rates(
     _current_user: AnyUser = None,
     db: Session = Depends(get_db),
 ) -> dict:
-    """读取所有费率配置"""
+    """Read all rate configurations"""
     rates = cost_repo.get_all_cost_rates(db)
     result = {}
     for r in rates:
@@ -42,7 +42,7 @@ def update_cost_rates(
     current_user: SuperAdminUser = None,
     db: Session = Depends(get_db),
 ) -> dict:
-    """批量更新费率配置"""
+    """Batch update rate configurations"""
     now = datetime.now(timezone.utc)
     updated = []
     for key, meta in body.items():
@@ -62,4 +62,4 @@ def update_cost_rates(
         details={"updated_keys": updated},
     )
     db.commit()
-    return {"message": f"已更新 {len(updated)} 项费率", "updated": updated}
+    return {"message": f"Updated {len(updated)} rate items", "updated": updated}

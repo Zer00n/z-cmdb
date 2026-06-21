@@ -19,20 +19,20 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    # 添加 SQLite 触发器：禁止 UPDATE 和 DELETE audit_logs 表
-    # PRD 6.2 要求：日志只能新增，不能修改、不能删除
+    # Add SQLite triggers to forbid UPDATE and DELETE on audit_logs table
+    # PRD 6.2 requirement: logs can only be inserted, never modified or deleted
     op.execute("""
         CREATE TRIGGER IF NOT EXISTS audit_logs_no_update
         BEFORE UPDATE ON audit_logs
         BEGIN
-            SELECT RAISE(ABORT, '审计日志不可修改');
+            SELECT RAISE(ABORT, 'Audit logs cannot be modified');
         END;
     """)
     op.execute("""
         CREATE TRIGGER IF NOT EXISTS audit_logs_no_delete
         BEFORE DELETE ON audit_logs
         BEGIN
-            SELECT RAISE(ABORT, '审计日志不可删除');
+            SELECT RAISE(ABORT, 'Audit logs cannot be deleted');
         END;
     """)
 

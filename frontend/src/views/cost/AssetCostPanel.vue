@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /**
- * 资产详情 — 成本构成面板
- * 设计来源：design/Asset Detail Cost Panel.html
+ * Asset detail — cost breakdown panel
+ * Design source: design/Asset Detail Cost Panel.html
  */
 import { ref, onMounted, watch, shallowRef, computed } from 'vue'
 import { useI18n } from 'vue-i18n'

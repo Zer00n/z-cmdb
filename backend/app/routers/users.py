@@ -1,10 +1,10 @@
 """
-用户管理路由（仅 super_admin）
+User management routes (super_admin only)
 GET    /api/users
 POST   /api/users
 GET    /api/users/{id}
 PATCH  /api/users/{id}
-DELETE /api/users/{id}    软删除（status=disabled）
+DELETE /api/users/{id}    Soft delete (status=disabled)
 """
 import logging
 
@@ -28,7 +28,7 @@ def list_users(
     current_user: SuperAdminUser = None,
     db: Session = Depends(get_db),
 ) -> list[UserRead]:
-    """用户列表（仅 super_admin）"""
+    """User list (super_admin only)"""
     users = user_repo.list_users(db)
     return users  # type: ignore[return-value]
 
@@ -39,7 +39,7 @@ def create_user(
     current_user: SuperAdminUser = None,
     db: Session = Depends(get_db),
 ) -> UserRead:
-    """创建用户（仅 super_admin）"""
+    """Create user (super_admin only)"""
     pwd_hash = hash_password(body.password)
     user = user_repo.create_user(
         db=db,
@@ -64,7 +64,7 @@ def get_user(
     current_user: SuperAdminUser = None,
     db: Session = Depends(get_db),
 ) -> UserRead:
-    """用户详情（仅 super_admin）"""
+    """User detail (super_admin only)"""
     return user_repo.get_by_id(db, user_id)  # type: ignore[return-value]
 
 
@@ -75,7 +75,7 @@ def update_user(
     current_user: SuperAdminUser = None,
     db: Session = Depends(get_db),
 ) -> UserRead:
-    """更新用户（仅 super_admin）"""
+    """Update user (super_admin only)"""
     user = user_repo.get_by_id(db, user_id)
     update_data = body.model_dump(exclude_none=True)
     user_repo.update_user(db, user, **update_data)
@@ -94,7 +94,7 @@ def disable_user(
     current_user: SuperAdminUser = None,
     db: Session = Depends(get_db),
 ) -> None:
-    """禁用用户（软删除，仅 super_admin）"""
+    """Disable user (soft delete, super_admin only)"""
     user = user_repo.get_by_id(db, user_id)
     user_repo.update_user(db, user, status="disabled")
     audit_service.log_action(

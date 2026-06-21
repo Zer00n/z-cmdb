@@ -1,8 +1,8 @@
 <script setup lang="ts">
 /**
- * 资产新增/编辑表单页
- * 基于 Claude Design 06-asset-form.html 实现
- * 路由 /assets/create 为新增，/assets/:id/edit 为编辑
+ * Asset create/edit form page
+ * Based on Claude Design 06-asset-form.html
+ * Route /assets/create for new, /assets/:id/edit for editing
  */
 import { ref, reactive, onMounted, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -25,7 +25,7 @@ const formRef = ref<FormInstance>()
 const loading = ref(false)
 const submitting = ref(false)
 
-// 判断是新增还是编辑
+// Determine if creating or editing
 const isEdit = computed(() => !!route.params.id)
 const assetId = computed(() => Number(route.params.id) || 0)
 const pageTitle = computed(() => isEdit.value ? t('asset.form.editTitle') : t('asset.form.createTitle'))
@@ -49,7 +49,7 @@ const form = reactive<AssetCreateRequest>({
   warranty_expiry: '',
   remark: '',
   source: 'manual',
-  // V0.4 成本字段
+  // V0.4 Cost fields
   purchase_price: undefined,
   depreciation_months: undefined,
   residual_rate: undefined,
@@ -81,10 +81,10 @@ const rules = computed<FormRules>(() => ({
 const osFieldMode = computed(() => getOsFieldMode(form.asset_type))
 const visibleOsGroups = computed(() => filterVisibleOsGroups(form.asset_type, osOptionGroups))
 
-/** 是否为云服务器模式 */
+/** Whether cloud server mode is active */
 const isCloudServer = computed(() => form.asset_type === 'cloud_server')
 
-/** 网络区域选项：云服务器时显示云服务商，其他类型显示传统区域 */
+/** Network zone options: cloud providers for cloud servers, traditional zones for others */
 const networkZoneOptions = computed(() => {
   if (isCloudServer.value) {
     return [
@@ -106,7 +106,7 @@ const networkZoneOptions = computed(() => {
   ]
 })
 
-/** 切换资产类型时，若网络区域与当前选项集不匹配则重置为默认值 */
+/** Reset network zone to default if it doesn't match the current option set when switching asset type */
 watch(
   () => form.asset_type,
   (newType) => {
@@ -117,7 +117,7 @@ watch(
   },
 )
 
-// 编辑模式：加载已有数据
+// Edit mode: load existing data
 async function loadAsset() {
   if (!isEdit.value) return
   loading.value = true
@@ -141,7 +141,7 @@ async function loadAsset() {
       purchase_date: asset.purchase_date || '',
       warranty_expiry: asset.warranty_expiry || '',
       remark: asset.remark || '',
-      // V0.4 成本字段
+      // V0.4 Cost fields
       purchase_price: asset.purchase_price ?? undefined,
       depreciation_months: asset.depreciation_months ?? undefined,
       residual_rate: asset.residual_rate ?? undefined,
@@ -170,7 +170,7 @@ async function handleSubmit() {
         router.push(`/assets/${assetId.value}`)
       } else {
         const data: AssetCreateRequest = { ...form }
-        // 空字符串的 asset_no 改为 null（让后端自动生成）
+        // Convert empty asset_no to null (let backend auto-generate)
         if (!data.asset_no) data.asset_no = null
         const asset = await createAsset(data)
         ElMessage.success(t('asset.form.success.created'))
@@ -197,7 +197,7 @@ onMounted(async () => {
 <template>
   <div v-loading="loading" class="asset-form-page">
     <div class="container">
-      <!-- 页头 -->
+      <!-- Page header -->
       <div class="ui-page-head" style="margin-bottom: var(--space-6)">
         <div>
           <h1 class="ui-page-title">{{ pageTitle }}</h1>
@@ -219,7 +219,7 @@ onMounted(async () => {
         label-width="120px"
         label-position="right"
       >
-        <!-- 段 1：基础信息 -->
+        <!-- Section 1: Basic information -->
         <div class="sec-card">
           <div class="sec-head">
             <span class="sec-num">01</span>
@@ -318,7 +318,7 @@ onMounted(async () => {
           </div>
         </div>
 
-        <!-- 段 2：归属信息 -->
+        <!-- Section 2: Ownership information -->
         <div class="sec-card">
           <div class="sec-head">
             <span class="sec-num">02</span>
@@ -352,7 +352,7 @@ onMounted(async () => {
           </div>
         </div>
 
-        <!-- 段 3：硬件信息（可选） -->
+        <!-- Section 3: Hardware information (optional) -->
         <div class="sec-card">
           <div class="sec-head">
             <span class="sec-num">03</span>
@@ -404,7 +404,7 @@ onMounted(async () => {
           </div>
         </div>
 
-        <!-- V0.4 段 4：成本信息（受 featureStore 控制） -->
+        <!-- V0.4 Section 4: Cost information (controlled by featureStore) -->
         <div v-if="featureStore.costAccounting" class="sec-card">
           <div class="sec-head">
             <span class="sec-num">04</span>
@@ -459,7 +459,7 @@ onMounted(async () => {
               </el-radio-group>
             </el-form-item>
 
-            <!-- 续值字段（仅到期续值时显示） -->
+            <!-- Revalue fields (shown only when end-of-life strategy is revalue) -->
             <template v-if="form.end_of_life_strategy === 'revalue'">
               <el-form-item :label="t('cost.assetForm.revalueAmount')">
                 <el-input-number
@@ -519,7 +519,7 @@ onMounted(async () => {
   max-width: 960px;
 }
 
-/* 段卡片 */
+/* Section card */
 .sec-card {
   background: var(--surface-base);
   border: var(--border-base);
@@ -563,13 +563,13 @@ onMounted(async () => {
   padding: var(--space-6);
 }
 
-/* 等宽输入框 */
+/* Monospace input */
 :deep(.mono-input .el-input__inner) {
   font-family: var(--font-mono);
   font-size: 13px;
 }
 
-/* 云服务商提示文字 */
+/* Cloud provider hint text */
 .zone-hint {
   margin-left: var(--space-3);
   font-size: 12px;

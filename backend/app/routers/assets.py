@@ -1,11 +1,11 @@
 """
-资产管理路由
-GET    /api/assets          资产列表（筛选/搜索/分页）
-POST   /api/assets          手动新增资产
-GET    /api/assets/export   CSV 导出
-GET    /api/assets/{id}     资产详情
-PATCH  /api/assets/{id}     更新资产
-DELETE /api/assets/{id}     下线资产（软删除）
+Asset management routes
+GET    /api/assets          Asset list (filter/search/paginate)
+POST   /api/assets          Manually add an asset
+GET    /api/assets/export   CSV export
+GET    /api/assets/{id}     Asset detail
+PATCH  /api/assets/{id}     Update asset
+DELETE /api/assets/{id}     Decommission asset (soft delete)
 """
 import logging
 from typing import Annotated
@@ -40,7 +40,7 @@ def list_assets(
     _current_user: AnyUser = None,
     db: Session = Depends(get_db),
 ) -> AssetListResponse:
-    """资产列表，支持筛选、搜索、分页"""
+    """Asset list with filtering, search, and pagination"""
     params = AssetQueryParams(
         page=page,
         page_size=page_size,
@@ -67,7 +67,7 @@ def export_assets(
     _current_user: AnyUser = None,
     db: Session = Depends(get_db),
 ) -> Response:
-    """导出资产列表为 CSV"""
+    """Export asset list as CSV"""
     params = AssetQueryParams(
         page=1,
         page_size=10000,
@@ -107,7 +107,7 @@ def export_assets_threat_hunting(
     _current_user: AnyUser = None,
     db: Session = Depends(get_db),
 ) -> Response:
-    """导出资产+应用为威胁狩猎助手兼容 CSV"""
+    """Export assets and apps as a threat-hunting-compatible CSV"""
     from datetime import date
 
     params = AssetQueryParams(
@@ -148,7 +148,7 @@ def get_asset(
     _current_user: AnyUser = None,
     db: Session = Depends(get_db),
 ) -> AssetRead:
-    """资产详情（含端口列表）"""
+    """Asset detail (including port list)"""
     return asset_service.get_asset(db, asset_id)  # type: ignore[return-value]
 
 
@@ -159,7 +159,7 @@ def create_asset(
     current_user: AdminUser = None,
     db: Session = Depends(get_db),
 ) -> AssetRead:
-    """手动新增资产（需要 admin 权限）"""
+    """Manually add an asset (requires admin permission)"""
     asset = asset_service.create_asset(db, body)
     audit_service.log_from_request(
         db, request, action_type="CREATE", user=current_user,
@@ -178,7 +178,7 @@ def update_asset(
     current_user: AdminUser = None,
     db: Session = Depends(get_db),
 ) -> AssetRead:
-    """更新资产信息（需要 admin 权限）"""
+    """Update asset information (requires admin permission)"""
     asset = asset_service.update_asset(db, asset_id, body)
     audit_service.log_from_request(
         db, request, action_type="UPDATE", user=current_user,
@@ -196,7 +196,7 @@ def decommission_asset(
     current_user: AdminUser = None,
     db: Session = Depends(get_db),
 ) -> None:
-    """下线资产（软删除，标记为 decommissioned，需要 admin 权限）"""
+    """Decommission asset (soft delete, marks as decommissioned; requires admin permission)"""
     asset_service.decommission_asset(db, asset_id)
     audit_service.log_from_request(
         db, request, action_type="DELETE", user=current_user,
@@ -212,7 +212,7 @@ def get_asset_history(
     _current_user: AnyUser = None,
     db: Session = Depends(get_db),
 ) -> dict:
-    """资产端口变化历史（基于扫描快照）"""
+    """Asset port change history (based on scan snapshots)"""
     return asset_service.get_asset_history(db, asset_id)
 
 
@@ -224,21 +224,21 @@ def bulk_update_assets(
     db: Session = Depends(get_db),
 ) -> dict:
     """
-    批量更新资产。
-    body: { "ids": [1,2,3], "updates": {"owner": "张三"} }
-    支持字段：owner, status, business_system, importance, network_zone
+    Bulk update assets.
+    body: { "ids": [1,2,3], "updates": {"owner": "John"} }
+    Supported fields: owner, status, business_system, importance, network_zone
     """
     ids = body.get("ids", [])
     updates = body.get("updates", {})
     if not ids or not updates:
         from app.core.exceptions import ValidationError
-        raise ValidationError("ids 和 updates 不能为空")
+        raise ValidationError("ids and updates cannot be empty")
 
     allowed_fields = {"owner", "status", "business_system", "importance", "network_zone"}
     filtered = {k: v for k, v in updates.items() if k in allowed_fields}
     if not filtered:
         from app.core.exceptions import ValidationError
-        raise ValidationError(f"不支持批量修改的字段，允许: {allowed_fields}")
+        raise ValidationError(f"Bulk-modifiable fields not supported, allowed: {allowed_fields}")
 
     count = asset_service.bulk_update(db, ids, filtered)
     audit_service.log_from_request(
@@ -247,4 +247,4 @@ def bulk_update_assets(
         details={"action": "bulk_update", "count": count, "updates": filtered, "ids": ids},
     )
     db.commit()
-    return {"message": f"已批量更新 {count} 个资产", "count": count}
+    return {"message": f"Successfully bulk-updated {count} assets", "count": count}

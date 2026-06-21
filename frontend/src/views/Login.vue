@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /**
- * 登录页
- * 2026 UI Redesign：双栏（左侧产品介绍 + 右侧登录卡片），保持原有逻辑
+ * Login page
+ * 2026 UI Redesign: split layout (left product intro + right login card), logic unchanged
  */
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
@@ -66,11 +66,11 @@ const features = computed(() => [
 
 <template>
   <div class="login-page">
-    <!-- 背景层：双 radial + 网格 -->
+    <!-- Background layer: dual radial gradients + grid -->
     <div class="bg-aura" aria-hidden="true" />
     <div class="bg-grid" aria-hidden="true" />
 
-    <!-- 顶部栏：仅展示品牌 -->
+    <!-- Top bar: brand display only -->
     <header class="login-top">
       <div class="brand">
         <span class="brand-logo" aria-hidden="true">
@@ -81,9 +81,9 @@ const features = computed(() => [
       <span class="top-version">v0.4.0</span>
     </header>
 
-    <!-- 主体：左侧介绍 + 右侧登录卡 -->
+    <!-- Main body: left intro + right login card -->
     <main class="login-shell">
-      <!-- 左侧：产品介绍 -->
+      <!-- Left: product intro -->
       <section class="intro">
         <div class="intro-tag">
           <span class="intro-tag-dot" />
@@ -124,7 +124,7 @@ const features = computed(() => [
         </div>
       </section>
 
-      <!-- 右侧：登录卡片 -->
+      <!-- Right: login card -->
       <section class="login-side">
         <div class="login-card">
           <div class="login-card-head">
@@ -217,7 +217,7 @@ const features = computed(() => [
   overflow: hidden;
 }
 
-/* ── 背景层 ── */
+/* ── Background layer ── */
 .bg-aura {
   position: fixed;
   inset: 0;
@@ -239,7 +239,7 @@ const features = computed(() => [
   -webkit-mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.55) 0%, rgba(0, 0, 0, 0) 70%);
 }
 
-/* ── 顶部 ── */
+/* ── Top bar ── */
 .login-top {
   position: relative;
   z-index: 1;
@@ -303,7 +303,7 @@ const features = computed(() => [
   border-radius: 999px;
 }
 
-/* ── 主体双栏 ── */
+/* ── Main two-column layout ── */
 .login-shell {
   position: relative;
   z-index: 1;
@@ -318,7 +318,7 @@ const features = computed(() => [
   margin: 0 auto;
 }
 
-/* ── 左侧：产品介绍 ── */
+/* ── Left: product intro ── */
 .intro {
   max-width: 580px;
 }
@@ -433,7 +433,7 @@ const features = computed(() => [
   letter-spacing: 0.02em;
 }
 
-/* ── 右侧：登录卡片 ── */
+/* ── Right: login card ── */
 .login-side {
   display: flex;
   justify-content: flex-end;
@@ -528,7 +528,7 @@ const features = computed(() => [
 }
 .chip-sep { color: var(--neutral-300); }
 
-/* ── 页脚 ── */
+/* ── Footer ── */
 .login-footer {
   position: relative;
   z-index: 1;

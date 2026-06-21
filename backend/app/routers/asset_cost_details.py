@@ -1,5 +1,5 @@
 """
-资产成本行与部门归属接口
+Asset cost line items and department assignment API
 GET/POST    /api/assets/{id}/cost-items
 DELETE      /api/assets/{id}/cost-items/{item_id}
 GET/POST    /api/assets/{id}/dept-assignments

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * 修改密码弹窗
+ * Change password dialog
  */
 import { ref, reactive } from 'vue'
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
@@ -79,7 +79,7 @@ async function handleSubmit() {
         old_password: form.old_password,
         new_password: form.new_password,
       })
-      // 改密成功，重置强制改密标记
+      // Password changed successfully, clear the forced change flag
       authStore.mustChangePassword = false
       ElMessage.success(t('components.changePassword.success'))
       handleClose()

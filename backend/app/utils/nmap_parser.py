@@ -1,6 +1,6 @@
 """
-nmap XML 解析模块
-使用 python-libnmap 解析，defusedxml 做安全校验
+nmap XML parsing module
+Uses python-libnmap for parsing, defusedxml for security validation
 """
 import logging
 from dataclasses import dataclass, field
@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class ParsedPort:
-    """解析出的单个端口信息"""
+    """Parsed single port information"""
     port_number: int
     protocol: str       # tcp / udp
     state: str          # open / closed / filtered
@@ -26,7 +26,7 @@ class ParsedPort:
 
 @dataclass
 class ParsedHost:
-    """解析出的单个主机信息"""
+    """Parsed single host information"""
     ip_address: str
     mac_address: str | None = None
     hostname: str | None = None
@@ -36,7 +36,7 @@ class ParsedHost:
 
 @dataclass
 class ParsedScan:
-    """解析出的完整扫描结果"""
+    """Parsed complete scan result"""
     scan_started_at: str | None = None
     scan_finished_at: str | None = None
     hosts: list[ParsedHost] = field(default_factory=list)
@@ -44,35 +44,35 @@ class ParsedScan:
 
 def validate_nmap_xml(content: bytes) -> None:
     """
-    安全校验：使用 defusedxml 检查 XML 是否安全（防 XXE）。
-    同时验证是否为 nmap 输出格式。
+    Security validation: use defusedxml to check XML safety (prevent XXE).
+    Also verifies the content is in nmap output format.
     """
     try:
         tree = SafeET.fromstring(content)
     except Exception as exc:
-        raise NmapParseError(f"XML 解析失败（可能包含不安全内容）: {exc}") from exc
+        raise NmapParseError(f"XML parsing failed (possibly contains unsafe content): {exc}") from exc
 
-    # 检查根元素是否为 nmaprun
+    # Check that root element is nmaprun
     if tree.tag != "nmaprun":
         raise NmapParseError(
-            f"不是有效的 nmap XML 文件（根元素为 '{tree.tag}'，期望 'nmaprun'）"
+            f"Not a valid nmap XML file (root element is '{tree.tag}', expected 'nmaprun')"
         )
 
 
 def parse_nmap_xml(content: bytes) -> ParsedScan:
     """
-    解析 nmap XML 内容，返回结构化数据。
-    先做安全校验，再用 python-libnmap 解析。
+    Parse nmap XML content and return structured data.
+    Performs security validation first, then uses python-libnmap to parse.
     """
-    # 安全校验
+    # Security validation
     validate_nmap_xml(content)
 
-    # 使用 python-libnmap 解析
+    # Parse using python-libnmap
     try:
         xml_str = content.decode("utf-8")
         report = NmapParser.parse_fromstring(xml_str)
     except Exception as exc:
-        raise NmapParseError(f"nmap XML 解析失败: {exc}") from exc
+        raise NmapParseError(f"nmap XML parsing failed: {exc}") from exc
 
     result = ParsedScan(
         scan_started_at=report.started if hasattr(report, 'started') else None,
@@ -83,26 +83,26 @@ def parse_nmap_xml(content: bytes) -> ParsedScan:
         if not host.is_up():
             continue
 
-        # IP 地址
+        # IP address
         ip = host.address
         if not ip:
             continue
 
         parsed_host = ParsedHost(ip_address=ip)
 
-        # MAC 地址
+        # MAC address
         if hasattr(host, 'mac') and host.mac:
             parsed_host.mac_address = host.mac
 
-        # 主机名
+        # Hostname
         if host.hostnames:
             parsed_host.hostname = host.hostnames[0]
 
-        # 操作系统
+        # Operating system
         if host.os_fingerprinted and host.os.osmatches:
             parsed_host.os_info = host.os.osmatches[0].name
 
-        # 端口
+        # Ports
         for svc in host.services:
             port = ParsedPort(
                 port_number=svc.port,
@@ -123,6 +123,6 @@ def parse_nmap_xml(content: bytes) -> ParsedScan:
 
 
 def parse_nmap_file(file_path: Path) -> ParsedScan:
-    """从文件路径解析 nmap XML"""
+    """Parse nmap XML from a file path"""
     content = file_path.read_bytes()
     return parse_nmap_xml(content)

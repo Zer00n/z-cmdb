@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /**
- * 系统配置页
- * 复用 AssetForm（Design 06）的分段卡片布局
+ * System configuration page
+ * Reuses the section card layout from AssetForm (Design 06)
  */
 import { ref, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -25,7 +25,7 @@ const loading = ref(false)
 const saving = ref(false)
 const config = ref<Record<string, ConfigItem>>({})
 
-// 分组定义：按业务逻辑把配置项分到不同段卡片
+// Group definitions: organize config items into section cards by business logic
 const groups = [
   {
     num: '01',
@@ -47,13 +47,13 @@ const groups = [
   },
 ]
 
-// 布尔类型配置项（渲染为开关而非输入框）
+// Boolean config items (rendered as switches instead of input fields)
 const booleanKeys = new Set(['llm_cloud_enabled', 'llm_route_core_to_local'])
 
-// 数字类型配置项（渲染为数字输入框）
+// Number type config items (rendered as number inputs)
 const numberKeys = new Set(['missing_threshold', 'upload_max_size_mb', 'session_timeout_minutes'])
 
-// LLM 提供方为「本地」时隐藏 URL 和 Key
+// Hide URL and Key when LLM provider is "local"
 const isCustomProvider = computed(() => {
   const p = config.value['llm_provider']?.value || ''
   return p !== 'ollama' && p !== ''
@@ -71,7 +71,7 @@ function getPlaceholder(key: string): string {
   return t(`settings.placeholders.${key}`)
 }
 
-// 布尔值适配（从字符串 'true'/'false' 转布尔）
+// Boolean value adapter (convert string 'true'/'false' to boolean)
 function getBoolValue(key: string): boolean {
   const v = config.value[key]?.value
   return v === 'true' || v === '1'
@@ -137,7 +137,7 @@ onMounted(loadConfig)
 <template>
   <div v-loading="loading" class="settings-page">
     <div class="container">
-      <!-- 页头 -->
+      <!-- Page header -->
       <div class="ui-page-head" style="margin-bottom: var(--space-6)">
         <div>
           <h1 class="ui-page-title">{{ t('settings.title') }}</h1>
@@ -155,7 +155,7 @@ onMounted(loadConfig)
         </div>
       </div>
 
-      <!-- 功能开关：资产成本核算 -->
+      <!-- Feature toggle: asset cost accounting -->
       <div
         class="feature-card"
         :class="{ 'feature-card--enabled': featureStore.costAccounting }"
@@ -209,7 +209,7 @@ onMounted(loadConfig)
       </div>
 
       <el-form label-width="160px" label-position="right">
-        <!-- 语言设置 section 00 -->
+        <!-- Language settings section 00 -->
         <div class="sec-card">
           <div class="sec-head">
             <span class="sec-num">00</span>
@@ -230,7 +230,7 @@ onMounted(loadConfig)
           </div>
         </div>
 
-        <!-- 各分组段卡片 -->
+        <!-- Group section cards -->
         <div
           v-for="group in groups"
           :key="group.num"
@@ -243,15 +243,15 @@ onMounted(loadConfig)
           </div>
           <div class="sec-body">
             <template v-for="key in group.keys" :key="key">
-              <!-- LLM 相关字段条件渲染 -->
+              <!-- LLM-related field conditional rendering -->
               <template v-if="group.num === '03'">
-                <!-- 自定义模式下隐藏本地模型字段；本地模式下隐藏 URL/Key/模型字段 -->
+                <!-- Hide local model field in custom mode; hide URL/Key/model in local mode -->
                 <template v-if="
                   (key === 'llm_ollama_model' && isCustomProvider) ||
                   ((key === 'llm_base_url' || key === 'llm_api_key' || key === 'llm_model') && !isCustomProvider)
                 " />
                 <el-form-item v-else-if="config[key]" :label="getLabel(key)">
-                  <!-- 提供方下拉 -->
+                  <!-- Provider dropdown -->
                   <template v-if="key === 'llm_provider'">
                     <el-select
                       v-model="config[key].value"
@@ -262,7 +262,7 @@ onMounted(loadConfig)
                     </el-select>
                     <span class="config-key">{{ key }}</span>
                   </template>
-                  <!-- 布尔开关 -->
+                  <!-- Boolean toggle -->
                   <template v-else-if="booleanKeys.has(key)">
                     <el-switch
                       :model-value="getBoolValue(key)"
@@ -270,7 +270,7 @@ onMounted(loadConfig)
                     />
                     <span class="config-key">{{ key }}</span>
                   </template>
-                  <!-- 密码输入 -->
+                  <!-- Password input -->
                   <template v-else-if="isPasswordKey(key)">
                     <el-input
                       v-model="config[key].value"
@@ -281,7 +281,7 @@ onMounted(loadConfig)
                     />
                     <span class="config-key">{{ key }}</span>
                   </template>
-                  <!-- 普通文本 -->
+                  <!-- Plain text -->
                   <template v-else>
                     <el-input
                       v-model="config[key].value"
@@ -294,7 +294,7 @@ onMounted(loadConfig)
                 </el-form-item>
               </template>
 
-              <!-- 非 LLM 配置项（原逻辑） -->
+              <!-- Non-LLM config items (original logic) -->
               <template v-else>
                 <el-form-item v-if="config[key]" :label="getLabel(key)">
                   <template v-if="booleanKeys.has(key)">
@@ -328,7 +328,7 @@ onMounted(loadConfig)
         </div>
       </el-form>
 
-      <!-- 底部提示 -->
+      <!-- Bottom hint -->
       <div class="hint-card">
         <el-icon size="14" color="var(--neutral-400)"><InfoFilled /></el-icon>
         <span v-html="t('settings.hint')" />
@@ -346,7 +346,7 @@ onMounted(loadConfig)
   max-width: 960px;
 }
 
-/* 段卡片 */
+/* Section card */
 .sec-card {
   background: var(--surface-base);
   border: var(--border-base);
@@ -395,7 +395,7 @@ onMounted(loadConfig)
   padding: var(--space-6);
 }
 
-/* 配置项 key 标识（输入框后） */
+/* Config key identifier (after input field) */
 .config-key {
   font-family: var(--font-mono);
   font-size: 11px;
@@ -407,13 +407,13 @@ onMounted(loadConfig)
   border: 1px solid var(--neutral-200);
 }
 
-/* 等宽输入框 */
+/* Monospace input */
 :deep(.mono-input .el-input__inner) {
   font-family: var(--font-mono);
   font-size: 13px;
 }
 
-/* 底部提示 */
+/* Bottom hint */
 .hint-card {
   display: flex;
   align-items: center;
@@ -431,7 +431,7 @@ onMounted(loadConfig)
   color: var(--color-primary-700);
 }
 
-/* ── 功能开关 Hero Card ── */
+/* ── Feature toggle Hero Card ── */
 .feature-card {
   background: var(--surface-base);
   border: 1px solid var(--neutral-200);
@@ -539,7 +539,7 @@ onMounted(loadConfig)
   margin-left: var(--space-4);
 }
 
-/* 快捷链接 */
+/* Quick links */
 .feature-card__links {
   display: flex;
   gap: var(--space-3);

@@ -1,5 +1,5 @@
 /**
- * 成本核算相关 API
+ * Cost accounting API
  */
 import request from './request'
 

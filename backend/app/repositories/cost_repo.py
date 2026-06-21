@@ -1,5 +1,5 @@
 """
-成本核算数据访问层
+Cost accounting data access layer
 Department / AssetCostItem / AssetRelation / AssetDeptAssignment / CostRate
 """
 import json
@@ -26,20 +26,20 @@ logger = logging.getLogger(__name__)
 
 
 def get_departments(db: Session) -> list[Department]:
-    """列出所有部门"""
+    """List all departments"""
     return list(db.scalars(select(Department).order_by(Department.id)).all())
 
 
 def get_department(db: Session, dept_id: int) -> Department:
-    """按 id 获取单个部门"""
+    """Get a single department by ID"""
     dept = db.get(Department, dept_id)
     if dept is None:
-        raise NotFoundError(f"部门 ID {dept_id} 不存在")
+        raise NotFoundError(f"Department ID {dept_id} not found")
     return dept
 
 
 def create_department(db: Session, name: str, code: str) -> Department:
-    """创建部门"""
+    """Create a department"""
     dept = Department(name=name, code=code)
     db.add(dept)
     db.flush()
@@ -48,7 +48,7 @@ def create_department(db: Session, name: str, code: str) -> Department:
 
 
 def update_department(db: Session, dept_id: int, name: str, code: str) -> Department:
-    """更新部门"""
+    """Update a department"""
     dept = get_department(db, dept_id)
     dept.name = name
     dept.code = code
@@ -58,7 +58,7 @@ def update_department(db: Session, dept_id: int, name: str, code: str) -> Depart
 
 
 def delete_department(db: Session, dept_id: int) -> None:
-    """删除部门"""
+    """Delete a department"""
     dept = get_department(db, dept_id)
     db.delete(dept)
     db.flush()
@@ -69,7 +69,7 @@ def delete_department(db: Session, dept_id: int) -> None:
 
 
 def get_cost_items(db: Session, asset_id: int) -> list[AssetCostItem]:
-    """列出资产的所有成本行"""
+    """List all cost lines for an asset"""
     stmt = (
         select(AssetCostItem)
         .where(AssetCostItem.asset_id == asset_id)
@@ -79,7 +79,7 @@ def get_cost_items(db: Session, asset_id: int) -> list[AssetCostItem]:
 
 
 def create_cost_item(db: Session, asset_id: int, **kwargs) -> AssetCostItem:
-    """创建成本行"""
+    """Create a cost line"""
     item = AssetCostItem(asset_id=asset_id, **kwargs)
     db.add(item)
     db.flush()
@@ -88,10 +88,10 @@ def create_cost_item(db: Session, asset_id: int, **kwargs) -> AssetCostItem:
 
 
 def update_cost_item(db: Session, item_id: int, **kwargs) -> AssetCostItem:
-    """更新成本行"""
+    """Update a cost line"""
     item = db.get(AssetCostItem, item_id)
     if item is None:
-        raise NotFoundError(f"成本行 ID {item_id} 不存在")
+        raise NotFoundError(f"Cost line ID {item_id} not found")
     for key, value in kwargs.items():
         if hasattr(item, key) and value is not None:
             setattr(item, key, value)
@@ -101,10 +101,10 @@ def update_cost_item(db: Session, item_id: int, **kwargs) -> AssetCostItem:
 
 
 def delete_cost_item(db: Session, item_id: int) -> None:
-    """删除成本行"""
+    """Delete a cost line"""
     item = db.get(AssetCostItem, item_id)
     if item is None:
-        raise NotFoundError(f"成本行 ID {item_id} 不存在")
+        raise NotFoundError(f"Cost line ID {item_id} not found")
     db.delete(item)
     db.flush()
     logger.info("cost item deleted", extra={"item_id": item_id})
@@ -114,7 +114,7 @@ def delete_cost_item(db: Session, item_id: int) -> None:
 
 
 def get_relations(db: Session, asset_id: int) -> list[AssetRelation]:
-    """列出资产的所有关系（作为 source 或 target）"""
+    """List all relations for an asset (as source or target)"""
     stmt = (
         select(AssetRelation)
         .where(
@@ -129,7 +129,7 @@ def get_relations(db: Session, asset_id: int) -> list[AssetRelation]:
 
 
 def create_relation(db: Session, **kwargs) -> AssetRelation:
-    """创建资产关系"""
+    """Create an asset relation"""
     relation = AssetRelation(**kwargs)
     db.add(relation)
     db.flush()
@@ -145,10 +145,10 @@ def create_relation(db: Session, **kwargs) -> AssetRelation:
 
 
 def delete_relation(db: Session, relation_id: int) -> None:
-    """删除资产关系"""
+    """Delete an asset relation"""
     relation = db.get(AssetRelation, relation_id)
     if relation is None:
-        raise NotFoundError(f"资产关系 ID {relation_id} 不存在")
+        raise NotFoundError(f"Asset relation ID {relation_id} not found")
     db.delete(relation)
     db.flush()
     logger.info("asset relation deleted", extra={"relation_id": relation_id})
@@ -158,7 +158,7 @@ def delete_relation(db: Session, relation_id: int) -> None:
 
 
 def get_dept_assignments(db: Session, asset_id: int) -> list[AssetDeptAssignment]:
-    """列出资产的所有部门归属记录"""
+    """List all department assignment records for an asset"""
     stmt = (
         select(AssetDeptAssignment)
         .where(AssetDeptAssignment.asset_id == asset_id)
@@ -168,7 +168,7 @@ def get_dept_assignments(db: Session, asset_id: int) -> list[AssetDeptAssignment
 
 
 def get_dept_assignments_by_dept(db: Session, dept_id: int) -> list[AssetDeptAssignment]:
-    """列出部门的所有资产归属记录"""
+    """List all asset assignment records for a department"""
     stmt = (
         select(AssetDeptAssignment)
         .where(AssetDeptAssignment.dept_id == dept_id)
@@ -178,7 +178,7 @@ def get_dept_assignments_by_dept(db: Session, dept_id: int) -> list[AssetDeptAss
 
 
 def create_dept_assignment(db: Session, **kwargs) -> AssetDeptAssignment:
-    """创建资产部门归属"""
+    """Create an asset-department assignment"""
     assignment = AssetDeptAssignment(**kwargs)
     db.add(assignment)
     db.flush()
@@ -190,10 +190,10 @@ def create_dept_assignment(db: Session, **kwargs) -> AssetDeptAssignment:
 
 
 def close_dept_assignment(db: Session, assignment_id: int, effective_to: str) -> AssetDeptAssignment:
-    """关闭资产部门归属（设置 effective_to）"""
+    """Close an asset-department assignment (set effective_to)"""
     assignment = db.get(AssetDeptAssignment, assignment_id)
     if assignment is None:
-        raise NotFoundError(f"部门归属 ID {assignment_id} 不存在")
+        raise NotFoundError(f"Department assignment ID {assignment_id} not found")
     assignment.effective_to = effective_to
     db.flush()
     logger.info("dept assignment closed", extra={"assignment_id": assignment_id, "effective_to": effective_to})
@@ -201,10 +201,10 @@ def close_dept_assignment(db: Session, assignment_id: int, effective_to: str) ->
 
 
 def delete_dept_assignment(db: Session, assignment_id: int) -> None:
-    """删除资产部门归属"""
+    """Delete an asset-department assignment"""
     assignment = db.get(AssetDeptAssignment, assignment_id)
     if assignment is None:
-        raise NotFoundError(f"部门归属 ID {assignment_id} 不存在")
+        raise NotFoundError(f"Department assignment ID {assignment_id} not found")
     db.delete(assignment)
     db.flush()
     logger.info("dept assignment deleted", extra={"assignment_id": assignment_id})
@@ -214,15 +214,15 @@ def delete_dept_assignment(db: Session, assignment_id: int) -> None:
 
 
 def get_all_cost_rates(db: Session) -> list[CostRate]:
-    """列出所有费率"""
+    """List all cost rates"""
     return list(db.scalars(select(CostRate).order_by(CostRate.key)).all())
 
 
 def get_cost_rate(db: Session, key: str) -> CostRate:
-    """按 key 获取单条费率"""
+    """Get a single cost rate by key"""
     rate = db.get(CostRate, key)
     if rate is None:
-        raise NotFoundError(f"费率 {key} 不存在")
+        raise NotFoundError(f"Rate {key} not found")
     return rate
 
 
@@ -233,7 +233,7 @@ def upsert_cost_rate(
     description: str | None = None,
     updated_by: int | None = None,
 ) -> CostRate:
-    """创建或更新费率"""
+    """Create or update a cost rate"""
     rate = db.get(CostRate, key)
     if rate is None:
         rate = CostRate(key=key)
@@ -256,9 +256,9 @@ def bulk_upsert_cost_rates(
     rates: dict,
     updated_by: int | None = None,
 ) -> list[CostRate]:
-    """批量创建或更新费率
+    """Bulk create or update cost rates
 
-    rates 格式: {key: {"value": {...}, "description": "..."}}
+    rates format: {key: {"value": {...}, "description": "..."}}
     """
     result = []
     for key, data in rates.items():
@@ -277,7 +277,7 @@ def bulk_upsert_cost_rates(
 
 
 def get_assets_without_cost_data(db: Session) -> int:
-    """统计没有采购价格的资产数量"""
+    """Count assets without purchase price"""
     stmt = select(Asset).where(Asset.purchase_price.is_(None))
     # use the ORM count approach consistent with the rest of the codebase
     from sqlalchemy import func
@@ -286,7 +286,7 @@ def get_assets_without_cost_data(db: Session) -> int:
 
 
 def get_assets_by_dept(db: Session, dept_id: int) -> list[Asset]:
-    """列出归属指定部门的资产"""
+    """List assets assigned to the specified department"""
     stmt = (
         select(Asset)
         .where(Asset.responsible_dept_id == dept_id)

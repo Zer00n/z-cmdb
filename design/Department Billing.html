@@ -1,0 +1,511 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<title>CMDB Lite · 部门账单</title>
+<meta name="viewport" content="width=1280" />
+<link rel="stylesheet" href="tokens.css" />
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+<style>
+/* ===== SHELL ===== */
+html,body{height:100%;margin:0;padding:0;}
+body{font-family:var(--font-sans);font-size:var(--fs-body);line-height:var(--lh-body);color:var(--neutral-700);background:var(--neutral-50);-webkit-font-smoothing:antialiased;min-width:1280px;}
+*,*::before,*::after{box-sizing:border-box;}
+h1,h2,h3,h4{margin:0;color:var(--neutral-900);font-weight:600;}
+.app{--sidebar-w:220px;--topbar-h:56px;display:grid;grid-template-rows:var(--topbar-h) 1fr;grid-template-columns:var(--sidebar-w) 1fr;grid-template-areas:"brand topbar" "sidebar main";height:100vh;}
+.app.collapsed{--sidebar-w:60px;}
+.topbar{grid-area:topbar;background:var(--neutral-0);border-bottom:1px solid var(--neutral-200);display:flex;align-items:stretch;padding-right:var(--space-6);z-index:20;}
+.brand-zone{grid-area:brand;background:var(--neutral-0);border-bottom:1px solid var(--neutral-200);border-right:1px solid var(--neutral-200);display:flex;align-items:center;gap:var(--space-2);padding:0 var(--space-4);overflow:hidden;}
+.brand-zone .logo{width:28px;height:28px;background:var(--color-primary-500);border-radius:var(--radius-md);position:relative;flex-shrink:0;}
+.brand-zone .logo::before,.brand-zone .logo::after{content:"";position:absolute;background:rgba(255,255,255,0.92);border-radius:1.5px;}
+.brand-zone .logo::before{left:6px;top:8px;width:16px;height:3px;}
+.brand-zone .logo::after{left:6px;top:16px;width:10px;height:3px;}
+.brand-zone .word{font-weight:600;color:var(--neutral-900);font-size:16px;letter-spacing:-0.01em;white-space:nowrap;}
+.brand-zone .word em{font-style:normal;color:var(--color-primary-500);}
+.app.collapsed .brand-zone .word{opacity:0;pointer-events:none;}
+.tb-left{display:flex;align-items:center;padding-left:var(--space-3);gap:var(--space-3);}
+.tb-spacer{flex:1;}
+.tb-right{display:flex;align-items:center;gap:var(--space-2);}
+.icon-btn{width:32px;height:32px;display:inline-flex;align-items:center;justify-content:center;border-radius:var(--radius-md);color:var(--neutral-500);background:transparent;border:0;cursor:pointer;position:relative;transition:background-color .12s,color .12s;}
+.icon-btn:hover{background:var(--neutral-100);color:var(--neutral-900);}
+.crumb{display:flex;align-items:center;gap:6px;font-size:var(--fs-body);color:var(--neutral-500);}
+.crumb a{color:var(--neutral-500);text-decoration:none;}
+.crumb .sep{color:var(--neutral-300);}
+.crumb .here{color:var(--neutral-900);font-weight:500;}
+.search{display:inline-flex;align-items:center;gap:var(--space-2);background:var(--neutral-50);border:1px solid var(--neutral-200);border-radius:var(--radius-md);padding:0 10px;height:32px;width:260px;color:var(--neutral-500);font-size:13px;cursor:text;}
+.search .kbd{margin-left:auto;font-family:var(--font-mono);font-size:11px;background:var(--neutral-0);border:1px solid var(--neutral-200);padding:1px 5px;border-radius:3px;color:var(--neutral-500);}
+.ver-tag{font-family:var(--font-mono);font-size:11px;color:var(--neutral-400);padding:2px 7px;border:1px solid var(--neutral-200);border-radius:3px;}
+.user{display:inline-flex;align-items:center;gap:var(--space-2);padding:4px 8px 4px 4px;border-radius:var(--radius-md);cursor:pointer;height:40px;transition:background-color .12s;}
+.user:hover{background:var(--neutral-100);}
+.user .avatar{width:32px;height:32px;border-radius:50%;background:var(--color-primary-100);color:var(--color-primary-700);font-weight:600;display:inline-flex;align-items:center;justify-content:center;font-size:12px;border:2px solid var(--role-super-admin);}
+.user .info{display:flex;flex-direction:column;line-height:1.2;}
+.user .info .uname{color:var(--neutral-900);font-size:13px;font-weight:500;}
+.role-badge{display:inline-flex;align-items:center;gap:4px;font-size:11px;line-height:14px;padding:1px 6px;border-radius:3px;font-weight:500;margin-top:2px;}
+.role-badge.super{background:#FEE7EE;color:var(--role-super-admin);}
+.role-badge .rdot{width:5px;height:5px;border-radius:50%;background:currentColor;}
+.user .chev{color:var(--neutral-400);margin-left:2px;}
+.sidebar{grid-area:sidebar;background:var(--neutral-0);border-right:1px solid var(--neutral-200);display:flex;flex-direction:column;overflow:hidden;transition:width .18s;}
+.sidebar-scroll{flex:1;overflow-y:auto;padding:var(--space-4) 0 var(--space-6);}
+.sidebar-scroll::-webkit-scrollbar{width:6px;}
+.sidebar-scroll::-webkit-scrollbar-thumb{background:var(--neutral-200);border-radius:3px;}
+.nav-group+.nav-group{margin-top:var(--space-2);}
+.nav-group-head{padding:var(--space-3) var(--space-4) 6px;font-size:11px;font-family:var(--font-mono);letter-spacing:0.08em;color:var(--neutral-400);text-transform:uppercase;display:flex;align-items:center;gap:6px;}
+.app.collapsed .nav-group-head{display:none;}
+.role-gate{background:var(--neutral-100);color:var(--neutral-500);padding:1px 5px;border-radius:3px;font-size:10px;text-transform:none;letter-spacing:0;}
+.role-gate.super{background:#FEE7EE;color:var(--role-super-admin);}
+.role-gate.audit{background:#E7ECF3;color:var(--role-auditor);}
+.nav-item{position:relative;display:flex;align-items:center;gap:var(--space-3);height:36px;margin:1px var(--space-2);padding:0 10px;border-radius:var(--radius-md);color:var(--neutral-700);font-size:var(--fs-body);cursor:pointer;text-decoration:none;transition:background-color .12s,color .12s;white-space:nowrap;}
+.nav-item .ico{width:18px;height:18px;color:var(--neutral-400);flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;}
+.nav-item .lbl{flex:1;overflow:hidden;text-overflow:ellipsis;}
+.nav-item:hover{background:var(--color-primary-50);color:var(--neutral-900);}
+.nav-item:hover .ico{color:var(--color-primary-500);}
+.nav-item.active{background:var(--color-primary-50);color:var(--color-primary-700);font-weight:500;}
+.nav-item.active .ico{color:var(--color-primary-500);}
+.nav-item.active::before{content:"";position:absolute;left:-8px;top:6px;bottom:6px;width:3px;background:var(--color-primary-500);border-radius:0 2px 2px 0;}
+.app.collapsed .nav-item{justify-content:center;padding:0;margin:1px 8px;}
+.app.collapsed .nav-item .lbl{display:none;}
+.app.collapsed .nav-item .ico{width:20px;height:20px;color:var(--neutral-500);}
+.sidebar-foot{border-top:1px solid var(--neutral-200);padding:8px;}
+.collapse-btn{height:32px;width:100%;border:1px solid var(--neutral-200);background:var(--neutral-0);border-radius:var(--radius-md);color:var(--neutral-500);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;font-size:12px;padding:0 10px;transition:background-color .12s,color .12s;font-family:inherit;}
+.collapse-btn:hover{background:var(--neutral-50);color:var(--neutral-900);}
+.collapse-btn .arr{transition:transform .18s;}
+.app.collapsed .collapse-btn .arr{transform:rotate(180deg);}
+.app.collapsed .collapse-btn .lbl{display:none;}
+/* Main — no scroll, inner panels handle overflow */
+.main{grid-area:main;overflow:hidden;padding:var(--space-6);min-width:0;display:flex;flex-direction:column;}
+/* Common */
+.btn{height:36px;border-radius:var(--radius-md);padding:0 14px;font-size:var(--fs-body);border:1px solid var(--neutral-300);background:var(--neutral-0);color:var(--neutral-700);cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:background-color .12s,border-color .12s,color .12s;white-space:nowrap;font-family:inherit;}
+.btn:hover{background:var(--neutral-50);border-color:var(--neutral-400);}
+.btn.primary{background:var(--color-primary-500);border-color:var(--color-primary-500);color:#fff;}
+.btn.primary:hover{background:var(--color-primary-600);}
+.btn.sm{height:32px;padding:0 10px;font-size:13px;}
+.btn.ghost{background:transparent;border-color:transparent;color:var(--neutral-500);}
+.btn.ghost:hover{background:var(--neutral-100);border-color:var(--neutral-200);color:var(--neutral-900);}
+.mono{font-family:var(--font-mono);font-size:13px;color:var(--neutral-900);}
+.tag{display:inline-flex;align-items:center;gap:5px;font-size:12px;padding:1px 8px;border-radius:var(--radius-sm);white-space:nowrap;}
+.tag.def{background:var(--neutral-100);color:var(--neutral-700);}
+.tag.info{background:var(--color-info-soft);color:#0E7490;}
+.tag.violet{background:#EDE9FE;color:#5B21B6;}
+.tag.teal{background:#CFFAFE;color:#0E7490;}
+
+/* ===== PAGE: 部门账单 ===== */
+.page-bar{display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-4);flex-shrink:0;}
+.page-bar h1{font-size:var(--fs-h2);line-height:var(--lh-h2);}
+.billing-layout{display:grid;grid-template-columns:216px 1fr;gap:var(--space-4);flex:1;min-height:0;}
+/* Dept panel */
+.dept-panel{background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:var(--radius-lg);overflow:hidden;display:flex;flex-direction:column;}
+.dept-search{padding:var(--space-3);border-bottom:1px solid var(--neutral-200);}
+.dept-search input{width:100%;height:32px;border:1px solid var(--neutral-200);border-radius:var(--radius-md);padding:0 10px;font-family:var(--font-sans);font-size:13px;outline:none;background:var(--neutral-50);}
+.dept-search input:focus{border-color:var(--color-primary-500);box-shadow:0 0 0 3px rgba(37,99,235,0.12);}
+.dept-list{flex:1;overflow-y:auto;}
+.dept-list::-webkit-scrollbar{width:6px;}
+.dept-list::-webkit-scrollbar-thumb{background:var(--neutral-200);border-radius:3px;}
+.dept-item{display:flex;align-items:center;justify-content:space-between;padding:10px var(--space-4);cursor:pointer;border-bottom:1px solid var(--neutral-100);transition:background-color .1s;}
+.dept-item:last-child{border-bottom:0;}
+.dept-item:hover{background:var(--color-primary-50);}
+.dept-item.active{background:var(--color-primary-50);border-right:2px solid var(--color-primary-500);}
+.dept-item .d-name{font-size:var(--fs-body);color:var(--neutral-900);font-weight:500;}
+.dept-item .d-name.active{color:var(--color-primary-700);}
+.dept-item .d-amt{font-size:12px;font-family:var(--font-mono);color:var(--neutral-500);}
+.dept-item.active .d-amt{color:var(--color-primary-600);}
+/* Billing content */
+.billing-content{overflow-y:auto;display:flex;flex-direction:column;gap:var(--space-4);}
+.billing-content::-webkit-scrollbar{width:6px;}
+.billing-content::-webkit-scrollbar-thumb{background:var(--neutral-200);border-radius:3px;}
+/* Period + summary row */
+.period-summary{background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:var(--radius-lg);padding:var(--space-4) var(--space-6);display:flex;align-items:center;gap:var(--space-8);}
+.period-tabs{display:flex;background:var(--neutral-100);border-radius:var(--radius-md);padding:3px;gap:2px;}
+.period-tab{padding:5px 14px;border-radius:var(--radius-sm);font-size:13px;color:var(--neutral-600);cursor:pointer;transition:background-color .12s,color .12s;border:0;background:transparent;font-family:inherit;}
+.period-tab:hover{color:var(--neutral-900);}
+.period-tab.active{background:var(--neutral-0);color:var(--neutral-900);font-weight:500;box-shadow:var(--shadow-subtle);}
+.summary-divider{width:1px;height:40px;background:var(--neutral-200);}
+.summary-kpi{display:flex;flex-direction:column;gap:3px;}
+.summary-kpi .sk-label{font-size:var(--fs-caption);color:var(--neutral-500);}
+.summary-kpi .sk-val{font-size:22px;line-height:28px;font-weight:700;color:var(--neutral-900);font-family:var(--font-mono);letter-spacing:-0.02em;}
+.summary-kpi .sk-val span{font-size:13px;font-weight:400;color:var(--neutral-500);margin-left:2px;}
+.summary-kpi .sk-sub{font-size:var(--fs-caption);color:var(--neutral-500);}
+.period-actions{margin-left:auto;display:flex;align-items:center;gap:var(--space-2);}
+/* Resource table */
+.tbl-card{background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:var(--radius-lg);overflow:hidden;}
+.tbl-card-head{padding:12px var(--space-6);border-bottom:1px solid var(--neutral-200);display:flex;align-items:center;justify-content:space-between;}
+.tbl-card-head h4{font-size:var(--fs-body);font-weight:600;color:var(--neutral-900);}
+.tbl{width:100%;border-collapse:collapse;font-size:var(--fs-body);}
+.tbl thead th{text-align:left;font-weight:600;color:var(--neutral-700);background:var(--neutral-50);border-bottom:1px solid var(--neutral-200);padding:10px 16px;font-size:13px;white-space:nowrap;}
+.tbl thead th.num{text-align:right;}
+.tbl tbody td{padding:11px 16px;border-bottom:1px solid var(--neutral-100);color:var(--neutral-700);vertical-align:middle;}
+.tbl tbody td.num{text-align:right;}
+.tbl tbody tr:hover td{background:var(--color-primary-50);}
+.tbl tbody tr:last-child td{border-bottom:0;}
+.tbl tfoot td{padding:10px 16px;background:var(--neutral-50);border-top:1px solid var(--neutral-200);font-weight:600;color:var(--neutral-900);}
+.tbl tfoot td.num{text-align:right;font-family:var(--font-mono);}
+.type-chip{display:inline-flex;align-items:center;gap:5px;font-size:12px;padding:1px 8px;border-radius:var(--radius-sm);white-space:nowrap;}
+.type-chip.exclusive{background:#EDE9FE;color:#5B21B6;}
+.type-chip.vm{background:var(--color-primary-50);color:var(--color-primary-700);}
+.type-chip.shared{background:var(--neutral-100);color:var(--neutral-600);}
+/* Charts row */
+.charts-row{display:grid;grid-template-columns:1fr 1fr;gap:var(--space-4);}
+.chart-card{background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:var(--radius-lg);padding:var(--space-4) var(--space-6);}
+.chart-card .cc-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-4);}
+.chart-card .cc-title{font-size:var(--fs-body);font-weight:600;color:var(--neutral-900);}
+</style>
+</head>
+<body>
+<div class="app" id="app">
+
+  <!-- Brand -->
+  <div class="brand-zone">
+    <span class="logo"></span>
+    <span class="word">CMDB <em>Lite</em></span>
+  </div>
+
+  <!-- Topbar -->
+  <header class="topbar">
+    <div class="tb-left">
+      <button class="icon-btn" id="toggleBtn">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3 4h12M3 9h12M3 14h12"/></svg>
+      </button>
+      <nav class="crumb">
+        <a>费用核算</a><span class="sep">/</span>
+        <span class="here">部门账单</span>
+      </nav>
+    </div>
+    <div class="tb-spacer"></div>
+    <div class="tb-right">
+      <span class="ver-tag">v1.2</span>
+      <div class="search">
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="7" cy="7" r="4.5"/><path d="M10.5 10.5L13.5 13.5"/></svg>
+        <span>搜索主机 / IP / 配置项…</span>
+        <span class="kbd">⌘K</span>
+      </div>
+      <div style="width:1px;height:24px;background:var(--neutral-200);margin:0 4px;"></div>
+      <div class="user">
+        <div class="avatar">ZT</div>
+        <div class="info">
+          <span class="uname">张涛</span>
+          <span class="role-badge super"><span class="rdot"></span>super_admin</span>
+        </div>
+        <span class="chev"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M4 6.5l4 4 4-4"/></svg></span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Sidebar -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-scroll">
+      <div class="nav-group">
+        <div class="nav-group-head">资产管理</div>
+        <a class="nav-item" href="Asset Overview.html"><span class="ico"><svg width="16" height="16" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="2.5" width="5.5" height="5.5" rx=".75"/><rect x="10" y="2.5" width="5.5" height="5.5" rx=".75"/><rect x="2.5" y="10" width="5.5" height="5.5" rx=".75"/><rect x="10" y="10" width="5.5" height="5.5" rx=".75"/></svg></span><span class="lbl">资产总览</span></a>
+        <a class="nav-item" href="Asset List.html"><span class="ico"><svg width="16" height="16" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="3" width="13" height="4.5" rx="1"/><rect x="2.5" y="10.5" width="13" height="4.5" rx="1"/><circle cx="5" cy="5.25" r=".5" fill="currentColor"/><circle cx="5" cy="12.75" r=".5" fill="currentColor"/></svg></span><span class="lbl">资产列表</span></a>
+        <a class="nav-item"><span class="ico"><svg width="16" height="16" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="9" r="6.5"/><path d="M9 5v4l2.5 1.5"/></svg></span><span class="lbl">扫描批次</span></a>
+      </div>
+      <div class="nav-group">
+        <div class="nav-group-head">拓扑图</div>
+        <a class="nav-item"><span class="ico"><svg width="16" height="16" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="4" r="2"/><circle cx="4" cy="13" r="2"/><circle cx="14" cy="13" r="2"/><path d="M8.2 5.6L5 11.2M9.8 5.6l3.2 5.6M6 13h6"/></svg></span><span class="lbl">当前拓扑</span></a>
+      </div>
+      <div class="nav-group">
+        <div class="nav-group-head">安全报表</div>
+        <a class="nav-item" href="Security Dashboard.html"><span class="ico"><svg width="16" height="16" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2L2.5 5v4c0 3.5 2.5 6 6.5 7 4-1 6.5-3.5 6.5-7V5L9 2z"/></svg></span><span class="lbl">安全看板</span></a>
+        <a class="nav-item" href="Audit Log.html"><span class="ico"><svg width="16" height="16" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="2.5" width="11" height="13" rx="1.25"/><path d="M6 6h6M6 9h6M6 12h4"/></svg></span><span class="lbl">审计日志</span></a>
+      </div>
+      <div class="nav-group">
+        <div class="nav-group-head">费用核算</div>
+        <a class="nav-item" href="Cost Overview.html"><span class="ico"><svg width="16" height="16" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 13l3.5-4.5 3 3 4.5-6"/><path d="M3 16h12"/></svg></span><span class="lbl">成本总览</span></a>
+        <a class="nav-item active"><span class="ico"><svg width="16" height="16" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="2" width="11" height="14" rx="1.25"/><path d="M6.5 6.5h5M6.5 9.5h5M6.5 12.5h3"/></svg></span><span class="lbl">部门账单</span></a>
+      </div>
+      <div class="nav-group">
+        <div class="nav-group-head">系统管理 <span class="role-gate super">super</span></div>
+        <a class="nav-item"><span class="ico"><svg width="16" height="16" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="6.5" cy="6" r="2.25"/><path d="M2.5 14c.5-2.3 2.2-3.75 4-3.75s3.5 1.45 4 3.75"/><circle cx="12.5" cy="7.5" r="1.5"/><path d="M10.5 14c.4-1.7 1.4-2.75 2.5-2.75s2.1 1.05 2.5 2.75"/></svg></span><span class="lbl">用户管理</span></a>
+        <a class="nav-item" href="Cost Rate Settings.html"><span class="ico"><svg width="16" height="16" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 9.5L9.5 3.5H15V9.5L9 16a1 1 0 0 1-1.4 0l-4-4a1 1 0 0 1 0-1.5z"/><circle cx="12.5" cy="6" r="1.25" fill="currentColor" stroke="none"/></svg></span><span class="lbl">成本费率</span></a>
+      </div>
+    </div>
+    <div class="sidebar-foot">
+      <button class="collapse-btn" id="collapseBtn">
+        <span class="arr"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 4l-4 4 4 4"/></svg></span>
+        <span class="lbl">折叠侧边栏</span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="main">
+
+    <!-- Page bar -->
+    <div class="page-bar">
+      <h1>部门账单</h1>
+      <div style="display:flex;align-items:center;gap:var(--space-2);">
+        <span style="font-size:var(--fs-caption);color:var(--neutral-500);font-family:var(--font-mono);">数据截至 2026-06-20 00:00</span>
+        <button class="btn sm">
+          <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13.5 4.5A6 6 0 0 0 3 6.5"/><path d="M13.5 2.5v3h-3"/><path d="M2.5 11.5A6 6 0 0 0 13 9.5"/><path d="M2.5 13.5v-3h3"/></svg>
+          刷新
+        </button>
+        <button class="btn sm primary">
+          <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2.5v8M4.5 7L8 10.5 11.5 7"/><path d="M2.5 13h11"/></svg>
+          导出账单
+        </button>
+      </div>
+    </div>
+
+    <!-- Two-column billing layout -->
+    <div class="billing-layout">
+
+      <!-- Dept panel -->
+      <div class="dept-panel">
+        <div class="dept-search">
+          <input type="text" placeholder="搜索部门…" id="deptSearch" />
+        </div>
+        <!-- MOCK DATA: department list with monthly cost -->
+        <div class="dept-list" id="deptList">
+          <div class="dept-item active" data-dept="研发部"><span class="d-name active">研发部</span><span class="d-amt">¥2,835</span></div>
+          <div class="dept-item" data-dept="运维部"><span class="d-name">运维部</span><span class="d-amt">¥22,500</span></div>
+          <div class="dept-item" data-dept="安全部"><span class="d-name">安全部</span><span class="d-amt">¥8,200</span></div>
+          <div class="dept-item" data-dept="产品部"><span class="d-name">产品部</span><span class="d-amt">¥12,300</span></div>
+          <div class="dept-item" data-dept="数据部"><span class="d-name">数据部</span><span class="d-amt">¥15,800</span></div>
+          <div class="dept-item" data-dept="行政部"><span class="d-name">行政部</span><span class="d-amt">¥6,700</span></div>
+        </div>
+      </div>
+
+      <!-- Billing content: 研发部 -->
+      <div class="billing-content">
+
+        <!-- Period switcher + summary KPIs -->
+        <div class="period-summary">
+          <div class="period-tabs">
+            <button class="period-tab">日</button>
+            <button class="period-tab active">月</button>
+            <button class="period-tab">年</button>
+            <button class="period-tab">自定义</button>
+          </div>
+          <div class="summary-divider"></div>
+          <!-- MOCK DATA: 研发部 2026-06 billing summary -->
+          <div class="summary-kpi">
+            <div class="sk-label">本月合计</div>
+            <div class="sk-val" id="totalAmt">¥2,835</div>
+            <div class="sk-sub">2026-06-01 ~ 06-30 · 含税</div>
+          </div>
+          <div class="summary-divider"></div>
+          <div class="summary-kpi">
+            <div class="sk-label">日均费率</div>
+            <div class="sk-val">¥94.5<span>/ 天</span></div>
+            <div class="sk-sub">按 30 天均摊计算</div>
+          </div>
+          <div class="summary-divider"></div>
+          <div class="summary-kpi">
+            <div class="sk-label">年化</div>
+            <div class="sk-val">¥34,020</div>
+            <div class="sk-sub">按当月费率 × 12 估算</div>
+          </div>
+          <div class="period-actions">
+            <span style="font-size:var(--fs-caption);color:var(--neutral-500);">研发部 · 2026-06</span>
+            <button class="btn sm ghost">
+              <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M4 6.5l4 4 4-4"/></svg>
+              选择周期
+            </button>
+          </div>
+        </div>
+
+        <!-- Resource detail table -->
+        <div class="tbl-card">
+          <div class="tbl-card-head">
+            <h4>按资源明细</h4>
+            <span style="font-size:var(--fs-caption);color:var(--neutral-500);">4 项资源 · 本期账单均为成本价口径</span>
+          </div>
+          <!-- MOCK DATA: resource billing detail for 研发部 -->
+          <table class="tbl">
+            <thead>
+              <tr>
+                <th>资源名称</th>
+                <th>类型</th>
+                <th>计费模式</th>
+                <th class="num">月成本</th>
+                <th class="num">日费率</th>
+                <th class="num">占用天数</th>
+                <th class="num" style="font-weight:700;">本期金额</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>
+                  <div style="font-weight:500;color:var(--neutral-900);">srv-prod-01 (S1)</div>
+                  <div style="font-size:var(--fs-caption);color:var(--neutral-500);font-family:var(--font-mono);margin-top:2px;">192.168.10.8 · 物理服务器</div>
+                </td>
+                <td><span class="type-chip exclusive">独占</span></td>
+                <td><span style="font-size:13px;color:var(--neutral-500);">成本价</span></td>
+                <td class="num"><span class="mono">¥1,400</span></td>
+                <td class="num"><span class="mono">¥46.7</span></td>
+                <td class="num">30</td>
+                <td class="num"><span class="mono" style="font-weight:600;">¥1,400</span></td>
+              </tr>
+              <tr>
+                <td>
+                  <div style="font-weight:500;color:var(--neutral-900);">vm-prod-02, vm-prod-03</div>
+                  <div style="font-size:var(--fs-caption);color:var(--neutral-500);margin-top:2px;">宿主 phost-03 · 占宿主 40%</div>
+                </td>
+                <td><span class="type-chip vm">虚拟机</span></td>
+                <td><span style="font-size:13px;color:var(--neutral-500);">成本价</span></td>
+                <td class="num"><span class="mono">¥1,200</span></td>
+                <td class="num"><span class="mono">¥40.0</span></td>
+                <td class="num">30</td>
+                <td class="num"><span class="mono" style="font-weight:600;">¥1,200</span></td>
+              </tr>
+              <tr>
+                <td>
+                  <div style="font-weight:500;color:var(--neutral-900);">storage-pool-01</div>
+                  <div style="font-size:var(--fs-caption);color:var(--neutral-500);margin-top:2px;">共享存储 · 占用 500 GB</div>
+                </td>
+                <td><span class="type-chip shared">共享分摊</span></td>
+                <td><span style="font-size:13px;color:var(--neutral-500);">成本价</span></td>
+                <td class="num"><span class="mono">¥125</span></td>
+                <td class="num"><span class="mono">¥4.2</span></td>
+                <td class="num">30</td>
+                <td class="num"><span class="mono" style="font-weight:600;">¥125</span></td>
+              </tr>
+              <tr>
+                <td>
+                  <div style="font-weight:500;color:var(--neutral-900);">fw-prod-01</div>
+                  <div style="font-size:var(--fs-caption);color:var(--neutral-500);margin-top:2px;">防火墙分摊 · 本部门 5 / 共 20 资产</div>
+                </td>
+                <td><span class="type-chip shared">共享分摊</span></td>
+                <td><span style="font-size:13px;color:var(--neutral-500);">成本价</span></td>
+                <td class="num"><span class="mono">¥150</span></td>
+                <td class="num"><span class="mono">¥5.0</span></td>
+                <td class="num">30</td>
+                <td class="num"><span class="mono" style="font-weight:600;">¥150</span></td>
+              </tr>
+            </tbody>
+            <tfoot>
+              <tr>
+                <td colspan="3">合计</td>
+                <td class="num">¥2,875</td>
+                <td class="num">¥95.9</td>
+                <td class="num">—</td>
+                <td class="num" style="font-size:var(--fs-h4);color:var(--color-primary-700);">¥2,875</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+
+        <!-- Charts row -->
+        <div class="charts-row">
+          <!-- Cost type donut -->
+          <div class="chart-card">
+            <div class="cc-head">
+              <span class="cc-title">成本类型构成</span>
+              <span style="font-size:var(--fs-caption);color:var(--neutral-500);">本月 · 研发部</span>
+            </div>
+            <div id="deptDonut" style="height:200px;"></div>
+          </div>
+          <!-- Resource bar -->
+          <div class="chart-card">
+            <div class="cc-head">
+              <span class="cc-title">按资源成本排行</span>
+              <span style="font-size:var(--fs-caption);color:var(--neutral-500);">月成本 · 元</span>
+            </div>
+            <div id="deptBar" style="height:200px;"></div>
+          </div>
+        </div>
+
+      </div><!-- end billing-content -->
+    </div><!-- end billing-layout -->
+
+  </main>
+</div>
+
+<script>
+  const app = document.getElementById('app');
+  document.getElementById('toggleBtn').addEventListener('click', () => app.classList.toggle('collapsed'));
+  document.getElementById('collapseBtn').addEventListener('click', () => app.classList.toggle('collapsed'));
+
+  // Period tab toggle
+  document.querySelectorAll('.period-tab').forEach(t => {
+    t.addEventListener('click', () => {
+      document.querySelectorAll('.period-tab').forEach(x => x.classList.remove('active'));
+      t.classList.add('active');
+    });
+  });
+
+  // Dept list click
+  document.querySelectorAll('.dept-item').forEach(item => {
+    item.addEventListener('click', () => {
+      document.querySelectorAll('.dept-item').forEach(x => {
+        x.classList.remove('active');
+        x.querySelector('.d-name').classList.remove('active');
+      });
+      item.classList.add('active');
+      item.querySelector('.d-name').classList.add('active');
+    });
+  });
+
+  // Dept search filter
+  document.getElementById('deptSearch').addEventListener('input', function() {
+    const q = this.value.toLowerCase();
+    document.querySelectorAll('.dept-item').forEach(item => {
+      item.style.display = item.dataset.dept.toLowerCase().includes(q) ? '' : 'none';
+    });
+  });
+
+  // MOCK DATA: ECharts — cost type donut for 研发部
+  const deptDonutOption = {
+    tooltip: {
+      trigger: 'item',
+      formatter: p => `<b>${p.name}</b><br/>¥${p.value.toLocaleString()} &nbsp;(${p.percent}%)`,
+      textStyle: { fontSize: 13 }
+    },
+    legend: {
+      orient: 'vertical', right: 8, top: 'center',
+      textStyle: { fontSize: 12, color: '#334155' },
+      itemWidth: 9, itemHeight: 9
+    },
+    series: [{
+      type: 'pie',
+      radius: ['44%', '70%'],
+      center: ['36%', '50%'],
+      data: [
+        { name: '折旧',   value: 1400, itemStyle: { color: '#8B5CF6' } },
+        { name: '电力',   value: 450,  itemStyle: { color: '#D97706' } },
+        { name: '维保',   value: 200,  itemStyle: { color: '#0891B2' } },
+        { name: '共享分摊', value: 275, itemStyle: { color: '#94A3B8' } },
+        { name: '托管',   value: 150,  itemStyle: { color: '#EA580C' } }
+      ],
+      itemStyle: { borderWidth: 2, borderColor: '#ffffff' },
+      label: { show: false },
+      emphasis: { scale: true, scaleSize: 5 }
+    }]
+  };
+
+  // MOCK DATA: ECharts — resource bar chart for 研发部
+  const deptBarOption = {
+    tooltip: {
+      trigger: 'axis',
+      formatter: p => `${p[0].name}<br/>月成本：<b>¥${p[0].value.toLocaleString()}</b>`,
+      textStyle: { fontSize: 13 }
+    },
+    grid: { left: 110, right: 16, top: 10, bottom: 28 },
+    xAxis: {
+      type: 'value',
+      axisLabel: { fontSize: 12, color: '#64748B', formatter: v => '¥' + v.toLocaleString() }
+    },
+    yAxis: {
+      type: 'category',
+      axisLabel: { fontSize: 12, color: '#334155' },
+      data: ['防火墙分摊', '共享存储', '2×虚拟机', 'srv-prod-01']
+    },
+    series: [{
+      type: 'bar',
+      barMaxWidth: 18,
+      data: [
+        { value: 150,  itemStyle: { color: '#94A3B8', borderRadius: [0,4,4,0] } },
+        { value: 125,  itemStyle: { color: '#EA580C', borderRadius: [0,4,4,0] } },
+        { value: 1200, itemStyle: { color: '#5A82F4', borderRadius: [0,4,4,0] } },
+        { value: 1400, itemStyle: { color: '#2563EB', borderRadius: [0,4,4,0] } }
+      ]
+    }]
+  };
+
+  const donutChart = echarts.init(document.getElementById('deptDonut'));
+  const barChart   = echarts.init(document.getElementById('deptBar'));
+  donutChart.setOption(deptDonutOption);
+  barChart.setOption(deptBarOption);
+  window.addEventListener('resize', () => { donutChart.resize(); barChart.resize(); });
+</script>
+</body>
+</html>

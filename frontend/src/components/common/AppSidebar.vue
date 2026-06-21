@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /**
- * 侧边栏导航组件
- * 2026 UI Redesign：升级视觉（active 高亮渐变 + tooltip 优化），逻辑保持不变
+ * Sidebar navigation component
+ * 2026 UI Redesign: upgraded visuals (active highlight gradient + tooltip polish), logic unchanged
  */
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
@@ -66,7 +66,7 @@ const navGroups = computed<NavGroup[]>(() => [
       { title: t('layout.sidebar.securityReports'), route: '/reports', icon: 'DataAnalysis' },
     ],
   },
-  // V0.4 成本核算（受 featureStore 控制）
+  // V0.4 Cost accounting (controlled by featureStore)
   {
     title: t('layout.sidebar.costAccounting'),
     requiredFeature: 'costAccounting',
@@ -153,7 +153,7 @@ function isActive(itemRoute: string) {
       </div>
     </div>
 
-    <!-- 底部版权区 -->
+    <!-- Footer copyright area -->
     <div v-if="!props.collapsed" class="sidebar-foot">
       <span class="foot-line">Z-CMDB Lite</span>
       <span class="foot-meta">{{ t('layout.sidebar.footer') }}</span>
@@ -267,7 +267,7 @@ function isActive(itemRoute: string) {
   letter-spacing: -0.005em;
 }
 
-/* 折叠态 */
+/* Collapsed state */
 .sidebar.collapsed .nav-item {
   justify-content: center;
   padding: 0;
@@ -304,7 +304,7 @@ function isActive(itemRoute: string) {
   transform: translateY(-50%) translateX(0);
 }
 
-/* 底部 */
+/* Footer */
 .sidebar-foot {
   padding: var(--space-4);
   border-top: 1px solid var(--neutral-200);

@@ -1,5 +1,5 @@
 /**
- * 应用服务清单 TypeScript 类型定义
+ * Application service list TypeScript type definitions
  */
 
 export type AppSource = 'manual' | 'scan'

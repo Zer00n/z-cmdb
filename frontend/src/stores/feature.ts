@@ -1,6 +1,6 @@
 /**
- * 功能特性开关 Store
- * 应用初始化时从 GET /api/features 拉取，缓存在内存中
+ * Feature flags store
+ * Fetched from GET /api/features on app init, cached in memory
  */
 import { defineStore } from 'pinia'
 import { ref } from 'vue'

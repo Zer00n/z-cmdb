@@ -1,6 +1,6 @@
 """
-应用服务清单 SQLAlchemy 模型
-v2.5: 记录资产上安装的应用/服务
+Application/service inventory SQLAlchemy model
+v2.5: Records applications/services installed on assets
 """
 from datetime import datetime
 
@@ -20,23 +20,23 @@ class AssetApp(Base):
         Integer, ForeignKey("assets.id", ondelete="CASCADE"), nullable=False
     )
 
-    # 应用基本信息
+    # Application basic info
     name: Mapped[str] = mapped_column(String(100), nullable=False)
     version: Mapped[str | None] = mapped_column(String(100), nullable=True)
     category: Mapped[str | None] = mapped_column(String(50), nullable=True)
     port: Mapped[int | None] = mapped_column(Integer, nullable=True)
     protocol: Mapped[str | None] = mapped_column(String(10), nullable=True)  # tcp / udp
 
-    # 元信息
+    # Metadata
     install_path: Mapped[str | None] = mapped_column(String(255), nullable=True)
     config_path: Mapped[str | None] = mapped_column(String(255), nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
-    # 来源与生命周期
+    # Source and lifecycle
     source: Mapped[str] = mapped_column(String(20), nullable=False, default="manual")
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="active")
 
-    # 时间戳
+    # Timestamps
     created_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, default=utc_now
     )
@@ -44,12 +44,12 @@ class AssetApp(Base):
         DateTime, nullable=False, default=utc_now, onupdate=utc_now
     )
 
-    # 创建人
+    # Created by
     created_by: Mapped[int | None] = mapped_column(
         Integer, ForeignKey("users.id"), nullable=True
     )
 
-    # 关联资产
+    # Associated asset
     asset: Mapped["Asset"] = relationship("Asset", back_populates="apps")
 
     __table_args__ = (

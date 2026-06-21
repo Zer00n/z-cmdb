@@ -1,5 +1,5 @@
 /**
- * 资产总览状态管理
+ * Asset overview state management
  */
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
@@ -11,15 +11,15 @@ export const useDashboardStore = defineStore('dashboard', () => {
   const loading = ref(false)
 
   /**
-   * 拉取聚合数据
-   * @param force true 时绕过后端缓存（仅「刷新数据」按钮使用）
+   * Fetch aggregated data
+   * @param force bypass backend cache when true (only used by "refresh" button)
    */
   async function fetchSummary(force = false) {
     loading.value = true
     try {
       summary.value = await getSummary(force)
     } catch (e) {
-      // HTTP 错误已由 request 拦截器统一提示，这里仅记录
+      // HTTP errors handled by request interceptor, only log here
       console.error('[dashboard] fetchSummary failed', e)
     } finally {
       loading.value = false

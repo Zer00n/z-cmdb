@@ -1,5 +1,5 @@
 /**
- * 拓扑图 TypeScript 类型
+ * Topology TypeScript types
  */
 
 export interface TopologyVersion {

@@ -1,7 +1,7 @@
 /**
- * 成本核算币种 composable
- * 从 cost_rates 读取 default_currency，提供统一的货币格式化函数
- * 所有成本页面应使用此 composable，不再硬编码 ¥ / CNY
+ * Cost accounting currency composable
+ * Reads default_currency from cost_rates, provides unified currency formatting functions
+ * All cost pages should use this composable, no more hardcoding ¥ / CNY
  */
 import { ref, computed } from 'vue'
 import { fetchCostRates } from '@/api/cost'
@@ -18,7 +18,7 @@ const CURRENCY_SYMBOLS: Record<string, string> = {
 }
 
 export function useCostCurrency() {
-  /** 加载币种设置（应用初始化或进入成本页面时调用一次） */
+  /** Load currency setting (called once on app init or entering cost page) */
   async function loadCurrency() {
     if (loaded) return
     try {
@@ -33,29 +33,29 @@ export function useCostCurrency() {
     loaded = true
   }
 
-  /** 强制刷新币种（保存费率后调用） */
+  /** Force refresh currency (called after saving rates) */
   function refreshCurrency() {
     loaded = false
     return loadCurrency()
   }
 
-  /** 当前币种代码，如 'CNY' / 'USD' */
+  /** Current currency code, e.g. 'CNY' / 'USD' */
   const currency = computed(() => currencyCode.value)
 
-  /** 当前币种符号，如 ¥ / $ */
+  /** Current currency symbol, e.g. ¥ / $ */
   const symbol = computed(() => CURRENCY_SYMBOLS[currencyCode.value] || currencyCode.value)
 
-  /** 格式化金额：¥1,234 / $1,234 */
+  /** Format amount: ¥1,234 / $1,234 */
   function formatMoney(val: number): string {
     return symbol.value + val.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
   }
 
-  /** 格式化金额（带1位小数）：¥1,234.5 / $1,234.5 */
+  /** Format amount (with 1 decimal): ¥1,234.5 / $1,234.5 */
   function formatMoneyDecimal(val: number): string {
     return symbol.value + val.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 })
   }
 
-  /** 格式化大金额（万/K 单位）：¥12.3W / $123K */
+  /** Format large amounts (wan/K unit): ¥12.3W / $123K */
   function formatCompact(val: number): string {
     if (currencyCode.value === 'CNY') {
       return symbol.value + (val / 10000).toFixed(1) + 'W'
@@ -63,7 +63,7 @@ export function useCostCurrency() {
     return symbol.value + (val / 1000).toFixed(1) + 'K'
   }
 
-  /** 格式化超大金额：¥12W / $123K */
+  /** Format very large amounts: ¥12W / $123K */
   function formatCompactInt(val: number): string {
     if (currencyCode.value === 'CNY') {
       return symbol.value + (val / 10000).toFixed(0) + 'W'

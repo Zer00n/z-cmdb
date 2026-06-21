@@ -1,5 +1,5 @@
 """
-鉴权路由
+Authentication routes
 POST /api/auth/login
 POST /api/auth/refresh
 POST /api/auth/logout
@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
-# refresh cookie 名称
+# Refresh cookie name
 REFRESH_COOKIE_NAME = "refresh_token"
 
 
@@ -34,8 +34,8 @@ def login(
     db: Session = Depends(get_db),
 ) -> TokenResponse:
     """
-    用户登录。
-    返回 access_token（JSON body）+ 设置 refresh_token（httpOnly cookie）。
+    User login.
+    Returns access_token (JSON body) and sets refresh_token (httpOnly cookie).
     """
     ip = request.client.host if request.client else None
     ua = request.headers.get("user-agent", "")[:500]
@@ -43,7 +43,7 @@ def login(
     try:
         access_token, refresh_token = auth_service.login(db, body.username, body.password)
     except Exception as exc:
-        # 登录失败也要记录审计日志
+        # Log failed login to audit trail
         audit_service.log_action(
             db, action_type="LOGIN", target_type="session",
             details={"username": body.username, "reason": str(exc)},
@@ -52,7 +52,7 @@ def login(
         db.commit()
         raise
 
-    # 登录成功审计
+    # Log successful login
     from app.repositories import user_repo
     user = user_repo.get_by_username(db, body.username)
     audit_service.log_action(
@@ -62,7 +62,7 @@ def login(
     )
     db.commit()
 
-    # 判断是否需要强制改密：首次登录（password_changed_at 为空）或超过 90 天
+    # Check if password change is required: first login (password_changed_at is None) or older than 90 days
     must_change = False
     if user:
         if user.password_changed_at is None:
@@ -73,7 +73,7 @@ def login(
             if age > timedelta(days=90):
                 must_change = True
 
-    # refresh_token 写入 httpOnly cookie
+    # Set refresh_token as httpOnly cookie
     response.set_cookie(
         key=REFRESH_COOKIE_NAME,
         value=refresh_token,
@@ -95,12 +95,12 @@ def refresh(
     db: Session = Depends(get_db),
 ) -> TokenResponse:
     """
-    用 refresh_token cookie 换新的 access_token。
+    Use refresh_token cookie to obtain a new access_token.
     """
     from app.core.exceptions import AuthenticationError
 
     if not refresh_token:
-        raise AuthenticationError("缺少 refresh_token")
+        raise AuthenticationError("refresh_token is missing")
 
     new_access_token = auth_service.refresh_access_token(db, refresh_token)
     return TokenResponse(access_token=new_access_token)
@@ -114,9 +114,9 @@ def logout(
     db: Session = Depends(get_db),
 ) -> dict[str, str]:
     """
-    注销：清除 refresh_token cookie。
+    Logout: clear the refresh_token cookie.
     """
-    # 审计日志
+    # Audit log
     audit_service.log_from_request(
         db, request, action_type="LOGIN", user=current_user,
         target_type="session", details={"action": "logout"},
@@ -128,7 +128,7 @@ def logout(
         path="/api/auth",
         samesite="strict",
     )
-    return {"message": "已退出登录"}
+    return {"message": "Logged out successfully"}
 
 
 @router.post("/change-password")
@@ -139,11 +139,11 @@ def change_password(
     db: Session = Depends(get_db),
 ) -> dict[str, str]:
     """
-    修改当前用户密码（需要登录）。
+    Change the current user's password (requires authentication).
     """
     auth_service.change_password(db, current_user, body.old_password, body.new_password)
 
-    # 审计日志
+    # Audit log
     audit_service.log_from_request(
         db, request, action_type="UPDATE", user=current_user,
         target_type="user", target_id=current_user.id,
@@ -151,4 +151,4 @@ def change_password(
     )
     db.commit()
 
-    return {"message": "密码修改成功"}
+    return {"message": "Password changed successfully"}

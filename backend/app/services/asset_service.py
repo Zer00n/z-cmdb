@@ -1,5 +1,5 @@
 """
-资产业务逻辑
+Asset business logic
 """
 import csv
 import io
@@ -70,27 +70,27 @@ def update_asset(db: Session, asset_id: int, data: AssetUpdate) -> Asset:
 def decommission_asset(db: Session, asset_id: int) -> Asset:
     asset = asset_repo.get_by_id(db, asset_id)
     if asset.status == "decommissioned":
-        raise ValidationError("资产已处于下线状态")
+        raise ValidationError("Asset is already in decommissioned status")
     asset_repo.decommission_asset(db, asset)
     db.commit()
     return asset
 
 
 def export_assets_csv(db: Session, params: AssetQueryParams) -> str:
-    """导出资产列表为 CSV 字符串"""
-    # 导出不分页，取全量
+    """Export asset list as a CSV string"""
+    # Export all without pagination
     params_all = params.model_copy(update={"page": 1, "page_size": 10000})
     assets, _ = asset_repo.list_assets(db, params_all)
 
     output = io.StringIO()
     writer = csv.writer(output)
 
-    # 表头
+    # CSV header
     writer.writerow([
-        "资产编号", "IP地址", "MAC地址", "主机名", "资产类型",
-        "操作系统", "物理位置", "负责人", "业务系统",
-        "重要性", "网络区域", "状态", "来源",
-        "最后扫描时间", "创建时间",
+        "Asset No.", "IP Address", "MAC Address", "Hostname", "Asset Type",
+        "OS", "Physical Location", "Owner", "Business System",
+        "Importance", "Network Zone", "Status", "Source",
+        "Last Scan Time", "Created At",
     ])
 
     for a in assets:
@@ -108,17 +108,17 @@ def export_assets_csv(db: Session, params: AssetQueryParams) -> str:
 
 def get_asset_history(db: Session, asset_id: int) -> dict:
     """
-    获取资产端口变化历史（基于 scan_snapshot_items）。
-    返回按批次分组的端口变化时间线。
+    Get asset port change history (based on scan_snapshot_items).
+    Returns a timeline of port changes grouped by scan batch.
     """
     from sqlalchemy import select
 
     from app.models.scan import ScanBatch, ScanSnapshotItem
 
-    # 确认资产存在
+    # Confirm the asset exists
     asset = asset_repo.get_by_id(db, asset_id)
 
-    # 查找所有关联此资产 IP 的快照项
+    # Find all snapshot items associated with this asset's IP
     stmt = (
         select(ScanSnapshotItem, ScanBatch.batch_name, ScanBatch.uploaded_at)
         .join(ScanBatch, ScanSnapshotItem.scan_batch_id == ScanBatch.id)
@@ -128,7 +128,7 @@ def get_asset_history(db: Session, asset_id: int) -> dict:
     )
     rows = db.execute(stmt).all()
 
-    # 按批次分组
+    # Group by batch
     batches_map: dict[int, dict] = {}
     for item, batch_name, uploaded_at in rows:
         bid = item.scan_batch_id
@@ -156,7 +156,7 @@ def get_asset_history(db: Session, asset_id: int) -> dict:
 
 
 def bulk_update(db: Session, asset_ids: list[int], updates: dict) -> int:
-    """批量更新资产字段，返回实际更新数量"""
+    """Batch update asset fields, returns the actual number of updated rows"""
     from sqlalchemy import select, update
 
     stmt = (
@@ -169,9 +169,9 @@ def bulk_update(db: Session, asset_ids: list[int], updates: dict) -> int:
     return result.rowcount  # type: ignore[return-value]
 
 
-# ── 威胁狩猎助手兼容导出 ─────────────────────────────────────
+# ── Threat Hunting Helper Compatible Export ─────────────────────────────────────
 
-# 品牌字典：product name → vendor
+# Brand dictionary: product name -> vendor
 _VENDOR_DICT: dict[str, str] = {
     "mysql": "Oracle",
     "mariadb": "MariaDB Foundation",
@@ -205,7 +205,7 @@ _VENDOR_DICT: dict[str, str] = {
     "memcached": "Memcached",
 }
 
-# OS 双词品牌白名单（匹配时优先取两个词作为 os_name）
+# OS multi-word brand whitelist (prefer taking two words as os_name during matching)
 _OS_MULTI_WORD_PREFIXES = [
     "Windows Server",
     "Red Hat",
@@ -223,23 +223,23 @@ _OS_MULTI_WORD_PREFIXES = [
 
 def _split_os(os_info: str | None) -> tuple[str, str]:
     """
-    将 os_info 拆分为 (os_name, os_version)。
-    示例：
-      'Ubuntu 22.04 LTS' → ('Ubuntu', '22.04 LTS')
-      'Windows Server 2019' → ('Windows Server', '2019')
-      None → ('', '')
+    Split os_info into (os_name, os_version).
+    Examples:
+      'Ubuntu 22.04 LTS' -> ('Ubuntu', '22.04 LTS')
+      'Windows Server 2019' -> ('Windows Server', '2019')
+      None -> ('', '')
     """
     if not os_info:
         return ("", "")
     os_info = os_info.strip()
 
-    # 尝试多词品牌匹配
+    # Try multi-word brand matching
     for prefix in _OS_MULTI_WORD_PREFIXES:
         if os_info.lower().startswith(prefix.lower()):
             rest = os_info[len(prefix):].strip()
             return (prefix, rest)
 
-    # 单词品牌：第一个空格前为名
+    # Single-word brand: text before first space is the name
     parts = os_info.split(None, 1)
     if len(parts) == 1:
         return (parts[0], "")
@@ -247,13 +247,13 @@ def _split_os(os_info: str | None) -> tuple[str, str]:
 
 
 def _map_criticality(importance: str) -> str:
-    """importance → criticality 映射"""
+    """importance -> criticality mapping"""
     mapping = {"core": "high", "important": "medium", "normal": "low"}
     return mapping.get(importance, "low")
 
 
 def _map_exposure(network_zone: str) -> str:
-    """network_zone → exposure_scope 映射"""
+    """network_zone -> exposure_scope mapping"""
     mapping = {
         "dmz": "public",
         "intranet": "internal",
@@ -265,7 +265,7 @@ def _map_exposure(network_zone: str) -> str:
 
 
 def _resolve_vendor(product_name: str | None) -> str:
-    """根据 product 名查字典，未命中则返回 product 名本身"""
+    """Look up product name in the vendor dictionary; returns the product name itself if not found"""
     if not product_name:
         return ""
     key = product_name.lower().strip()
@@ -274,8 +274,8 @@ def _resolve_vendor(product_name: str | None) -> str:
 
 def _resolve_environment(business_system: str, default: str = "prod") -> str:
     """
-    从 business_system 名称启发式推断 environment。
-    前缀匹配：dev-/test-/staging-/uat- → 对应环境；否则返回默认值。
+    Heuristically infer environment from business_system name.
+    Prefix matching: dev-/test-/staging-/uat- -> corresponding environment; otherwise returns default.
     """
     bs_lower = business_system.lower() if business_system else ""
     for prefix, env in [
@@ -291,7 +291,7 @@ def _resolve_environment(business_system: str, default: str = "prod") -> str:
 
 
 def _build_tags(asset: Asset) -> str:
-    """拼接 tags 字段：asset_type, network_zone, business_system, importance"""
+    """Build tags field: asset_type, network_zone, business_system, importance"""
     parts = [
         asset.asset_type or "",
         asset.network_zone or "",
@@ -310,32 +310,32 @@ def export_assets_threat_hunting_csv(
     default_environment: str = "prod",
 ) -> tuple[str, int]:
     """
-    导出资产+应用为威胁狩猎助手兼容 CSV。
-    返回 (csv_string, row_count)。
+    Export assets + applications as a threat-hunting-compatible CSV.
+    Returns (csv_string, row_count).
     """
     from app.repositories import asset_app_repo
 
-    # 拉全量资产（不分页）
+    # Fetch all assets (no pagination)
     params_all = params.model_copy(update={"page": 1, "page_size": 10000})
     if not include_decommissioned:
-        # 强制排除已下线
+        # Force exclude decommissioned
         params_all = params_all.model_copy(update={"status": "online"}) if not params_all.status else params_all
-        # 如果用户指定了 status 筛选，尊重用户选择；否则排除 decommissioned
-        # 实际逻辑：如果 status 未指定，我们不设 status 过滤但在结果中排除 decommissioned
+        # If user specified a status filter, respect their choice; otherwise exclude decommissioned
+        # Actual logic: if status is not set, we don't apply a status filter but exclude decommissioned from results
     assets, _ = asset_repo.list_assets(db, params_all)
 
-    # 排除 decommissioned（如果未通过 params 过滤）
+    # Exclude decommissioned (if not already filtered by params)
     if not include_decommissioned:
         assets = [a for a in assets if a.status != "decommissioned"]
 
-    # 批量拉应用
+    # Batch fetch applications
     asset_ids = [a.id for a in assets]
     apps_map = asset_app_repo.list_apps_for_assets(db, asset_ids)
 
     output = io.StringIO()
     writer = csv.writer(output, quoting=csv.QUOTE_MINIMAL)
 
-    # 表头
+    # CSV header
     writer.writerow([
         "ip", "hostname", "os_name", "os_version", "environment",
         "criticality", "owner", "tags", "product", "version",
@@ -356,7 +356,7 @@ def export_assets_threat_hunting_csv(
         if not apps:
             if skip_empty_apps:
                 continue
-            # 输出一行空 product
+            # Output a row with empty product
             writer.writerow([
                 asset.ip_address,
                 asset.hostname or "",

@@ -1,7 +1,7 @@
 """
-LLM API Key 加密存储
-使用 Fernet 对称加密（envelope encryption 简化版）
-主密钥从环境变量 LLM_MASTER_KEY 读取
+LLM API Key encrypted storage
+Uses Fernet symmetric encryption (simplified envelope encryption)
+Master key is read from the LLM_MASTER_KEY environment variable
 """
 import base64
 import hashlib
@@ -12,22 +12,22 @@ from cryptography.fernet import Fernet, InvalidToken
 
 def _get_master_key() -> bytes:
     """
-    从环境变量获取主密钥。
-    如果未设置，使用 JWT_SECRET 派生（开发环境兜底）。
+    Get the master key from environment variables.
+    If not set, derive it from JWT_SECRET (development environment fallback).
     """
     raw = os.environ.get("LLM_MASTER_KEY", "")
     if not raw:
-        # 兜底：用 JWT_SECRET 派生
+        # Fallback: derive from JWT_SECRET
         from app.core.config import settings
         raw = settings.jwt_secret
-    # Fernet 需要 32 字节 base64 编码的 key
-    # 用 SHA256 哈希确保长度一致
+    # Fernet requires a 32-byte base64-encoded key
+    # Use SHA-256 hash to ensure consistent length
     digest = hashlib.sha256(raw.encode("utf-8")).digest()
     return base64.urlsafe_b64encode(digest)
 
 
 def encrypt_value(plaintext: str) -> str:
-    """加密字符串，返回密文（base64 编码）"""
+    """Encrypt a string and return the ciphertext (base64 encoded)"""
     if not plaintext:
         return ""
     key = _get_master_key()
@@ -36,7 +36,7 @@ def encrypt_value(plaintext: str) -> str:
 
 
 def decrypt_value(ciphertext: str) -> str:
-    """解密字符串，返回明文。解密失败返回空字符串。"""
+    """Decrypt a string and return the plaintext. Returns empty string on failure."""
     if not ciphertext:
         return ""
     key = _get_master_key()
@@ -44,5 +44,5 @@ def decrypt_value(ciphertext: str) -> str:
     try:
         return f.decrypt(ciphertext.encode("utf-8")).decode("utf-8")
     except (InvalidToken, Exception):
-        # 可能是旧的明文数据，直接返回
+        # Might be legacy plaintext data, return as-is
         return ciphertext

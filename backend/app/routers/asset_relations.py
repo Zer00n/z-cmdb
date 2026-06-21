@@ -1,8 +1,8 @@
 """
-资产关系接口（受 require_cost_feature 守卫）
-GET    /api/assets/{id}/relations          资产关系列表
-POST   /api/assets/{id}/relations          创建关系
-DELETE /api/assets/{id}/relations/{rid}    删除关系
+Asset relation API (guarded by require_cost_feature)
+GET    /api/assets/{id}/relations          Asset relation list
+POST   /api/assets/{id}/relations          Create relation
+DELETE /api/assets/{id}/relations/{rid}    Delete relation
 """
 from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel
@@ -32,7 +32,7 @@ def list_relations(
     _current_user: AnyUser = None,
     db: Session = Depends(get_db),
 ) -> list[dict]:
-    """资产关系列表（source 或 target 为该资产）"""
+    """Asset relation list (where this asset is source or target)"""
     relations = cost_repo.get_relations(db, asset_id)
     return [
         {
@@ -58,7 +58,7 @@ def create_relation(
     current_user: AdminUser = None,
     db: Session = Depends(get_db),
 ) -> dict:
-    """创建资产关系"""
+    """Create asset relation"""
     rel = cost_repo.create_relation(
         db,
         source_asset_id=asset_id,
@@ -93,11 +93,11 @@ def delete_relation(
     current_user: AdminUser = None,
     db: Session = Depends(get_db),
 ) -> dict:
-    """删除资产关系"""
+    """Delete asset relation"""
     cost_repo.delete_relation(db, relation_id)
     audit_service.log_from_request(
         db, request, action_type="DELETE", user=current_user,
         target_type="asset_relation", target_id=str(relation_id),
     )
     db.commit()
-    return {"message": "关系已删除"}
+    return {"message": "Relation deleted"}

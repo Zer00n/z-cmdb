@@ -1,6 +1,6 @@
 """
-扫描差异分析引擎
-实现 NEW / CHANGED / MISSING / RESTORED 四种差异类型
+Scan diff analysis engine
+Implements four diff types: NEW / CHANGED / MISSING / RESTORED
 """
 import logging
 from dataclasses import dataclass, field
@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class DiffPort:
-    """端口差异"""
+    """Port diff"""
     port_number: int
     protocol: str
     old_service: str | None = None
@@ -29,7 +29,7 @@ class DiffPort:
 
 @dataclass
 class DiffResult:
-    """单个主机的差异结果"""
+    """Diff result for a single host"""
     ip_address: str
     mac_address: str | None = None
     hostname: str | None = None
@@ -43,7 +43,7 @@ class DiffResult:
 
 @dataclass
 class ScanDiffSummary:
-    """扫描差异汇总"""
+    """Scan diff summary"""
     new_hosts: list[DiffResult] = field(default_factory=list)
     changed_hosts: list[DiffResult] = field(default_factory=list)
     same_hosts: list[DiffResult] = field(default_factory=list)
@@ -65,23 +65,23 @@ class ScanDiffSummary:
 
 def match_asset(db: Session, host: ParsedHost) -> Asset | None:
     """
-    资产匹配逻辑（PRD 4.2.3）：
-    1. 优先按 MAC 匹配
-    2. 次按 IP 匹配
-    3. 兜底按 hostname + OS 匹配
+    Asset matching logic (PRD 4.2.3):
+    1. Prefer MAC-based matching
+    2. Then IP-based matching
+    3. Fallback: hostname + OS matching
     """
-    # MAC 优先
+    # MAC priority
     if host.mac_address:
         asset = asset_repo.get_by_mac(db, host.mac_address)
         if asset:
             return asset
 
-    # IP 匹配
+    # IP matching
     asset = asset_repo.get_by_ip(db, host.ip_address)
     if asset:
         return asset
 
-    # 兜底：hostname + OS 匹配
+    # Fallback: hostname + OS matching
     if host.hostname:
         from sqlalchemy import select
         stmt = select(Asset).where(
@@ -102,8 +102,8 @@ def compute_port_diff(
     scanned_ports: list[ParsedPort],
 ) -> tuple[bool, list[DiffPort]]:
     """
-    对比端口变化。
-    返回 (has_changes, port_changes)
+    Compare port changes.
+    Returns (has_changes, port_changes).
     """
     existing_map: dict[tuple[int, str], AssetPort] = {
         (p.port_number, p.protocol): p for p in existing_ports
@@ -115,11 +115,11 @@ def compute_port_diff(
     changes: list[DiffPort] = []
     has_changes = False
 
-    # 检查新增和变更的端口
+    # Check for new and modified ports
     for key, sp in scanned_map.items():
         ep = existing_map.get(key)
         if ep is None:
-            # 新端口
+            # New port
             changes.append(DiffPort(
                 port_number=sp.port_number,
                 protocol=sp.protocol,
@@ -129,7 +129,7 @@ def compute_port_diff(
             ))
             has_changes = True
         else:
-            # 检查服务/版本/状态是否变化
+            # Check if service/version/state changed
             svc_changed = (ep.service_name or "") != (sp.service_name or "")
             ver_changed = (ep.service_version or "") != (sp.service_version or "")
             state_changed = (ep.state or "open") != (sp.state or "open")
@@ -146,7 +146,7 @@ def compute_port_diff(
                 ))
                 has_changes = True
 
-    # 检查消失的端口（存在于资产但本次未扫到）
+    # Check for disappeared ports (exist in asset but not found in this scan)
     for key, ep in existing_map.items():
         if key not in scanned_map and ep.state == "open":
             changes.append(DiffPort(
@@ -164,19 +164,20 @@ def compute_port_diff(
 
 def compute_diff(db: Session, scanned_hosts: list[ParsedHost]) -> ScanDiffSummary:
     """
-    计算扫描结果与现有资产的差异。
-    同时检测 MISSING（已有资产本次未扫到）和 RESTORED（之前 missing 本次又扫到）。
+    Compute the diff between scan results and existing assets.
+    Also detects MISSING (existing asset not found in this scan) and RESTORED
+    (previously missing asset found again).
     """
     summary = ScanDiffSummary()
 
-    # 记录本次扫到的资产 ID，用于检测 MISSING
+    # Track scanned asset IDs for MISSING detection
     scanned_asset_ids: set[int] = set()
 
     for host in scanned_hosts:
         asset = match_asset(db, host)
 
         if asset is None:
-            # NEW：未匹配到任何资产
+            # NEW: no existing asset matched
             result = DiffResult(
                 ip_address=host.ip_address,
                 mac_address=host.mac_address,
@@ -189,10 +190,10 @@ def compute_diff(db: Session, scanned_hosts: list[ParsedHost]) -> ScanDiffSummar
         else:
             scanned_asset_ids.add(asset.id)
 
-            # 检查是否为 RESTORED（之前 missing_count > 0）
+            # Check if RESTORED (previously missing_count > 0)
             is_restored = asset.missing_count > 0
 
-            # 对比端口变化
+            # Compare port changes
             existing_ports = asset_repo.get_ports_by_asset(db, asset.id)
             has_changes, port_changes = compute_port_diff(existing_ports, host.ports)
 
@@ -231,7 +232,7 @@ def compute_diff(db: Session, scanned_hosts: list[ParsedHost]) -> ScanDiffSummar
                 )
                 summary.same_hosts.append(result)
 
-    # 检测 MISSING：在线资产本次未扫到
+    # Detect MISSING: online assets not found in this scan
     from app.schemas.asset import AssetQueryParams
     all_online_params = AssetQueryParams(page=1, page_size=100000, status="online")
     online_assets, _ = asset_repo.list_assets(db, all_online_params)

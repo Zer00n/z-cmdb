@@ -1,7 +1,7 @@
 ﻿<script setup lang="ts">
 /**
- * 资产列表页
- * 2026 UI Redesign：升级筛选区与表格视觉，业务逻辑保持不变
+ * Asset list page
+ * 2026 UI Redesign: upgraded filter bar and table visuals, business logic unchanged
  */
 import { ref, reactive, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
@@ -15,13 +15,13 @@ const router = useRouter()
 const { t } = useI18n()
 const { zoneLabel, importanceLabel, statusLabel, typeLabel } = useTranslatedLabels()
 
-// 数据
+// Data
 const loading = ref(false)
 const tableData = ref<AssetListItem[]>([])
 const total = ref(0)
 const totalPages = ref(0)
 
-// 查询参数
+// Query parameters
 const query = reactive<AssetQueryParams>({
   page: 1,
   page_size: 20,
@@ -157,7 +157,7 @@ function zoneClass(zone: string): string {
   return map[zone] || 'zone-other'
 }
 
-// 派生统计：在线/离线计数（用于页头）
+// Derived stats: online/offline counts (for page header)
 const onlineCount = computed(() =>
   tableData.value.filter((a) => a.status === 'online').length
 )
@@ -167,7 +167,7 @@ onMounted(loadData)
 
 <template>
   <div class="ui-page">
-    <!-- 页头 -->
+    <!-- Page header -->
     <div class="ui-page-head">
       <div>
         <h1 class="ui-page-title">
@@ -197,7 +197,7 @@ onMounted(loadData)
       </div>
     </div>
 
-    <!-- 筛选区 -->
+    <!-- Filter bar -->
     <div class="ui-filter-bar">
       <el-input
         v-model="query.search"
@@ -257,7 +257,7 @@ onMounted(loadData)
       </el-button>
     </div>
 
-    <!-- 表格 -->
+    <!-- Table -->
     <div class="ui-table-card">
       <el-table
         v-loading="loading"
@@ -374,7 +374,7 @@ onMounted(loadData)
 </template>
 
 <style scoped>
-/* 表格行 hover 时让 ID 链接更亮 */
+/* Brighten ID link on table row hover */
 :deep(.el-table__row:hover) .ui-id-link {
   color: var(--color-primary-700);
 }

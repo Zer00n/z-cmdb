@@ -1,6 +1,6 @@
 """
-应用内 CLI 模块
-提供 init-db 与 reset-admin 子命令，容器内统一使用：
+In-app CLI module
+Provides init-db and reset-admin subcommands for container usage:
     python -m app.cli init-db
     python -m app.cli reset-admin [--password <pwd>]
 """
@@ -10,35 +10,35 @@ import sys
 
 
 def _init_db() -> None:
-    """执行 alembic upgrade head 并创建初始管理员"""
+    """Run alembic upgrade head and create initial admin"""
     print("=" * 50)
-    print("  Z-CMDB Lite 数据库初始化")
+    print("  Z-CMDB Lite Database Initialization")
     print("=" * 50)
 
-    print("\n[1/2] 执行数据库迁移...")
+    print("\n[1/2] Running database migrations...")
     result = subprocess.run(
         [sys.executable, "-m", "alembic", "upgrade", "head"],
         capture_output=True,
         text=True,
     )
     if result.returncode != 0:
-        print(f"  迁移失败:\n{result.stderr}", file=sys.stderr)
+        print(f"  Migration failed:\n{result.stderr}", file=sys.stderr)
         sys.exit(1)
-    print("  迁移完成")
+    print("  Migration complete")
 
-    print("\n[2/2] 检查初始管理员账号...")
+    print("\n[2/2] Checking initial admin account...")
     from app.core.database import SessionLocal
     from app.services.auth_service import ensure_initial_admin
 
     with SessionLocal() as db:
         ensure_initial_admin(db)
 
-    print("\n初始化完成！")
+    print("\nInitialization complete!")
     print("=" * 50)
 
 
 def _reset_admin(password: str | None = None) -> None:
-    """重置 admin 密码，可选 --password；否则随机生成"""
+    """Reset admin password; use --password or generate a random one"""
     from app.core.database import SessionLocal
     from app.core.security import hash_password
     from app.repositories import user_repo
@@ -49,19 +49,19 @@ def _reset_admin(password: str | None = None) -> None:
     )
 
     print("=" * 50)
-    print("  Z-CMDB Lite 管理员密码重置")
+    print("  Z-CMDB Lite Admin Password Reset")
     print("=" * 50)
 
     with SessionLocal() as db:
         user = user_repo.get_by_username(db, "admin")
         if user is None:
-            print("\n  错误：admin 用户不存在，请先执行 init-db", file=sys.stderr)
+            print("\n  Error: admin user does not exist. Please run init-db first.", file=sys.stderr)
             sys.exit(1)
 
         if password:
             if not _check_password_policy(password):
                 print(
-                    "\n  错误：密码不满足策略（>=8位，含大小写/数字/符号）",
+                    "\n  Error: password does not meet policy (>=8 chars, must include upper/lowercase, digits, and symbols)",
                     file=sys.stderr,
                 )
                 sys.exit(1)
@@ -74,23 +74,23 @@ def _reset_admin(password: str | None = None) -> None:
         db.commit()
 
     _persist_initial_password(new_password)
-    print("  密码重置成功，请使用新密码登录。")
+    print("  Password reset successful. Please log in with the new password.")
     print("=" * 50)
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(
         prog="python -m app.cli",
-        description="Z-CMDB Lite 管理工具",
+        description="Z-CMDB Lite admin tool",
     )
     sub = parser.add_subparsers(dest="command")
 
-    sub.add_parser("init-db", help="初始化数据库并创建初始管理员")
-    rp = sub.add_parser("reset-admin", help="重置 admin 密码")
+    sub.add_parser("init-db", help="Initialize database and create initial admin")
+    rp = sub.add_parser("reset-admin", help="Reset admin password")
     rp.add_argument(
         "--password",
         default=None,
-        help="指定新密码（留空则随机生成）",
+        help="Specify new password (randomly generated if omitted)",
     )
 
     args = parser.parse_args()

@@ -1,5 +1,5 @@
 """
-应用服务清单数据访问层
+Application/service inventory data access layer
 """
 import logging
 from datetime import datetime, timezone
@@ -15,15 +15,15 @@ logger = logging.getLogger(__name__)
 
 
 def get_by_id(db: Session, app_id: int) -> AssetApp:
-    """根据 ID 获取应用记录"""
+    """Get application record by ID"""
     app = db.get(AssetApp, app_id)
     if app is None:
-        raise NotFoundError(f"应用记录 ID {app_id} 不存在")
+        raise NotFoundError(f"Application record ID {app_id} not found")
     return app
 
 
 def list_by_asset(db: Session, asset_id: int) -> list[AssetApp]:
-    """列出某资产的所有 active 应用"""
+    """List all active applications for an asset"""
     stmt = (
         select(AssetApp)
         .where(AssetApp.asset_id == asset_id, AssetApp.status == "active")
@@ -33,7 +33,7 @@ def list_by_asset(db: Session, asset_id: int) -> list[AssetApp]:
 
 
 def create(db: Session, asset_id: int, created_by: int | None = None, **kwargs) -> AssetApp:
-    """新增应用记录"""
+    """Create a new application record"""
     app = AssetApp(
         asset_id=asset_id,
         created_by=created_by,
@@ -46,7 +46,7 @@ def create(db: Session, asset_id: int, created_by: int | None = None, **kwargs) 
         db.rollback()
         if "UNIQUE constraint failed" in str(e) or "uq_asset_app_name_version" in str(e):
             raise DuplicateError(
-                f"该资产已存在同名同版本的应用: {kwargs.get('name')} {kwargs.get('version', '')}"
+                f"This asset already has an application with the same name and version: {kwargs.get('name')} {kwargs.get('version', '')}"
             )
         raise
     logger.info(
@@ -66,10 +66,10 @@ def upsert_app(
     **kwargs,
 ) -> AssetApp:
     """
-    插入或更新应用记录（幂等）。
-    以 (asset_id, name, version) 为唯一键：
-    - 存在则更新 source / 其他字段，并将 status 恢复为 active
-    - 不存在则新建
+    Insert or update an application record (idempotent).
+    Uses (asset_id, name, version) as the unique key:
+    - If it exists: update source / other fields and restore status to active
+    - If it does not exist: create a new record
     """
     stmt = select(AssetApp).where(
         AssetApp.asset_id == asset_id,
@@ -89,7 +89,7 @@ def upsert_app(
         )
         db.add(app)
     else:
-        # 更新可变字段
+        # Update mutable fields
         app.source = source
         app.status = "active"
         for key, value in kwargs.items():
@@ -104,7 +104,7 @@ def upsert_app(
 
 
 def update(db: Session, app: AssetApp, **kwargs) -> AssetApp:
-    """更新应用记录"""
+    """Update an application record"""
     for key, value in kwargs.items():
         if hasattr(app, key) and value is not None:
             setattr(app, key, value)
@@ -115,14 +115,14 @@ def update(db: Session, app: AssetApp, **kwargs) -> AssetApp:
         db.rollback()
         if "UNIQUE constraint failed" in str(e) or "uq_asset_app_name_version" in str(e):
             raise DuplicateError(
-                f"该资产已存在同名同版本的应用: {app.name} {app.version}"
+                f"This asset already has an application with the same name and version: {app.name} {app.version}"
             )
         raise
     return app
 
 
 def soft_delete(db: Session, app: AssetApp) -> AssetApp:
-    """软删除：标记为 decommissioned"""
+    """Soft delete: mark as decommissioned"""
     app.status = "decommissioned"
     app.updated_at = datetime.now(timezone.utc)
     db.flush()
@@ -132,7 +132,7 @@ def soft_delete(db: Session, app: AssetApp) -> AssetApp:
 
 def search_global(db: Session, q: str, limit: int = 100) -> list[dict]:
     """
-    全局应用搜索：按 name 或 version 模糊匹配，返回命中的应用 + 关联资产信息
+    Global application search: fuzzy match by name or version, return matched apps + associated asset info
     """
     kw = f"%{q}%"
     stmt = (
@@ -176,7 +176,7 @@ def search_global(db: Session, q: str, limit: int = 100) -> list[dict]:
 
 
 def get_all_names(db: Session) -> list[str]:
-    """返回所有已存在的应用名（去重），用于前端 autocomplete"""
+    """Return all existing application names (deduplicated), used for frontend autocomplete"""
     stmt = (
         select(AssetApp.name)
         .where(AssetApp.status == "active")
@@ -187,7 +187,7 @@ def get_all_names(db: Session) -> list[str]:
 
 
 def count_by_asset(db: Session, asset_id: int) -> int:
-    """统计某资产的 active 应用数量"""
+    """Count active applications for an asset"""
     stmt = (
         select(func.count())
         .select_from(AssetApp)
@@ -198,8 +198,8 @@ def count_by_asset(db: Session, asset_id: int) -> int:
 
 def list_apps_for_assets(db: Session, asset_ids: list[int]) -> dict[int, list[AssetApp]]:
     """
-    批量查询多个资产的 active 应用，返回 {asset_id: [AssetApp, ...]}。
-    避免 N+1 查询问题。
+    Batch query active applications for multiple assets, returns {asset_id: [AssetApp, ...]}.
+    Avoids N+1 query problem.
     """
     if not asset_ids:
         return {}

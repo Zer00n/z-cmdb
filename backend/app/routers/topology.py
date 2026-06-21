@@ -1,10 +1,10 @@
 """
-拓扑图路由
-POST   /api/topology/generate    LLM 生成初稿
-GET    /api/topology             当前拓扑图
-GET    /api/topology/versions    历史版本列表
-POST   /api/topology             保存新版本
-POST   /api/topology/{id}/rollback  回滚到某版本
+Topology routes
+POST   /api/topology/generate    LLM generates initial draft
+GET    /api/topology             Current topology
+GET    /api/topology/versions    History version list
+POST   /api/topology             Save new version
+POST   /api/topology/{id}/rollback  Rollback to a version
 """
 import logging
 from datetime import datetime, timezone
@@ -27,7 +27,7 @@ router = APIRouter(prefix="/api/topology", tags=["topology"])
 
 
 class TopologyGenerateRequest(BaseModel):
-    """手动指定 LLM 参数（可选，默认从系统配置读取）"""
+    """Manually specify LLM parameters (optional; defaults read from system config)"""
     provider: str | None = None
     model: str | None = None
 
@@ -51,14 +51,14 @@ class TopologyRead(BaseModel):
 
 
 def _get_llm_config(db: Session) -> dict:
-    """从系统配置读取 LLM 参数（api_key 自动解密）"""
+    """Read LLM parameters from system config (api_key is automatically decrypted)"""
     from app.core.encryption import decrypt_value
     keys = ["llm_provider", "llm_api_key", "llm_model", "llm_base_url"]
     config = {}
     for key in keys:
         cfg = db.get(SystemConfig, key)
         value = cfg.value if cfg else ""
-        # api_key 解密
+        # api_key decryption
         if key == "llm_api_key" and value:
             value = decrypt_value(value)
         config[key] = value
@@ -66,7 +66,7 @@ def _get_llm_config(db: Session) -> dict:
 
 
 def _generate_version_no() -> str:
-    """生成版本号：topo_YYYYMMDD_NNN"""
+    """Generate version number: topo_YYYYMMDD_NNN"""
     from datetime import date
     return f"topo_{date.today().strftime('%Y%m%d')}_{int(datetime.now(timezone.utc).timestamp()) % 1000:03d}"
 
@@ -78,7 +78,7 @@ def generate_topology(
     current_user: AdminUser = None,
     db: Session = Depends(get_db),
 ) -> dict:
-    """LLM 生成拓扑图初稿"""
+    """LLM generates a topology initial draft"""
     llm_config = _get_llm_config(db)
 
     provider = body.provider or llm_config.get("llm_provider", "")
@@ -87,7 +87,7 @@ def generate_topology(
     base_url = llm_config.get("llm_base_url", "")
 
     if not provider:
-        raise ValidationError("未配置 LLM 提供方，请在系统配置中设置")
+        raise ValidationError("LLM provider not configured. Please set it in system configuration.")
 
     result = topology_service.generate_topology(
         db=db,
@@ -111,7 +111,7 @@ def get_current_topology(
     _current_user: AnyUser = None,
     db: Session = Depends(get_db),
 ) -> TopologyRead | None:
-    """获取当前拓扑图"""
+    """Get current topology"""
     stmt = select(Topology).where(Topology.is_current == True).limit(1)
     topo = db.scalar(stmt)
     if topo is None:
@@ -124,7 +124,7 @@ def list_versions(
     _current_user: AnyUser = None,
     db: Session = Depends(get_db),
 ) -> list[dict]:
-    """历史版本列表（不含 XML 内容）"""
+    """History version list (excluding XML content)"""
     stmt = select(Topology).order_by(Topology.created_at.desc()).limit(50)
     topos = list(db.scalars(stmt).all())
     return [
@@ -146,8 +146,8 @@ def save_topology(
     current_user: AdminUser = None,
     db: Session = Depends(get_db),
 ) -> TopologyRead:
-    """保存新版本"""
-    # 取消当前版本标记
+    """Save new version"""
+    # Clear current version flag
     stmt = select(Topology).where(Topology.is_current == True)
     current = db.scalar(stmt)
     if current:
@@ -179,12 +179,12 @@ def rollback_topology(
     current_user: AdminUser = None,
     db: Session = Depends(get_db),
 ) -> TopologyRead:
-    """回滚到某版本"""
+    """Rollback to a version"""
     target = db.get(Topology, topo_id)
     if target is None:
-        raise TopologyNotFoundError(f"拓扑版本 {topo_id} 不存在")
+        raise TopologyNotFoundError(f"Topology version {topo_id} not found")
 
-    # 取消当前版本
+    # Clear current version
     stmt = select(Topology).where(Topology.is_current == True)
     current = db.scalar(stmt)
     if current:

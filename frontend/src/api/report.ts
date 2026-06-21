@@ -1,5 +1,5 @@
 /**
- * 安全报表 API 封装
+ * Security report API wrappers
  */
 import request from './request'
 import type {
@@ -9,22 +9,22 @@ import type {
   ShadowAssetsData,
 } from '@/types/report'
 
-/** 端口暴露面分析 */
+/** Port exposure analysis */
 export function fetchPortExposure(): Promise<PortExposureData> {
   return request.get('/api/reports/port-exposure')
 }
 
-/** 危险端口列表 */
+/** Dangerous port list */
 export function fetchDangerousPorts(): Promise<DangerousPortsData> {
   return request.get('/api/reports/dangerous-ports')
 }
 
-/** 影子资产 */
+/** Shadow assets */
 export function fetchShadowAssets(): Promise<ShadowAssetsData> {
   return request.get('/api/reports/shadow-assets')
 }
 
-/** 资产变化时间线 */
+/** Asset change timeline */
 export function fetchAssetChanges(): Promise<AssetChangesData> {
   return request.get('/api/reports/asset-changes')
 }

@@ -1,6 +1,6 @@
 """
-Alembic 迁移环境配置
-从应用配置读取数据库 URL，支持 autogenerate
+Alembic migration environment configuration
+Reads database URL from app config, supports autogenerate
 """
 import sys
 from logging.config import fileConfig
@@ -9,13 +9,13 @@ from pathlib import Path
 from alembic import context
 from sqlalchemy import engine_from_config, pool
 
-# 将 backend/ 加入 sys.path，使 app 包可被导入
+# Add backend/ to sys.path so the app package can be imported
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from app.core.config import settings
-from app.core.database import Base  # noqa: F401 — 导入 Base 使模型注册生效
+from app.core.database import Base  # noqa: F401 — importing Base activates model registration
 
-# 导入所有模型，使 Base.metadata 包含所有表（autogenerate 需要）
+# Import all models so that Base.metadata contains all tables (required for autogenerate)
 from app.models.user import User  # noqa: F401
 from app.models.asset import Asset, AssetPort  # noqa: F401
 from app.models.scan import ScanBatch, ScanSnapshotItem  # noqa: F401
@@ -31,7 +31,7 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-# 覆盖 alembic.ini 中的 sqlalchemy.url
+# Override sqlalchemy.url from alembic.ini
 config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
 
 target_metadata = Base.metadata

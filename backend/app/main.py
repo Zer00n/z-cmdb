@@ -1,5 +1,5 @@
 """
-FastAPI 应用入口
+FastAPI application entry point
 """
 import logging
 
@@ -29,7 +29,7 @@ from app.routers.cost_rates import router as cost_rates_router
 from app.routers.asset_relations import router as asset_relations_router
 from app.routers.asset_cost_details import router as asset_cost_details_router
 
-# 初始化日志（必须在其他模块 import 之前）
+# Initialize logging (must be done before other module imports)
 setup_logging()
 
 logger = logging.getLogger(__name__)
@@ -52,7 +52,7 @@ app.add_middleware(
 )
 
 
-# ── 安全头中间件（CSP + 其他）────────────────────────────────
+# ── Security headers middleware (CSP + others) ────────────────
 @app.middleware("http")
 async def add_security_headers(request: Request, call_next):
     response = await call_next(request)
@@ -72,18 +72,18 @@ async def add_security_headers(request: Request, call_next):
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
     return response
 
-# ── 全局异常处理器 ───────────────────────────────────────────
+# ── Global exception handlers ────────────────────────────────
 
 
 @app.exception_handler(CMDBException)
 async def cmdb_exception_handler(request: Request, exc: CMDBException) -> JSONResponse:
-    """统一处理所有业务异常，Router 层不需要写 try/except"""
+    """Unified handler for all business exceptions; routers don't need to write try/except"""
     logger.warning(
         "business exception: %s",
         exc.message,
         extra={
             "error_code": exc.error_code,
-            "exc_message": exc.message,  # 避免与 LogRecord 保留字 'message' 冲突
+            "exc_message": exc.message,  # Avoid conflict with LogRecord reserved field 'message'
             "path": str(request.url),
         },
     )
@@ -95,7 +95,7 @@ async def cmdb_exception_handler(request: Request, exc: CMDBException) -> JSONRe
 
 @app.exception_handler(Exception)
 async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
-    """兜底：未预期的异常，返回 500"""
+    """Catch-all: unexpected exceptions, returns 500"""
     logger.error(
         "unhandled exception",
         extra={"path": str(request.url), "error": str(exc)},
@@ -103,11 +103,11 @@ async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONR
     )
     return JSONResponse(
         status_code=500,
-        content={"error_code": "INTERNAL_ERROR", "message": "服务器内部错误"},
+        content={"error_code": "INTERNAL_ERROR", "message": "Internal server error"},
     )
 
 
-# ── 路由注册 ─────────────────────────────────────────────────
+# ── Route registration ────────────────────────────────────────
 app.include_router(health_router)
 app.include_router(auth_router)
 app.include_router(assets_router)
@@ -128,7 +128,7 @@ app.include_router(asset_relations_router)
 app.include_router(asset_cost_details_router)
 
 
-# ── 启动事件 ─────────────────────────────────────────────────
+# ── Startup event ─────────────────────────────────────────────
 @app.on_event("startup")
 async def on_startup() -> None:
     logger.info(
@@ -136,14 +136,14 @@ async def on_startup() -> None:
         extra={"env": settings.APP_ENV, "version": settings.APP_VERSION},
     )
 
-    # 测试环境跳过初始化（由测试自行控制数据）
+    # Skip initialization in testing environment (test data is managed independently)
     if settings.APP_ENV == "testing":
         return
 
     from app.core.database import SessionLocal
     from app.services.auth_service import ensure_initial_admin
 
-    # 首次启动：若 users 表为空则创建初始 admin 账号
+    # First startup: create initial admin account if users table is empty
     with SessionLocal() as db:
         ensure_initial_admin(db)
 

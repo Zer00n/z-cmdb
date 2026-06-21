@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /**
- * KPI 图标 — 按 name 渲染对应线性 SVG
- * name 取自 Dashboard.vue 中 KPI_DEFS 的 key
+ * KPI icon — renders linear SVG by name
+ * name corresponds to KPI_DEFS keys in Dashboard.vue
  */
 defineProps<{ name: string }>()
 </script>

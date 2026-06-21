@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /**
- * 扫描批次列表页
- * 2026 UI Redesign：升级页头、状态徽标，逻辑保持不变
+ * Scan batch list page
+ * 2026 UI Redesign: upgraded header, status badges, logic unchanged
  */
 import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'

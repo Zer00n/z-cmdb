@@ -1,5 +1,5 @@
 /**
- * 审计日志 TypeScript 类型
+ * Audit log TypeScript types
  */
 
 export interface AuditLog {

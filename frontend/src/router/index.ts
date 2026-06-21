@@ -1,6 +1,6 @@
 /**
- * Vue Router 路由配置
- * /login 公开，其他路由需要登录
+ * Vue Router configuration
+ * /login is public; all other routes require authentication
  */
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
@@ -76,7 +76,7 @@ const router = createRouter({
           component: () => import('@/views/report/ReportDashboard.vue'),
           meta: { title: 'router.reports' },
         },
-        // V0.4 成本核算路由
+        // V0.4 Cost accounting routes
         {
           path: 'cost/overview',
           name: 'CostOverview',
@@ -128,12 +128,12 @@ const router = createRouter({
   ],
 })
 
-// ── 路由守卫：未登录跳转 /login ──────────────────────────────
+// ── Route guard: redirect to /login if not authenticated ──────────────────────────────
 router.beforeEach((to) => {
   const authStore = useAuthStore()
 
   if (to.meta.public) {
-    // 已登录访问 /login，跳转首页
+    // Already logged in visiting /login, redirect to home
     if (authStore.isLoggedIn && to.path === '/login') {
       return { path: '/' }
     }

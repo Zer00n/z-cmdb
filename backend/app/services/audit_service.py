@@ -1,6 +1,6 @@
 """
-审计日志服务
-所有写操作必须调用此模块记录日志
+Audit log service
+All write operations must call this module to record logs
 """
 import json
 import logging
@@ -28,7 +28,7 @@ def log_action(
     user_agent: str | None = None,
 ) -> AuditLog:
     """
-    记录一条审计日志。
+    Record an audit log entry.
     action_type: LOGIN / CREATE / UPDATE / DELETE / EXPORT / LLM_CALL / CONFIG
     """
     entry = AuditLog(
@@ -59,7 +59,7 @@ def log_from_request(
     details: dict | None = None,
     result: str = "success",
 ) -> AuditLog:
-    """从 FastAPI Request 对象提取 IP 和 User-Agent"""
+    """Extract IP and User-Agent from a FastAPI Request object"""
     ip = request.client.host if request.client else None
     ua = request.headers.get("user-agent", "")[:500]
     return log_action(
@@ -83,7 +83,7 @@ def list_logs(
     user_id: int | None = None,
     target_type: str | None = None,
 ) -> tuple[list[AuditLog], int]:
-    """查询审计日志（分页）"""
+    """Query audit logs (paginated)"""
     stmt = select(AuditLog)
     count_stmt = select(func.count()).select_from(AuditLog)
 

@@ -1,7 +1,7 @@
 ﻿<script setup lang="ts">
 /**
- * 资产详情页
- * 2026 UI Redesign：升级头部 hero 区与信息卡片，业务逻辑保持不变
+ * Asset detail page
+ * 2026 UI Redesign: upgraded hero header and info cards, business logic unchanged
  */
 import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -89,7 +89,7 @@ onMounted(loadAsset)
 <template>
   <div v-loading="loading" class="ui-page">
     <template v-if="asset">
-      <!-- Hero 头部 -->
+      <!-- Hero header -->
       <div class="hero-card">
         <div class="hero-grad" aria-hidden="true" />
         <div class="hero-main">
@@ -136,7 +136,7 @@ onMounted(loadAsset)
         </div>
       </div>
 
-      <!-- 信息卡片 -->
+      <!-- Info cards -->
       <div class="info-cards">
         <div class="info-card">
           <div class="ic-label">{{ t('asset.detail.infoCards.zone') }}</div>
@@ -162,7 +162,7 @@ onMounted(loadAsset)
         </div>
       </div>
 
-      <!-- Tab 区域 -->
+      <!-- Tab area -->
       <div class="ui-card">
         <el-tabs v-model="activeTab" style="padding: 0 var(--space-6)">
           <el-tab-pane :label="t('asset.detail.tabs.basic')" name="basic">
@@ -229,7 +229,7 @@ onMounted(loadAsset)
             </div>
           </el-tab-pane>
 
-          <!-- V0.4 成本构成 Tab（受 featureStore 控制） -->
+          <!-- V0.4 Cost composition tab (controlled by featureStore) -->
           <el-tab-pane
             v-if="featureStore.costAccounting"
             :label="t('cost.assetCost.tabTitle')"
@@ -320,7 +320,7 @@ onMounted(loadAsset)
   flex-shrink: 0;
 }
 
-/* 信息卡片 */
+/* Info cards */
 .info-cards {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -356,12 +356,12 @@ onMounted(loadAsset)
   min-height: 24px;
 }
 
-/* 应用 Tab 顶部留白：与基本信息/端口的视觉间距对齐 */
+/* App tab top padding: align visual spacing with basic info / ports */
 .apps-pane {
   padding-top: var(--space-4);
 }
 
-/* 字段网格 */
+/* Field grid */
 .field-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -381,7 +381,7 @@ onMounted(loadAsset)
   color: var(--neutral-900);
 }
 
-/* 备注 */
+/* Remark */
 .remark-block {
   margin-top: var(--space-4);
   background: var(--surface-sunken);
@@ -403,7 +403,7 @@ onMounted(loadAsset)
   line-height: 22px;
 }
 
-/* 端口 chip */
+/* Port chip */
 .port-chip {
   display: inline-block;
   padding: 2px 10px;

@@ -1,12 +1,12 @@
 /**
- * 操作系统下拉选项
- * 按大类分组，覆盖常见服务器/桌面/网络设备 OS
+ * OS dropdown options
+ * Grouped by category, covering common server/desktop/network device OS
  *
- * 使用：
+ * Usage:
  *   import { osOptionGroups, allOsOptions } from '@/constants/os-options'
  *
- * 选项值即"显示给用户和落库的字符串"，前端不做映射。
- * 如客户使用国产或冷门 OS，可在 el-select 上开启 filterable + allow-create 自由输入。
+ * Option values are "strings shown to user and stored in DB"; frontend does no mapping.
+ * If customers use niche or domestic OS, enable filterable + allow-create on el-select for free input.
  */
 
 export interface OsOption {
@@ -118,5 +118,5 @@ export const osOptionGroups: OsOptionGroup[] = [
   },
 ]
 
-/** 扁平化所有选项，便于按 value 反查 label */
+/** Flatten all options for reverse lookup by value */
 export const allOsOptions: OsOption[] = osOptionGroups.flatMap((g) => g.options)

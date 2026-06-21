@@ -1,5 +1,5 @@
 """
-资产 SQLAlchemy 模型
+Asset SQLAlchemy model
 """
 from datetime import datetime
 
@@ -17,40 +17,40 @@ class Asset(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
 
-    # 业务主键
+    # Business primary key
     asset_no: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
 
-    # 网络标识
+    # Network identifiers
     ip_address: Mapped[str] = mapped_column(String(45), nullable=False)
     mac_address: Mapped[str | None] = mapped_column(String(32), nullable=True)
     hostname: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
-    # 分类
+    # Classification
     asset_type: Mapped[str] = mapped_column(String(32), nullable=False)
     os_info: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
-    # 位置与归属
+    # Location and ownership
     location: Mapped[str] = mapped_column(String(255), nullable=False)
     owner: Mapped[str] = mapped_column(String(100), nullable=False)
     business_system: Mapped[str] = mapped_column(String(100), nullable=False)
 
-    # 重要性与区域
+    # Importance and network zone
     importance: Mapped[str] = mapped_column(String(20), nullable=False)
     network_zone: Mapped[str] = mapped_column(String(20), nullable=False)
 
-    # 硬件信息（可选）
+    # Hardware info (optional)
     cpu: Mapped[str | None] = mapped_column(String(100), nullable=True)
     memory_gb: Mapped[int | None] = mapped_column(Integer, nullable=True)
     disk_gb: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
-    # 采购信息（可选）
+    # Procurement info (optional)
     purchase_date: Mapped[str | None] = mapped_column(String(20), nullable=True)   # ISO date string
     warranty_expiry: Mapped[str | None] = mapped_column(String(20), nullable=True)
 
-    # 备注
+    # Remarks
     remark: Mapped[str | None] = mapped_column(Text, nullable=True)
 
-    # V0.4 成本核算字段（可选，功能关闭时不影响现有逻辑）
+    # V0.4 cost accounting fields (optional; no impact on existing logic when feature is off)
     purchase_price: Mapped[float | None] = mapped_column(Float, nullable=True)
     depreciation_months: Mapped[int | None] = mapped_column(Integer, nullable=True)
     residual_rate: Mapped[float | None] = mapped_column(Float, nullable=True)
@@ -64,16 +64,16 @@ class Asset(Base):
         Integer, ForeignKey("departments.id", ondelete="SET NULL"), nullable=True
     )
 
-    # 状态与来源
+    # Status and source
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="online")
     source: Mapped[str] = mapped_column(String(20), nullable=False, default="manual")
 
-    # 扫描相关（系统维护）
+    # Scan-related fields (system-managed)
     last_seen_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     missing_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     last_scan_batch_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
-    # 时间戳
+    # Timestamps
     created_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, default=utc_now
     )
@@ -81,12 +81,12 @@ class Asset(Base):
         DateTime, nullable=False, default=utc_now, onupdate=utc_now
     )
 
-    # 关联端口
+    # Associated ports
     ports: Mapped[list["AssetPort"]] = relationship(
         "AssetPort", back_populates="asset", cascade="all, delete-orphan"
     )
 
-    # 关联应用（v2.5）
+    # Associated apps (v2.5)
     apps: Mapped[list["AssetApp"]] = relationship(
         "AssetApp", back_populates="asset", cascade="all, delete-orphan"
     )
@@ -137,7 +137,7 @@ class AssetPort(Base):
     state: Mapped[str | None] = mapped_column(String(20), nullable=True)  # open/closed/filtered
     last_seen_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
-    # 关联资产
+    # Associated asset
     asset: Mapped["Asset"] = relationship("Asset", back_populates="ports")
 
     __table_args__ = (

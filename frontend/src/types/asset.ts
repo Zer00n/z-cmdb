@@ -1,5 +1,5 @@
 /**
- * 资产相关 TypeScript 类型定义
+ * Asset-related TypeScript type definitions
  */
 
 export type AssetType = 'physical' | 'virtual' | 'network_device' | 'other' | 'cloud_server'

@@ -1,6 +1,6 @@
 """
-应用配置模块
-使用 Pydantic Settings v2 管理所有配置项
+Application configuration module
+Uses Pydantic Settings v2 to manage all configuration items
 """
 from pathlib import Path
 
@@ -15,52 +15,52 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    # 数据库
+    # Database
     DATABASE_URL: str = "sqlite:///./data/cmdb.db"
 
     # JWT
     JWT_SECRET: str = "change-me-in-production"
-    JWT_SECRET_FILE: str = ""          # Docker secrets 文件路径
+    JWT_SECRET_FILE: str = ""          # Docker secrets file path
     JWT_ALGORITHM: str = "HS256"
     JWT_ACCESS_EXPIRE_MINUTES: int = 15
     JWT_REFRESH_EXPIRE_DAYS: int = 7
 
     @property
     def jwt_secret(self) -> str:
-        """优先从 secrets 文件读取，否则用环境变量"""
+        """Prefer reading from secrets file, fall back to env variable"""
         if self.JWT_SECRET_FILE:
             secret_path = Path(self.JWT_SECRET_FILE)
             if secret_path.exists():
                 return secret_path.read_text(encoding="utf-8").strip()
         return self.JWT_SECRET
 
-    # 文件上传
+    # File upload
     UPLOAD_MAX_SIZE_MB: int = 50
 
-    # 日志
+    # Logging
     LOG_LEVEL: str = "INFO"
 
-    # 应用
+    # Application
     APP_ENV: str = "development"
     APP_TITLE: str = "Z-CMDB Lite"
     APP_VERSION: str = "0.2.0"
 
-    # CORS（开发期允许前端 dev server）
+    # CORS (allow frontend dev server during development)
     CORS_ORIGINS: list[str] = ["http://localhost:5173", "http://127.0.0.1:5173"]
 
-    # 初始管理员密码（首次启动时使用，留空则随机生成）
+    # Initial admin password (used on first startup; random if left empty)
     INITIAL_ADMIN_PASSWORD: str = ""
 
-    # refresh cookie Secure 标志（默认 False；生产 HTTPS 环境设为 true）
+    # Refresh cookie Secure flag (False by default; set to true in production HTTPS)
     COOKIE_SECURE: bool = False
 
     @property
     def db_path(self) -> Path:
-        """解析数据库文件的绝对路径（跨平台）"""
+        """Resolve the absolute path of the database file (cross-platform)"""
         url = self.DATABASE_URL
         if url.startswith("sqlite:///"):
             relative = url[len("sqlite:///"):]
-            # 相对于 backend/ 目录
+            # Relative to the backend/ directory
             base = Path(__file__).parent.parent.parent
             return base / relative
         return Path(url)

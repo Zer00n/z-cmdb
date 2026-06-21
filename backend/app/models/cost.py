@@ -1,5 +1,5 @@
 """
-V0.4 成本核算相关模型
+V0.4 cost accounting models
 Department / AssetCostItem / AssetRelation / AssetDeptAssignment / CostRate
 """
 from datetime import datetime
@@ -26,7 +26,7 @@ class Department(Base):
 
 
 class AssetCostItem(Base):
-    """资产成本行：折旧/维保/电力/托管/许可/云订阅/分摊"""
+    """Asset cost line: depreciation / maintenance / power / hosting / license / cloud subscription / allocation"""
     __tablename__ = "asset_cost_items"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
@@ -63,7 +63,7 @@ class AssetCostItem(Base):
 
 
 class AssetRelation(Base):
-    """资产关系：VM→宿主、资产→存储/防火墙/LB/网络设备"""
+    """Asset relationship: VM -> host, asset -> storage / firewall / LB / network device"""
     __tablename__ = "asset_relations"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
@@ -102,7 +102,7 @@ class AssetRelation(Base):
 
 
 class AssetDeptAssignment(Base):
-    """资产部门归属与计费分段"""
+    """Asset department assignment and billing segments"""
     __tablename__ = "asset_dept_assignments"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
@@ -134,7 +134,7 @@ class AssetDeptAssignment(Base):
 
 
 class CostRate(Base):
-    """费率字典（KV 存 JSON）"""
+    """Rate dictionary (KV storing JSON)"""
     __tablename__ = "cost_rates"
 
     key: Mapped[str] = mapped_column(String(100), primary_key=True)

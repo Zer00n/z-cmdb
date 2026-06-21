@@ -1,6 +1,6 @@
 """
-鉴权业务逻辑
-登录、刷新 Token、修改密码
+Authentication business logic
+Login, token refresh, password change
 """
 import logging
 import secrets
@@ -25,32 +25,32 @@ from app.repositories import user_repo
 
 logger = logging.getLogger(__name__)
 
-# 5 次失败登录后锁定 15 分钟
+# Lock account for 15 minutes after 5 failed login attempts
 MAX_FAILED_ATTEMPTS = 5
 LOCK_DURATION_MINUTES = 15
 
 
 def login(db: Session, username: str, password: str) -> tuple[str, str]:
     """
-    登录验证。
-    返回 (access_token, refresh_token)。
-    失败时抛 AuthenticationError 或 AccountLockedError。
+    Login authentication.
+    Returns (access_token, refresh_token).
+    Raises AuthenticationError or AccountLockedError on failure.
     """
     user = user_repo.get_by_username(db, username)
 
     if user is None:
-        # 不暴露"用户不存在"，统一返回认证失败
-        raise AuthenticationError("用户名或密码错误")
+        # Do not reveal whether the user exists; return a generic auth failure
+        raise AuthenticationError("Invalid username or password")
 
     if user.status == "disabled":
-        raise AuthenticationError("账号已被禁用")
+        raise AuthenticationError("Account has been disabled")
 
-    # 检查锁定状态
+    # Check lock status
     if user.locked_until and user.locked_until > datetime.now(timezone.utc):
         remaining = int((user.locked_until - datetime.now(timezone.utc)).total_seconds() / 60)
-        raise AccountLockedError(f"账号已锁定，请 {remaining} 分钟后重试")
+        raise AccountLockedError(f"Account locked, please try again in {remaining} minutes")
 
-    # 验证密码
+    # Verify password
     if not verify_password(password, user.password_hash):
         user = user_repo.increment_failed_login(db, user)
 
@@ -62,12 +62,12 @@ def login(db: Session, username: str, password: str) -> tuple[str, str]:
                 "account locked due to failed attempts",
                 extra={"user_id": user.id, "username": username},
             )
-            raise AccountLockedError(f"连续登录失败 {MAX_FAILED_ATTEMPTS} 次，账号已锁定 {LOCK_DURATION_MINUTES} 分钟")
+            raise AccountLockedError(f"Account locked for {LOCK_DURATION_MINUTES} minutes after {MAX_FAILED_ATTEMPTS} consecutive failed login attempts")
 
         db.commit()
-        raise AuthenticationError("用户名或密码错误")
+        raise AuthenticationError("Invalid username or password")
 
-    # 登录成功，重置失败计数
+    # Login succeeded, reset failed attempt counter
     user_repo.reset_failed_login(db, user)
     db.commit()
 
@@ -80,15 +80,15 @@ def login(db: Session, username: str, password: str) -> tuple[str, str]:
 
 def refresh_access_token(db: Session, refresh_token: str) -> str:
     """
-    用 refresh_token 换新的 access_token。
-    失败时抛 AuthenticationError。
+    Exchange a refresh_token for a new access_token.
+    Raises AuthenticationError on failure.
     """
     payload = decode_token(refresh_token, expected_type="refresh")
     user_id = int(payload["sub"])
 
     user = user_repo.get_by_id(db, user_id)
     if user.status == "disabled":
-        raise AuthenticationError("账号已被禁用")
+        raise AuthenticationError("Account has been disabled")
 
     return create_access_token(user.id, user.role)
 
@@ -97,14 +97,14 @@ def change_password(
     db: Session, user: User, old_password: str, new_password: str
 ) -> None:
     """
-    修改密码：验证旧密码后更新。
-    失败时抛 AuthenticationError 或 ValidationError。
+    Change password: verify old password then update.
+    Raises AuthenticationError or ValidationError on failure.
     """
     if not verify_password(old_password, user.password_hash):
-        raise AuthenticationError("旧密码错误")
+        raise AuthenticationError("Incorrect old password")
 
     if old_password == new_password:
-        raise ValidationError("新密码不能与旧密码相同")
+        raise ValidationError("New password cannot be the same as the old password")
 
     new_hash = hash_password(new_password)
     user_repo.update_password(db, user, new_hash)
@@ -114,7 +114,7 @@ def change_password(
 
 
 def generate_initial_password() -> str:
-    """生成符合密码策略的随机初始密码"""
+    """Generate a random initial password that meets the password policy"""
     import string
     alphabet = string.ascii_letters + string.digits + "!@#$%^&*"
     while True:
@@ -128,7 +128,7 @@ def generate_initial_password() -> str:
 
 
 def _check_password_policy(password: str) -> bool:
-    """检查密码是否满足最低策略：>=8 位，含大小写、数字、符号"""
+    """Check whether the password meets the minimum policy: >=8 chars, upper/lower/digit/symbol"""
     if len(password) < 8:
         return False
     has_upper = any(c.isupper() for c in password)
@@ -140,40 +140,41 @@ def _check_password_policy(password: str) -> bool:
 
 def _persist_initial_password(password: str) -> None:
     """
-    将初始密码写入 data 目录下的 INITIAL_ADMIN_PASSWORD.txt。
-    权限 600（仅文件属主可读写），同时打印到 stdout。
+    Write the initial password to INITIAL_ADMIN_PASSWORD.txt in the data directory.
+    Permissions 600 (owner read/write only); also prints to stdout.
     """
     from app.core.config import settings
 
     pw_file = settings.db_path.parent / "INITIAL_ADMIN_PASSWORD.txt"
     pw_file.parent.mkdir(parents=True, exist_ok=True)
     pw_file.write_text(password, encoding="utf-8")
-    # Windows 不支持 chmod，仅在 POSIX 系统上设置权限
+    # chmod is not supported on Windows; set permissions only on POSIX systems
     try:
         pw_file.chmod(0o600)
     except OSError:
         pass
 
     print(f"\n{'='*60}")
-    print(f"  初始管理员密码已保存至：{pw_file}")
-    print(f"  用户名: admin")
-    print(f"  密  码: {password}")
-    print(f"  请登录后立即修改密码！")
+    print(f"  Initial admin password saved to: {pw_file}")
+    print(f"  Username: admin")
+    print(f"  Password: {password}")
+    print(f"  Please change your password immediately after logging in!")
     print(f"{'='*60}\n")
 
 
 def ensure_initial_admin(db: Session) -> None:
     """
-    首次启动时，若 users 表为空，自动创建 super_admin 账号。
-    优先使用环境变量 CMDB_INITIAL_ADMIN_PASSWORD（需满足密码策略），
-    否则随机生成。生效的密码写入 data/INITIAL_ADMIN_PASSWORD.txt。
+    On first startup, if the users table is empty, automatically create a super_admin account.
+    Prefers the environment variable CMDB_INITIAL_ADMIN_PASSWORD (must meet password policy);
+    otherwise generates a random password. The effective password is written to
+    data/INITIAL_ADMIN_PASSWORD.txt.
     """
     from app.core.config import settings
 
     if user_repo.count_users(db) > 0:
         return
 
-    # 优先读环境变量
+    # Prefer environment variable
     initial_password = ""
     env_password = settings.INITIAL_ADMIN_PASSWORD
     if env_password:
@@ -182,8 +183,8 @@ def ensure_initial_admin(db: Session) -> None:
             logger.info("using INITIAL_ADMIN_PASSWORD from environment")
         else:
             logger.warning(
-                "CMDB_INITIAL_ADMIN_PASSWORD 不满足密码策略（>=8位，含大小写/数字/符号），"
-                "回退到随机生成"
+                "CMDB_INITIAL_ADMIN_PASSWORD does not meet password policy (>=8 chars, "
+                "upper/lower/digit/symbol), falling back to random generation"
             )
 
     if not initial_password:
@@ -196,7 +197,7 @@ def ensure_initial_admin(db: Session) -> None:
         username="admin",
         password_hash=password_hash,
         role="super_admin",
-        full_name="系统管理员",
+        full_name="System Administrator",
     )
     db.commit()
 

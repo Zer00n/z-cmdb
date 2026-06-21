@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * 部门账单 — 对齐 Department Billing 设计稿
+ * Department billing — aligned with Department Billing design
  */
 import { ref, computed, shallowRef, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { useI18n } from 'vue-i18n'

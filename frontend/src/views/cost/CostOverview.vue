@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * 成本总览 — 对齐 Cost Overview 设计稿
+ * Cost overview — aligned with Cost Overview design
  */
 import { ref, computed, shallowRef, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { useI18n } from 'vue-i18n'

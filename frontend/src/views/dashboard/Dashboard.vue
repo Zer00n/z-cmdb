@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * 资产总览 — 对齐 Asset Overview 设计稿
+ * Asset Overview Dashboard
  */
 import { ref, computed, shallowRef, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { useRouter } from 'vue-router'
@@ -29,7 +29,7 @@ const kpi = computed(() => summary.value?.kpi)
 
 const reducedMotion = usePreferredReducedMotion() // 'no-preference' | 'reduce'
 
-// ── KPI 定义 ───────────────────────────────────────────────
+// ── KPI definitions ───────────────────────────────────────────────
 interface KpiDef {
   key: string
   label: string
@@ -51,11 +51,11 @@ const KPI_DEFS = computed<KpiDef[]>(() => [
   { key: 'coverage', label: t('dashboard.kpi.scanCoverage'), cssClass: 'kpi-cyan', getVal: k => k.scan_coverage.total > 0 ? Math.round((k.scan_coverage.covered / k.scan_coverage.total) * 100) : 0, suffix: '%' },
 ])
 
-// KPI 翻牌动画
+// KPI flip animation
 const kpiNumRefs = ref<HTMLElement[]>([])
 function setKpiRef(el: any, idx: number) { if (el) kpiNumRefs.value[idx] = el }
 function animateCounter(el: HTMLElement, target: number, suffix: string) {
-  // 尊重「减少动态效果」或目标为 0：直接落位
+  // Respect "reduce motion" preference or target is 0: snap to final value
   if (reducedMotion.value === 'reduce' || target === 0) { el.textContent = target + suffix; return }
   const duration = 900, startTime = performance.now()
   function step(now: number) {
@@ -80,7 +80,7 @@ function handleKpiClick(def: KpiDef) {
   if (def.route) router.push({ path: def.route, query: def.query })
 }
 
-// ── 资产分布 Tab ───────────────────────────────────────────
+// ── Asset distribution tab ───────────────────────────────────────────
 const distTab = ref<'by_zone' | 'by_type' | 'by_importance' | 'by_os'>('by_zone')
 const distTabs = computed(() => [
   { key: 'by_zone' as const, label: t('dashboard.tabs.byZone') },
@@ -89,12 +89,12 @@ const distTabs = computed(() => [
   { key: 'by_os' as const, label: t('dashboard.tabs.byOs') },
 ])
 
-// ── 危险端口 ───────────────────────────────────────────────
+// ── Dangerous ports ───────────────────────────────────────────────
 const dangerousPorts = computed(() => summary.value?.dangerous_ports || [])
 const highCount = computed(() => dangerousPorts.value.filter(d => d.severity === 'high').length)
 const medCount = computed(() => dangerousPorts.value.filter(d => d.severity === 'medium').length)
 
-// ── ECharts 实例（shallowRef：实例无需深响应式） ────────────
+// ── ECharts instances (shallowRef: no deep reactivity needed) ────────────
 const chartTopoEl = ref<HTMLElement>()
 const chartDistEl = ref<HTMLElement>()
 const chartPortBarEl = ref<HTMLElement>()
@@ -191,12 +191,12 @@ function renderPortZone() {
 function renderAllCharts() { renderTopo(); renderDist(); renderPortBar(); renderPortZone() }
 
 watch(distTab, () => nextTick(renderDist))
-// summary 整体替换，浅比较即可触发；无需 deep
+// summary replaces entirely, shallow compare triggers; no deep watch needed
 watch(summary, () => nextTick(renderAllCharts))
-// 语言切换时重新渲染图表（ECharts 内嵌中文字符串需更新）
+// Re-render charts when language switches (ECharts has embedded Chinese strings)
 watch(locale, () => nextTick(renderAllCharts))
 
-// ── 危险端口自动滚动（页面不可见 / reduce 时自动停） ────────
+// ── Dangerous port auto-scroll (auto-stop when page hidden / reduce motion) ────────
 const alertListRef = ref<HTMLElement>()
 const alertScrolling = ref(true)
 let alertRaf = 0
@@ -214,7 +214,7 @@ function startAlertScroll() {
   alertStartTimer = setTimeout(() => { alertRaf = requestAnimationFrame(step) }, 2000)
 }
 
-// resize 防抖（监听器由 vueuse 在组件卸载时自动清理）
+// Resize debounce (listener auto-cleaned by vueuse on unmount)
 const handleResize = useDebounceFn(() => {
   chartTopo.value?.resize()
   chartDist.value?.resize()
@@ -224,7 +224,7 @@ const handleResize = useDebounceFn(() => {
 useEventListener(window, 'resize', handleResize)
 
 onMounted(async () => {
-  await store.fetchSummary() // 首次走缓存（force=false）
+  await store.fetchSummary() // First load uses cache (force=false)
   await nextTick()
   renderAllCharts()
   startAlertScroll()
@@ -241,7 +241,7 @@ onUnmounted(() => {
 
 <template>
   <div class="dash-page">
-    <!-- 页头 -->
+    <!-- Page header -->
     <div class="page-head">
       <div class="page-head-left">
         <h1>{{ t('dashboard.title') }}</h1>
@@ -256,7 +256,7 @@ onUnmounted(() => {
       </button>
     </div>
 
-    <!-- 加载骨架（summary 未就绪） -->
+    <!-- Loading skeleton (summary not ready) -->
     <template v-if="!summary">
       <div class="kpi-row">
         <div v-for="i in 8" :key="i" class="kpi kpi-sk"><div class="sk sk-icon" /><div class="sk sk-num" /><div class="sk sk-lbl" /></div>
@@ -265,9 +265,9 @@ onUnmounted(() => {
       <div class="grid-2"><div class="card card-sk" /><div class="card card-sk" /></div>
     </template>
 
-    <!-- 内容 -->
+    <!-- Content -->
     <template v-else>
-      <!-- KPI 行 -->
+      <!-- KPI row -->
       <div class="kpi-row" v-if="kpi">
         <div
           v-for="(def, i) in KPI_DEFS"
@@ -281,7 +281,7 @@ onUnmounted(() => {
         </div>
       </div>
 
-      <!-- Row 2: 网络区域拓扑 | 资产分布 -->
+      <!-- Row 2: Network zone topology | Asset distribution -->
       <div class="grid-2">
         <div class="card">
           <div class="card-head">
@@ -312,7 +312,7 @@ onUnmounted(() => {
         </div>
       </div>
 
-      <!-- Row 3: 端口暴露面 | 危险端口告警 -->
+      <!-- Row 3: Port exposure | Dangerous port alerts -->
       <div class="grid-2">
         <div class="card">
           <div class="card-head">
@@ -389,7 +389,7 @@ onUnmounted(() => {
 <style scoped>
 .dash-page { max-width: 1400px; }
 
-/* 页头 */
+/* Page header */
 .page-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); margin-bottom: var(--space-6); }
 .page-head-left h1 { margin: 0; font-size: var(--fs-h2, 22px); font-weight: 700; color: var(--neutral-900); }
 .page-head-left .sub { font-size: 12px; color: var(--neutral-500); display: flex; align-items: center; gap: 6px; margin-top: 4px; }
@@ -402,7 +402,7 @@ onUnmounted(() => {
 .btn-refresh:hover { background: var(--color-primary-600, #1D4ED8); }
 .btn-refresh:disabled { opacity: .6; cursor: not-allowed; }
 
-/* KPI 行 */
+/* KPI row */
 .kpi-row { display: grid; grid-template-columns: repeat(8, 1fr); gap: var(--space-3, 12px); margin-bottom: var(--space-5, 20px); }
 .kpi {
   background: var(--neutral-0, #fff); border: 1px solid var(--neutral-200, #E2E8F0); border-radius: var(--radius-lg, 10px);
@@ -413,7 +413,7 @@ onUnmounted(() => {
 .kpi .kpi-icon { width: 30px; height: 30px; border-radius: var(--radius-md, 6px); background: var(--kpi-icon-bg, #F1F5F9); color: var(--kpi-accent, #64748B); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .kpi .kpi-num { font-family: var(--font-mono, monospace); font-weight: 700; font-size: 28px; line-height: 1; letter-spacing: -0.03em; color: var(--kpi-accent, #0F172A); margin-top: 4px; }
 .kpi .kpi-label { font-size: 12px; color: var(--neutral-500, #64748B); font-weight: 500; white-space: nowrap; }
-/* 可点击 KPI：指针 + hover 反馈 */
+/* Clickable KPI: pointer + hover feedback */
 .kpi.clickable { cursor: pointer; transition: border-color 0.15s, transform 0.15s, box-shadow 0.15s; }
 .kpi.clickable:hover { border-color: var(--kpi-accent, #2563EB); transform: translateY(-2px); box-shadow: 0 8px 18px -10px rgba(15, 23, 42, 0.22); }
 .kpi.kpi-neutral  { --kpi-accent: #2563EB; --kpi-icon-bg: rgba(37,99,235,0.06); }
@@ -425,10 +425,10 @@ onUnmounted(() => {
 .kpi.kpi-purple   { --kpi-accent: #7C3AED; --kpi-icon-bg: #EDE9FE; }
 .kpi.kpi-cyan     { --kpi-accent: #0891B2; --kpi-icon-bg: rgba(8,145,178,0.06); }
 
-/* 双列网格 */
+/* Two-column grid */
 .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4, 16px); margin-bottom: var(--space-4, 16px); align-items: start; }
 
-/* 卡片 */
+/* Card */
 .card { background: var(--neutral-0, #fff); border: 1px solid var(--neutral-200, #E2E8F0); border-radius: var(--radius-lg, 10px); overflow: hidden; }
 .card-head { display: flex; align-items: center; justify-content: space-between; padding: var(--space-4, 16px) var(--space-4, 16px) 12px; border-bottom: 1px solid var(--neutral-100, #F1F5F9); gap: var(--space-3, 12px); }
 .card-head .ttl { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 600; color: var(--neutral-900, #0F172A); }
@@ -437,18 +437,18 @@ onUnmounted(() => {
 .card-head .tools { display: flex; align-items: center; gap: 6px; }
 .tool-btn { height: 26px; padding: 0 8px; border: 1px solid var(--neutral-200, #E2E8F0); background: #fff; border-radius: 4px; font-size: 12px; color: var(--neutral-500, #64748B); cursor: pointer; font-family: inherit; }
 
-/* Tab 栏 */
+/* Tab bar */
 .tab-bar { display: flex; align-items: center; gap: 2px; padding: 0 var(--space-4, 16px); border-bottom: 1px solid var(--neutral-100, #F1F5F9); }
 .tab-btn { height: 36px; padding: 0 12px; border: 0; background: transparent; font-size: 13px; color: var(--neutral-500, #64748B); cursor: pointer; font-family: inherit; border-bottom: 2px solid transparent; margin-bottom: -1px; transition: color 0.1s, border-color 0.1s; }
 .tab-btn:hover { color: var(--neutral-900, #0F172A); }
 .tab-btn.active { color: #2563EB; border-bottom-color: #2563EB; font-weight: 500; }
 
-/* 端口暴露面分栏 */
+/* Port exposure split layout */
 .port-split { display: grid; grid-template-columns: 1fr 1fr; gap: 0; }
 .port-split .ps-divider { width: 1px; background: var(--neutral-100, #F1F5F9); margin: var(--space-4, 16px) 0; }
 .split-label { padding: 10px var(--space-4, 16px) 4px; font-size: 11px; font-weight: 600; color: var(--neutral-400, #94A3B8); text-transform: uppercase; letter-spacing: 0.04em; }
 
-/* 危险端口告警 */
+/* Dangerous port alerts */
 .sev-counts { display: flex; align-items: center; gap: 6px; }
 .sev-tag { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 600; font-family: var(--font-mono, monospace); padding: 2px 8px; border-radius: 4px; }
 .sev-tag.h { background: rgba(220,38,38,0.08); color: #DC2626; }
@@ -471,7 +471,7 @@ onUnmounted(() => {
 @keyframes rowPulse { 0%,100%{ background: transparent; } 50%{ background: rgba(220,38,38,0.04); } }
 .alert-row.high { animation: rowPulse 3s ease-in-out infinite; } .alert-row.high:hover { animation: none; background: var(--neutral-50, #F8FAFC); }
 
-/* 加载骨架 */
+/* Loading skeleton */
 @keyframes skShimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
 .kpi-sk { gap: 8px; }
 .sk {
@@ -483,7 +483,7 @@ onUnmounted(() => {
 .sk-lbl { width: 40%; height: 12px; border-radius: 3px; }
 .card-sk { height: 380px; border: 1px solid var(--neutral-200, #E2E8F0); border-radius: var(--radius-lg, 10px); }
 
-/* 响应式断点 */
+/* Responsive breakpoints */
 @media (max-width: 1280px) {
   .kpi-row { grid-template-columns: repeat(4, 1fr); }
 }
@@ -493,7 +493,7 @@ onUnmounted(() => {
   .port-split .ps-divider { display: none; }
 }
 
-/* 无障碍：尊重「减少动态效果」 */
+/* Accessibility: respect "reduce motion" */
 @media (prefers-reduced-motion: reduce) {
   .alert-row.high { animation: none; }
   .sk { animation: none; }

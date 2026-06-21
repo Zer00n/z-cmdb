@@ -1,7 +1,7 @@
 /**
- * 时间格式化 composable
- * 根据当前语言自动切换时区：zh → Asia/Shanghai (UTC+8)，en → America/New_York
- * 所有页面显示时间应使用此 composable，不再直接 dayjs().format() 或 new Date()
+ * Time formatting composable
+ * Auto-switches timezone based on current language: zh -> Asia/Shanghai (UTC+8), en -> America/New_York
+ * All pages should use this composable for time display, instead of dayjs().format() or new Date() directly
  */
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -22,15 +22,15 @@ export function useTimeFormat() {
 
   const tz = computed(() => TIMEZONE_MAP[locale.value] || 'Asia/Shanghai')
 
-  /** 当前时间（指定时区） */
+  /** Current time (in the configured timezone) */
   function now(): dayjs.Dayjs {
     return dayjs().tz(tz.value)
   }
 
   /**
-   * 格式化后端时间戳（UTC ISO string）为用户时区
-   * @param time 后端返回的 ISO 时间字符串
-   * @param fmt dayjs 格式，默认 'YYYY-MM-DD HH:mm'
+   * Format backend timestamp (UTC ISO string) to user's timezone
+   * @param time ISO time string from backend
+   * @param fmt dayjs format, default 'YYYY-MM-DD HH:mm'
    */
   function formatTime(time: string | null | undefined, fmt = 'YYYY-MM-DD HH:mm'): string {
     if (!time) return '-'
@@ -38,29 +38,29 @@ export function useTimeFormat() {
   }
 
   /**
-   * 格式化当前时间（用于页面时间戳、数据截至等）
-   * @param fmt dayjs 格式，默认 'YYYY-MM-DD HH:mm'
+   * Format current time (for page timestamps, data as-of, etc.)
+   * @param fmt dayjs format, default 'YYYY-MM-DD HH:mm'
    */
   function nowFormatted(fmt = 'YYYY-MM-DD HH:mm'): string {
     return now().format(fmt)
   }
 
   /**
-   * 当前日期 YYYY-MM-DD
+   * Current date YYYY-MM-DD
    */
   function today(): string {
     return now().format('YYYY-MM-DD')
   }
 
   /**
-   * 当前月份 YYYY-MM
+   * Current month YYYY-MM
    */
   function currentMonth(): string {
     return now().format('YYYY-MM')
   }
 
   /**
-   * 获取最近 N 个月份列表
+   * Get a list of recent N months
    */
   function recentMonths(count = 12): string[] {
     const base = now()

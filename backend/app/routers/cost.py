@@ -1,7 +1,7 @@
 """
-资产成本接口（受 require_cost_feature 守卫）
-GET    /api/assets/{id}/cost               单资产全负载成本与构成
-GET    /api/cost/summary                    成本看板聚合
+Asset cost API (guarded by require_cost_feature)
+GET    /api/assets/{id}/cost               Single asset full-loaded cost breakdown
+GET    /api/cost/summary                    Cost dashboard aggregate
 """
 from datetime import date
 
@@ -25,7 +25,7 @@ def get_asset_cost(
     _current_user: AnyUser = None,
     db: Session = Depends(get_db),
 ) -> dict:
-    """单资产全负载成本与构成、净值、剩余折旧月数"""
+    """Single asset full-loaded cost breakdown, net value, and remaining depreciation months"""
     asset = db.get(Asset, asset_id)
     if asset is None:
         raise AssetNotFoundError()
@@ -40,6 +40,6 @@ def get_cost_summary(
     _current_user: AnyUser = None,
     db: Session = Depends(get_db),
 ) -> dict:
-    """成本看板聚合：KPI + 图表数据 + 治理清单"""
+    """Cost dashboard aggregate: KPI + chart data + governance checklist"""
     summary = cost_service.compute_global_summary(db)
     return summary

@@ -1,5 +1,5 @@
 """
-应用服务清单业务逻辑
+Application inventory business logic
 """
 import csv
 import io
@@ -22,8 +22,8 @@ logger = logging.getLogger(__name__)
 
 
 def list_apps(db: Session, asset_id: int) -> AssetAppListResponse:
-    """列出某资产的所有应用"""
-    # 确认资产存在
+    """List all applications for an asset"""
+    # Confirm the asset exists
     asset_repo.get_by_id(db, asset_id)
     apps = asset_app_repo.list_by_asset(db, asset_id)
     return AssetAppListResponse(
@@ -33,8 +33,8 @@ def list_apps(db: Session, asset_id: int) -> AssetAppListResponse:
 
 
 def create_app(db: Session, asset_id: int, data: AssetAppCreate, created_by: int | None = None) -> AssetAppRead:
-    """新增应用，若填写了端口则同步写入 asset_ports"""
-    # 确认资产存在
+    """Add a new application; if a port is provided, also sync it to asset_ports"""
+    # Confirm the asset exists
     asset_repo.get_by_id(db, asset_id)
     app = asset_app_repo.create(
         db,
@@ -49,7 +49,7 @@ def create_app(db: Session, asset_id: int, data: AssetAppCreate, created_by: int
         config_path=data.config_path,
         notes=data.notes,
     )
-    # 同步端口：若应用填写了端口，写入 asset_ports 表
+    # Sync port: if the app has a port, upsert it into the asset_ports table
     if data.port:
         asset_repo.upsert_port(
             db,
@@ -65,14 +65,14 @@ def create_app(db: Session, asset_id: int, data: AssetAppCreate, created_by: int
 
 
 def update_app(db: Session, asset_id: int, app_id: int, data: AssetAppUpdate) -> AssetAppRead:
-    """更新应用，若端口有变化则同步更新 asset_ports"""
-    # 确认资产存在
+    """Update an application; if the port changes, also update asset_ports"""
+    # Confirm the asset exists
     asset_repo.get_by_id(db, asset_id)
     app = asset_app_repo.get_by_id(db, app_id)
-    # 确认应用属于该资产
+    # Confirm the app belongs to this asset
     if app.asset_id != asset_id:
         from app.core.exceptions import NotFoundError
-        raise NotFoundError(f"资产 {asset_id} 下不存在应用 {app_id}")
+        raise NotFoundError(f"Application {app_id} not found under asset {asset_id}")
 
     old_port = app.port
     old_protocol = app.protocol or "tcp"
@@ -83,7 +83,7 @@ def update_app(db: Session, asset_id: int, app_id: int, data: AssetAppUpdate) ->
     new_port = app.port
     new_protocol = app.protocol or "tcp"
 
-    # 同步端口：新端口写入/更新 asset_ports
+    # Sync port: write/update the new port into asset_ports
     if new_port:
         asset_repo.upsert_port(
             db,
@@ -99,21 +99,21 @@ def update_app(db: Session, asset_id: int, app_id: int, data: AssetAppUpdate) ->
 
 
 def delete_app(db: Session, asset_id: int, app_id: int) -> None:
-    """软删除应用"""
-    # 确认资产存在
+    """Soft delete an application"""
+    # Confirm the asset exists
     asset_repo.get_by_id(db, asset_id)
     app = asset_app_repo.get_by_id(db, app_id)
-    # 确认应用属于该资产
+    # Confirm the app belongs to this asset
     if app.asset_id != asset_id:
         from app.core.exceptions import NotFoundError
-        raise NotFoundError(f"资产 {asset_id} 下不存在应用 {app_id}")
+        raise NotFoundError(f"Application {app_id} not found under asset {asset_id}")
 
     asset_app_repo.soft_delete(db, app)
     db.commit()
 
 
 def export_apps_csv(db: Session, asset_id: int) -> str:
-    """导出某资产的应用清单为 CSV"""
+    """Export an asset's application inventory as CSV"""
     asset = asset_repo.get_by_id(db, asset_id)
     apps = asset_app_repo.list_by_asset(db, asset_id)
 
@@ -121,9 +121,9 @@ def export_apps_csv(db: Session, asset_id: int) -> str:
     writer = csv.writer(output)
 
     writer.writerow([
-        "应用名称", "版本", "大类", "端口", "协议",
-        "安装路径", "配置路径", "备注", "来源", "状态",
-        "创建时间", "更新时间",
+        "App Name", "Version", "Category", "Port", "Protocol",
+        "Install Path", "Config Path", "Notes", "Source", "Status",
+        "Created At", "Updated At",
     ])
 
     for a in apps:
@@ -139,12 +139,12 @@ def export_apps_csv(db: Session, asset_id: int) -> str:
 
 
 def search_apps(db: Session, q: str) -> AppSearchResponse:
-    """全局应用搜索"""
+    """Global application search"""
     results = asset_app_repo.search_global(db, q)
     items = [AppSearchItem(**r) for r in results]
     return AppSearchResponse(items=items, total=len(items))
 
 
 def get_app_names(db: Session) -> list[str]:
-    """获取所有应用名（去重，用于 autocomplete）"""
+    """Get all application names (deduplicated, for autocomplete)"""
     return asset_app_repo.get_all_names(db)

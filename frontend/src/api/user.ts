@@ -1,5 +1,5 @@
 /**
- * 用户管理 API 封装
+ * User management API wrappers
  */
 import request from './request'
 import type { UserInfo } from '@/types/auth'
@@ -19,27 +19,27 @@ export interface UserUpdateRequest {
   status?: 'active' | 'disabled'
 }
 
-/** 用户列表 */
+/** User list */
 export function fetchUsers(): Promise<UserInfo[]> {
   return request.get('/api/users')
 }
 
-/** 创建用户 */
+/** Create user */
 export function createUser(data: UserCreateRequest): Promise<UserInfo> {
   return request.post('/api/users', data)
 }
 
-/** 用户详情 */
+/** User detail */
 export function fetchUser(id: number): Promise<UserInfo> {
   return request.get(`/api/users/${id}`)
 }
 
-/** 更新用户 */
+/** Update user */
 export function updateUser(id: number, data: UserUpdateRequest): Promise<UserInfo> {
   return request.patch(`/api/users/${id}`, data)
 }
 
-/** 禁用用户 */
+/** Disable user */
 export function disableUser(id: number): Promise<void> {
   return request.delete(`/api/users/${id}`)
 }

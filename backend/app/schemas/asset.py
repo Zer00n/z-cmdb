@@ -1,5 +1,5 @@
 """
-资产相关 Pydantic v2 Schema
+Asset-related Pydantic v2 schemas
 """
 from datetime import datetime
 from typing import Literal
@@ -7,7 +7,7 @@ from typing import Literal
 from pydantic import BaseModel, Field, field_validator
 
 
-# ── 端口 Schema ──────────────────────────────────────────────
+# ── Port Schemas ─────────────────────────────────────────────────
 
 class AssetPortRead(BaseModel):
     model_config = {"from_attributes": True}
@@ -21,7 +21,7 @@ class AssetPortRead(BaseModel):
     last_seen_at: datetime | None
 
 
-# ── 资产请求 Schema ──────────────────────────────────────────
+# ── Asset request Schemas ────────────────────────────────────────
 
 AssetType = Literal["physical", "virtual", "network_device", "other", "cloud_server"]
 Importance = Literal["core", "important", "normal"]
@@ -34,8 +34,8 @@ AssetSource = Literal["scan", "manual"]
 
 
 class AssetCreate(BaseModel):
-    """新增资产（手动录入）"""
-    asset_no: str | None = Field(None, max_length=64, description="留空则自动生成")
+    """Create asset (manual entry)"""
+    asset_no: str | None = Field(None, max_length=64, description="Leave empty to auto-generate")
     ip_address: str = Field(..., max_length=45)
     mac_address: str | None = Field(None, max_length=32)
     hostname: str | None = Field(None, max_length=255)
@@ -71,12 +71,12 @@ class AssetCreate(BaseModel):
         try:
             ipaddress.IPv4Address(v)
         except ValueError as exc:
-            raise ValueError(f"无效的 IPv4 地址: {v}") from exc
+            raise ValueError(f"Invalid IPv4 address: {v}") from exc
         return v
 
 
 class AssetUpdate(BaseModel):
-    """更新资产（PATCH，所有字段可选）"""
+    """Update asset (PATCH, all fields optional)"""
     ip_address: str | None = Field(None, max_length=45)
     mac_address: str | None = Field(None, max_length=32)
     hostname: str | None = Field(None, max_length=255)
@@ -114,14 +114,14 @@ class AssetUpdate(BaseModel):
         try:
             ipaddress.IPv4Address(v)
         except ValueError as exc:
-            raise ValueError(f"无效的 IPv4 地址: {v}") from exc
+            raise ValueError(f"Invalid IPv4 address: {v}") from exc
         return v
 
 
-# ── 资产响应 Schema ──────────────────────────────────────────
+# ── Asset response Schemas ───────────────────────────────────────
 
 class AssetRead(BaseModel):
-    """资产列表/详情响应"""
+    """Asset list/detail response"""
     model_config = {"from_attributes": True}
 
     id: int
@@ -164,7 +164,7 @@ class AssetRead(BaseModel):
 
 
 class AssetListItem(BaseModel):
-    """资产列表行（精简版，不含端口详情）"""
+    """Asset list row (compact, without port details)"""
     model_config = {"from_attributes": True}
 
     id: int
@@ -188,7 +188,7 @@ class AssetListItem(BaseModel):
 
 
 class AssetListResponse(BaseModel):
-    """资产列表分页响应"""
+    """Paginated asset list response"""
     items: list[AssetListItem]
     total: int
     page: int
@@ -196,13 +196,13 @@ class AssetListResponse(BaseModel):
     total_pages: int
 
 
-# ── 查询参数 Schema ──────────────────────────────────────────
+# ── Query parameter Schemas ──────────────────────────────────────
 
 class AssetQueryParams(BaseModel):
-    """资产列表查询参数"""
+    """Asset list query parameters"""
     page: int = Field(1, ge=1)
     page_size: int = Field(20, ge=1, le=100000)
-    search: str | None = None          # 全文搜索：IP/主机名/资产编号/备注
+    search: str | None = None          # Full-text search: IP / hostname / asset number / remark
     asset_type: AssetType | None = None
     network_zone: NetworkZone | None = None
     importance: Importance | None = None

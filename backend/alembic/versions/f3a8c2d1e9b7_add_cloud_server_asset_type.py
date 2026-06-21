@@ -4,9 +4,9 @@ Revision ID: f3a8c2d1e9b7
 Revises: 15ea56d0ba98
 Create Date: 2026-05-22 12:00:00.000000
 
-SQLite 不支持 DROP CONSTRAINT，通过重建表来更新 CheckConstraint。
-- asset_type 新增 'cloud_server'
-- network_zone 新增 'aliyun' | 'tencent' | 'huawei' | 'aws' | 'azure' | 'gcp' | 'other_cloud'
+SQLite does not support DROP CONSTRAINT; the table is rebuilt to update CheckConstraints.
+- asset_type: added 'cloud_server'
+- network_zone: added 'aliyun' | 'tencent' | 'huawei' | 'aws' | 'azure' | 'gcp' | 'other_cloud'
 """
 from typing import Sequence, Union
 
@@ -21,7 +21,7 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    # SQLite: 重建 assets 表以更新 CheckConstraint
+    # SQLite: rebuild assets table to update CheckConstraints
     with op.batch_alter_table('assets', recreate='always') as batch_op:
         batch_op.alter_column(
             'asset_type',
@@ -32,10 +32,10 @@ def upgrade() -> None:
         batch_op.alter_column(
             'network_zone',
             existing_type=sa.String(length=20),
-            type_=sa.String(length=32),  # 扩展长度以容纳 'other_cloud'
+            type_=sa.String(length=32),  # Extend length to fit 'other_cloud'
             existing_nullable=False,
         )
-        # 删除旧约束，添加新约束
+        # Drop old constraints, add new constraints
         batch_op.drop_constraint('ck_assets_type', type_='check')
         batch_op.drop_constraint('ck_assets_zone', type_='check')
         batch_op.create_check_constraint(

@@ -1,6 +1,6 @@
 /**
- * 鉴权 Pinia Store
- * access_token 存 sessionStorage，用户信息存内存
+ * Auth Pinia Store
+ * access_token stored in sessionStorage, user info in memory
  */
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
@@ -12,7 +12,7 @@ export const useAuthStore = defineStore('auth', () => {
   const userInfo = ref<UserInfo | null>(null)
   const mustChangePassword = ref(false)
 
-  // 初始化时从已有 token 恢复 userInfo
+  // Restore userInfo from existing token on initialization
   if (accessToken.value && !userInfo.value) {
     try {
       const payload = JSON.parse(atob(accessToken.value.split('.')[1]))
@@ -25,7 +25,7 @@ export const useAuthStore = defineStore('auth', () => {
         status: 'active',
       }
     } catch {
-      // token 无效，清除
+      // Invalid token, clear it
       accessToken.value = null
       sessionStorage.removeItem('access_token')
     }
@@ -40,16 +40,16 @@ export const useAuthStore = defineStore('auth', () => {
 
   // ── Actions ────────────────────────────────────────────────
 
-  /** 登录成功后保存 token 和用户信息 */
+  /** Save token and user info after successful login */
   function setToken(token: string, mustChange: boolean = false) {
     accessToken.value = token
     mustChangePassword.value = mustChange
     sessionStorage.setItem('access_token', token)
-    // 解析 JWT payload（不做安全校验，仅读取 role）
+    // Parse JWT payload (no security validation, only reading role)
     try {
       const payload = JSON.parse(atob(token.split('.')[1]))
-      // 用户信息从 token payload 中提取基础信息
-      // 完整信息在登录后由 /api/users/me 补充（v0.5 实现）
+      // Extract basic user info from token payload
+      // Full info will be supplemented by /api/users/me after login (v0.5)
       if (!userInfo.value) {
         userInfo.value = {
           id: parseInt(payload.sub),
@@ -61,16 +61,16 @@ export const useAuthStore = defineStore('auth', () => {
         }
       }
     } catch {
-      // token 解析失败不影响登录流程
+      // Token parse failure doesn't affect login flow
     }
   }
 
-  /** 设置完整用户信息 */
+  /** Set complete user info */
   function setUserInfo(info: UserInfo) {
     userInfo.value = info
   }
 
-  /** 退出登录，清除所有状态 */
+  /** Logout, clear all state */
   function clearAuth() {
     accessToken.value = null
     userInfo.value = null

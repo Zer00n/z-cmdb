@@ -1,8 +1,8 @@
 ﻿<script setup lang="ts">
 /**
- * 安全报表 Dashboard
- * 2026 UI Redesign：升级 KPI hero、按区域分布的可视化、配色升级，逻辑保持不变
- * v2.1：危险端口告警支持多字段筛选 + 分页
+ * Security report Dashboard
+ * 2026 UI Redesign: upgraded KPI hero, zone-based visualization, color scheme, logic unchanged
+ * v2.1: dangerous port alerts with multi-field filtering + pagination
  */
 import { ref, onMounted, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -15,7 +15,7 @@ const portExposure = ref<PortExposureData | null>(null)
 const dangerousPorts = ref<DangerousPortsData | null>(null)
 const shadowAssets = ref<ShadowAssetsData | null>(null)
 
-// ── 危险端口筛选 & 分页 ──────────────────────────────────────
+// ── Dangerous port filters & pagination ──────────────────────────────────────
 const dpFilter = ref({
   asset_no: '',
   ip_address: '',
@@ -28,7 +28,7 @@ const dpFilter = ref({
 const dpPage = ref(1)
 const dpPageSize = ref(20)
 
-// 重置分页到第一页（筛选条件变化时触发）
+// Reset pagination to first page (triggered when filters change)
 watch(dpFilter, () => { dpPage.value = 1 }, { deep: true })
 
 const ZONE_OPTIONS = computed(() => [
@@ -46,7 +46,7 @@ const SEVERITY_OPTIONS = computed(() => [
   { label: t('report.severity.medium'), value: 'medium' },
 ])
 
-/** 经过筛选后的全量告警 */
+/** All alerts after filtering */
 const dpFiltered = computed(() => {
   const all = dangerousPorts.value?.alerts ?? []
   const f = dpFilter.value
@@ -62,7 +62,7 @@ const dpFiltered = computed(() => {
   })
 })
 
-/** 当前页数据 */
+/** Current page data */
 const dpPageData = computed(() => {
   const start = (dpPage.value - 1) * dpPageSize.value
   return dpFiltered.value.slice(start, start + dpPageSize.value)
@@ -127,7 +127,7 @@ onMounted(loadData)
 
 <template>
   <div v-loading="loading" class="ui-page">
-    <!-- 页头 -->
+    <!-- Page header -->
     <div class="ui-page-head">
       <div>
         <h1 class="ui-page-title">{{ t('report.title') }}</h1>
@@ -135,7 +135,7 @@ onMounted(loadData)
       </div>
     </div>
 
-    <!-- KPI hero 网格 -->
+    <!-- KPI hero grid -->
     <div class="ui-kpi-grid">
       <div class="ui-kpi is-danger">
         <div class="ui-kpi-head">
@@ -191,9 +191,9 @@ onMounted(loadData)
       </div>
     </div>
 
-    <!-- 端口暴露面 + 按区域统计 横向布局 -->
+    <!-- Port exposure + zone distribution horizontal layout -->
     <div class="row-2">
-      <!-- 左：Top 10 端口 -->
+      <!-- Left: Top 10 ports -->
       <div class="ui-card">
         <div class="ui-card-head">
           <h3 class="ui-card-title">
@@ -225,7 +225,7 @@ onMounted(loadData)
         </div>
       </div>
 
-      <!-- 右：按区域统计 -->
+      <!-- Right: Zone distribution -->
       <div class="ui-card">
         <div class="ui-card-head">
           <h3 class="ui-card-title">
@@ -259,7 +259,7 @@ onMounted(loadData)
       </div>
     </div>
 
-    <!-- 危险端口告警 -->
+    <!-- Dangerous port alerts -->
     <div v-if="dangerousPorts && dangerousPorts.alerts.length > 0" class="ui-card">
       <div class="ui-card-head">
         <h3 class="ui-card-title">
@@ -282,7 +282,7 @@ onMounted(loadData)
         </el-button>
       </div>
 
-      <!-- 筛选栏 -->
+      <!-- Filter bar -->
       <div class="dp-filter-bar">
         <el-input
           v-model="dpFilter.asset_no"
@@ -345,7 +345,7 @@ onMounted(loadData)
         </el-select>
       </div>
 
-      <!-- 表格 -->
+      <!-- Table -->
       <el-table :data="dpPageData" stripe style="width: 100%">
         <el-table-column prop="asset_no" :label="t('report.dangerousPorts.columnAssetNo')" width="160">
           <template #default="{ row }">
@@ -381,7 +381,7 @@ onMounted(loadData)
         <el-table-column prop="hostname" :label="t('report.dangerousPorts.columnHostname')" show-overflow-tooltip />
       </el-table>
 
-      <!-- 分页 -->
+      <!-- Pagination -->
       <div class="dp-pagination">
         <el-pagination
           v-model:current-page="dpPage"
@@ -395,7 +395,7 @@ onMounted(loadData)
       </div>
     </div>
 
-    <!-- 影子资产 -->
+    <!-- Shadow assets -->
     <div v-if="shadowAssets && shadowAssets.total > 0" class="ui-card">
       <div class="ui-card-head">
         <h3 class="ui-card-title">
@@ -447,7 +447,7 @@ onMounted(loadData)
   gap: var(--space-4);
 }
 
-/* 卡片细节 */
+/* Card details */
 .title-dot {
   width: 8px;
   height: 8px;
@@ -465,7 +465,7 @@ onMounted(loadData)
   font-family: var(--font-mono);
 }
 
-/* 端口列表 */
+/* Port list */
 .port-list {
   padding: var(--space-3) var(--space-6) var(--space-4);
   display: flex;
@@ -512,7 +512,7 @@ onMounted(loadData)
   color: var(--neutral-900);
 }
 
-/* 区域列表 */
+/* Zone list */
 .zone-list {
   padding: var(--space-3) var(--space-6) var(--space-4);
   display: flex;
@@ -550,7 +550,7 @@ onMounted(loadData)
   color: var(--neutral-900);
 }
 
-/* 端口数字 chip */
+/* Port number chip */
 .port-chip {
   display: inline-block;
   padding: 1px 8px;
@@ -571,7 +571,7 @@ onMounted(loadData)
   letter-spacing: 0.02em;
 }
 
-/* 危险端口筛选栏 */
+/* Dangerous port filter bar */
 .dp-filter-bar {
   display: flex;
   flex-wrap: wrap;
@@ -587,7 +587,7 @@ onMounted(loadData)
   width: 120px;
 }
 
-/* 分页区域 */
+/* Pagination area */
 .dp-pagination {
   display: flex;
   justify-content: flex-end;

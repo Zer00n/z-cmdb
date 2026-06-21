@@ -1,6 +1,6 @@
 """
-日志配置模块
-JSON 格式输出到 stdout，Docker 友好
+Logging configuration module
+JSON format output to stdout, Docker-friendly
 """
 import logging
 import sys
@@ -10,7 +10,7 @@ from app.core.config import settings
 
 
 class JsonFormatter(logging.Formatter):
-    """将日志记录格式化为 JSON 字符串"""
+    """Format log records as JSON strings"""
 
     def format(self, record: logging.LogRecord) -> str:
         import json
@@ -23,7 +23,7 @@ class JsonFormatter(logging.Formatter):
             "message": record.getMessage(),
         }
 
-        # 附加 extra 字段（如 user_id、ip 等）
+        # Attach extra fields (e.g. user_id, ip, etc.)
         _RESERVED = frozenset({
             "name", "msg", "args", "levelname", "levelno",
             "pathname", "filename", "module", "exc_info",
@@ -36,7 +36,7 @@ class JsonFormatter(logging.Formatter):
             if key not in _RESERVED:
                 log_data[key] = value
 
-        # 异常信息
+        # Exception info
         if record.exc_info:
             log_data["exception"] = traceback.format_exception(*record.exc_info)
 
@@ -44,13 +44,13 @@ class JsonFormatter(logging.Formatter):
 
 
 def setup_logging() -> None:
-    """初始化全局日志配置，在 main.py 启动时调用一次"""
+    """Initialize global logging configuration; called once at startup in main.py"""
     log_level = getattr(logging, settings.LOG_LEVEL.upper(), logging.INFO)
 
     root_logger = logging.getLogger()
     root_logger.setLevel(log_level)
 
-    # 清除已有 handler，避免重复
+    # Clear existing handlers to avoid duplicates
     root_logger.handlers.clear()
 
     handler = logging.StreamHandler(sys.stdout)
@@ -58,7 +58,7 @@ def setup_logging() -> None:
     handler.setFormatter(JsonFormatter())
     root_logger.addHandler(handler)
 
-    # 降低第三方库的日志噪音
+    # Reduce noise from third-party libraries
     logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
     logging.getLogger("sqlalchemy.engine").setLevel(
         logging.INFO if settings.APP_ENV == "development" else logging.WARNING

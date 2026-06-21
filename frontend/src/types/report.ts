@@ -1,5 +1,5 @@
 /**
- * 安全报表 TypeScript 类型
+ * Security reports TypeScript types
  */
 
 export interface PortExposureData {

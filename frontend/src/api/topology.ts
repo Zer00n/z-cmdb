@@ -1,5 +1,5 @@
 /**
- * 拓扑图 API 封装
+ * Topology API wrappers
  */
 import request from './request'
 import type {
@@ -9,7 +9,7 @@ import type {
   TopologyVersion,
 } from '@/types/topology'
 
-/** LLM 生成拓扑图初稿（timeout 加长，LLM 可能需要 60-120 秒） */
+/** LLM generate topology draft (timeout extended, LLM may need 60-120 seconds) */
 export function generateTopology(data?: TopologyGenerateRequest): Promise<{
   drawio_xml: string
   asset_count: number
@@ -18,22 +18,22 @@ export function generateTopology(data?: TopologyGenerateRequest): Promise<{
   return request.post('/api/topology/generate', data || {}, { timeout: 300000 })
 }
 
-/** 获取当前拓扑图 */
+/** Get current topology */
 export function fetchCurrentTopology(): Promise<TopologyDetail | null> {
   return request.get('/api/topology')
 }
 
-/** 历史版本列表 */
+/** Version history list */
 export function fetchTopologyVersions(): Promise<TopologyVersion[]> {
   return request.get('/api/topology/versions')
 }
 
-/** 保存新版本 */
+/** Save new version */
 export function saveTopology(data: TopologySaveRequest): Promise<TopologyDetail> {
   return request.post('/api/topology', data)
 }
 
-/** 回滚到某版本 */
+/** Rollback to a version */
 export function rollbackTopology(id: number): Promise<TopologyDetail> {
   return request.post(`/api/topology/${id}/rollback`)
 }

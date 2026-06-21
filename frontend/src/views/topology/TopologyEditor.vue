@@ -1,8 +1,8 @@
 ﻿<script setup lang="ts">
 /**
- * 拓扑图编辑页
- * 基于 Claude Design 08-topology-editor.html 实现
- * 使用 drawio embed iframe (embed.diagrams.net)
+ * Topology editor page
+ * Based on Claude Design 08-topology-editor.html
+ * Uses drawio embed iframe (embed.diagrams.net)
  */
 import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -28,7 +28,7 @@ const drawioXml = ref('')
 const drawioReady = ref(false)
 const iframeRef = ref<HTMLIFrameElement | null>(null)
 
-// ── 生成日志 ──────────────────────────────────────────────
+// ── Generation logs ──────────────────────────────────────────────
 interface LogEntry {
   time: string
   level: 'info' | 'warn' | 'error' | 'success'
@@ -64,7 +64,7 @@ async function fetchLatestLlmLog() {
       }
     }
   } catch {
-    // 无权限或接口不存在时静默
+    // Silently ignore when no permission or endpoint missing
   }
 }
 
@@ -88,7 +88,7 @@ async function loadData() {
   }
 }
 
-// drawio postMessage 协议处理
+// drawio postMessage protocol handler
 function handleDrawioMessage(evt: MessageEvent) {
   if (!evt.data) return
   let msg: any
@@ -99,7 +99,7 @@ function handleDrawioMessage(evt: MessageEvent) {
   }
 
   if (msg.event === 'configure') {
-    // 配置 drawio 编辑器
+    // Configure drawio editor
     sendToDrawio({
       action: 'configure',
       config: {
@@ -107,7 +107,7 @@ function handleDrawioMessage(evt: MessageEvent) {
       },
     })
   } else if (msg.event === 'init') {
-    // drawio 就绪，加载 XML
+    // drawio ready, load XML
     drawioReady.value = true
     if (drawioXml.value) {
       sendToDrawio({ action: 'load', xml: drawioXml.value })
@@ -115,14 +115,14 @@ function handleDrawioMessage(evt: MessageEvent) {
       sendToDrawio({ action: 'load', xml: '' })
     }
   } else if (msg.event === 'save') {
-    // 用户在 drawio 中点了保存
+    // User clicked save in drawio
     drawioXml.value = msg.xml
     ElMessage.success(t('topology.drawioUpdated'))
   } else if (msg.event === 'export') {
-    // 导出完成
+    // Export completed
     drawioXml.value = msg.data || msg.xml
   } else if (msg.event === 'exit') {
-    // 用户关闭编辑器（不做处理，保持 iframe）
+    // User closed the editor (no action needed, keep iframe)
   }
 }
 
@@ -132,7 +132,7 @@ function sendToDrawio(msg: object) {
   }
 }
 
-// 从 drawio 获取当前 XML
+// Get current XML from drawio
 function requestExport() {
   sendToDrawio({ action: 'export', format: 'xml' })
 }
@@ -161,7 +161,7 @@ async function handleGenerate() {
     }
     addLog('success', t('topology.logGenerateDone', { elapsed, count: result.asset_count }))
     ElMessage.success(t('topology.generateSuccess', { count: result.asset_count }))
-    // 拉取 LLM 调用详情
+    // Fetch LLM call details
     fetchLatestLlmLog()
   } catch (e: any) {
     const elapsed = ((Date.now() - startTime) / 1000).toFixed(1)
@@ -173,10 +173,10 @@ async function handleGenerate() {
 }
 
 async function handleSave() {
-  // 先从 drawio 获取最新 XML
+  // First get latest XML from drawio
   if (drawioReady.value) {
     requestExport()
-    // 等待一小段时间让 export 回调更新 drawioXml
+    // Wait briefly for the export callback to update drawioXml
     await new Promise(resolve => setTimeout(resolve, 500))
   }
 
@@ -215,7 +215,7 @@ onBeforeUnmount(() => {
 
 <template>
   <div v-loading="loading" class="ui-page topology-page">
-    <!-- 页头 -->
+    <!-- Page header -->
     <div class="ui-page-head">
       <div>
         <h1 class="ui-page-title">
@@ -239,9 +239,9 @@ onBeforeUnmount(() => {
       </div>
     </div>
 
-    <!-- 主内容区：编辑器 + 版本列表 -->
+    <!-- Main content area: editor + version list -->
     <div class="content-grid">
-      <!-- drawio 编辑器 -->
+      <!-- drawio editor -->
       <div class="editor-card">
         <div class="editor-toolbar">
           <span class="editor-label">
@@ -259,9 +259,9 @@ onBeforeUnmount(() => {
         />
       </div>
 
-      <!-- 右侧面板：Tab 切换 -->
+      <!-- Right panel: Tab switching -->
       <div class="ui-card versions-card">
-        <!-- Tab 栏 -->
+        <!-- Tab bar -->
         <div class="right-tabs">
           <button
             :class="['right-tab', { active: rightTab === 'versions' }]"
@@ -279,7 +279,7 @@ onBeforeUnmount(() => {
           </button>
         </div>
 
-        <!-- 历史版本 -->
+        <!-- Version history -->
         <div v-show="rightTab === 'versions'" class="tab-content">
           <div v-if="versions.length === 0" class="ui-empty">
             <div class="ui-empty-title">{{ t('topology.noHistoryTitle') }}</div>
@@ -318,14 +318,14 @@ onBeforeUnmount(() => {
           </div>
         </div>
 
-        <!-- 生成日志 -->
+        <!-- Generation logs -->
         <div v-show="rightTab === 'logs'" class="tab-content log-content">
           <div v-if="genLogs.length === 0 && !llmDetail" class="ui-empty">
             <div class="ui-empty-title">{{ t('topology.noLogsTitle') }}</div>
             <div class="ui-empty-desc">{{ t('topology.noLogsDesc') }}</div>
           </div>
           <template v-else>
-            <!-- LLM 调用详情 -->
+            <!-- LLM call details -->
             <div v-if="llmDetail" class="llm-detail-card">
               <div class="llm-row">
                 <span class="llm-label">{{ t('topology.llmProvider') }}</span>
@@ -346,7 +346,7 @@ onBeforeUnmount(() => {
                 </span>
               </div>
             </div>
-            <!-- 日志列表 -->
+            <!-- Log list -->
             <div class="log-list">
               <div v-for="(log, i) in genLogs" :key="i" :class="['log-entry', log.level]">
                 <span class="log-time">{{ log.time }}</span>
@@ -379,7 +379,7 @@ onBeforeUnmount(() => {
   min-height: 600px;
 }
 
-/* drawio 编辑器 */
+/* drawio editor */
 .editor-card {
   background: var(--surface-base);
   border: var(--border-base);
@@ -429,7 +429,7 @@ onBeforeUnmount(() => {
   background: var(--surface-sunken);
 }
 
-/* 版本列表 */
+/* Version list */
 .versions-card {
   display: flex;
   flex-direction: column;
@@ -437,7 +437,7 @@ onBeforeUnmount(() => {
   overflow: hidden;
 }
 
-/* 右侧 Tab 栏 */
+/* Right panel tab bar */
 .right-tabs {
   display: flex;
   border-bottom: var(--border-base);
@@ -534,7 +534,7 @@ onBeforeUnmount(() => {
   font-family: var(--font-mono);
 }
 
-/* LLM 详情卡片 */
+/* LLM details card */
 .llm-detail-card {
   margin: var(--space-3);
   padding: var(--space-3);
@@ -558,7 +558,7 @@ onBeforeUnmount(() => {
 .text-success { color: var(--color-success) !important; }
 .text-error { color: var(--color-danger) !important; }
 
-/* 日志列表 */
+/* Log list */
 .log-content { padding: 0; }
 .log-list {
   display: flex;

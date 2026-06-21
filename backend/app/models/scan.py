@@ -1,5 +1,5 @@
 """
-扫描批次 + 快照项 SQLAlchemy 模型
+Scan batch + snapshot item SQLAlchemy model
 """
 from datetime import datetime
 
@@ -30,7 +30,7 @@ class ScanBatch(Base):
     missing_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="pending")
 
-    # 关联快照项
+    # Associated snapshot items
     items: Mapped[list["ScanSnapshotItem"]] = relationship(
         "ScanSnapshotItem", back_populates="batch", cascade="all, delete-orphan"
     )
@@ -59,7 +59,7 @@ class ScanSnapshotItem(Base):
     )
     diff_type: Mapped[str | None] = mapped_column(String(20), nullable=True)
 
-    # 关联批次
+    # Associated batch
     batch: Mapped["ScanBatch"] = relationship("ScanBatch", back_populates="items")
 
     def __repr__(self) -> str:

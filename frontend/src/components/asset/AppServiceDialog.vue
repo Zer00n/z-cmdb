@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * 应用服务新增/编辑对话框
+ * App service create/edit dialog
  */
 import { ref, watch, computed } from 'vue'
 import { ElMessage } from 'element-plus'
@@ -25,7 +25,7 @@ const emit = defineEmits<{
 const isEdit = computed(() => !!props.editing)
 const title = computed(() => (isEdit.value ? t('components.appService.dialog.editTitle') : t('components.appService.dialog.title')))
 
-// 表单数据
+// Form data
 const form = ref({
   name: '',
   version: '',
@@ -37,7 +37,7 @@ const form = ref({
   notes: '',
 })
 
-// autocomplete 数据
+// Autocomplete data
 const appNames = ref<string[]>([])
 const appNameSuggestions = computed(() => {
   const q = form.value.name.toLowerCase()
@@ -49,7 +49,7 @@ const appNameSuggestions = computed(() => {
 
 const submitting = ref(false)
 
-// 监听 visible 变化，初始化表单
+// Watch visible changes to initialize form
 watch(
   () => props.visible,
   async (val) => {
@@ -77,11 +77,11 @@ watch(
           notes: '',
         }
       }
-      // 加载 autocomplete 数据
+      // Load autocomplete data
       try {
         appNames.value = await fetchAppNames()
       } catch {
-        // 静默失败
+        // Silently fail
       }
     }
   }

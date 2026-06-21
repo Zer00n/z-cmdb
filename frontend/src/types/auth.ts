@@ -1,5 +1,5 @@
 /**
- * 鉴权相关 TypeScript 类型定义
+ * Auth-related TypeScript type definitions
  */
 
 export type UserRole = 'super_admin' | 'admin' | 'auditor'
@@ -29,7 +29,7 @@ export interface ChangePasswordRequest {
   new_password: string
 }
 
-/** JWT payload（前端解码用，不做安全校验） */
+/** JWT payload (decoded by frontend, no security validation) */
 export interface TokenPayload {
   sub: string
   role: UserRole

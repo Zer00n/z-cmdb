@@ -16,7 +16,7 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    # ── 1. 新建 departments 表 ──────────────────────────────────
+    # ── 1. Create departments table ──────────────────────────────
     op.create_table(
         "departments",
         sa.Column("id", sa.Integer(), primary_key=True, autoincrement=True),
@@ -25,7 +25,7 @@ def upgrade() -> None:
         sa.Column("created_at", sa.DateTime(), nullable=False),
     )
 
-    # ── 2. 新建 asset_cost_items 表 ────────────────────────────
+    # ── 2. Create asset_cost_items table ────────────────────────
     op.create_table(
         "asset_cost_items",
         sa.Column("id", sa.Integer(), primary_key=True, autoincrement=True),
@@ -52,7 +52,7 @@ def upgrade() -> None:
     )
     op.create_index("idx_cost_items_asset", "asset_cost_items", ["asset_id"])
 
-    # ── 3. 新建 asset_relations 表 ─────────────────────────────
+    # ── 3. Create asset_relations table ─────────────────────────
     op.create_table(
         "asset_relations",
         sa.Column("id", sa.Integer(), primary_key=True, autoincrement=True),
@@ -78,7 +78,7 @@ def upgrade() -> None:
     op.create_index("idx_relations_source", "asset_relations", ["source_asset_id"])
     op.create_index("idx_relations_target", "asset_relations", ["target_asset_id"])
 
-    # ── 4. 新建 asset_dept_assignments 表 ──────────────────────
+    # ── 4. Create asset_dept_assignments table ──────────────────
     op.create_table(
         "asset_dept_assignments",
         sa.Column("id", sa.Integer(), primary_key=True, autoincrement=True),
@@ -97,7 +97,7 @@ def upgrade() -> None:
     op.create_index("idx_dept_assign_asset", "asset_dept_assignments", ["asset_id"])
     op.create_index("idx_dept_assign_dept", "asset_dept_assignments", ["dept_id"])
 
-    # ── 5. 新建 cost_rates 表 ──────────────────────────────────
+    # ── 5. Create cost_rates table ──────────────────────────────
     op.create_table(
         "cost_rates",
         sa.Column("key", sa.String(100), primary_key=True),
@@ -107,8 +107,8 @@ def upgrade() -> None:
         sa.Column("updated_by", sa.Integer(), nullable=True),
     )
 
-    # ── 6. 扩展 assets 表（新增成本字段）──────────────────────
-    # SQLite：使用 batch_alter_table 重建表以添加新列和约束
+    # ── 6. Extend assets table (add cost columns) ──────────────
+    # SQLite: use batch_alter_table to rebuild the table with new columns and constraints
     with op.batch_alter_table("assets", recreate="always") as batch_op:
         batch_op.add_column(sa.Column("purchase_price", sa.Float(), nullable=True))
         batch_op.add_column(sa.Column("depreciation_months", sa.Integer(), nullable=True))
@@ -120,7 +120,7 @@ def upgrade() -> None:
         batch_op.add_column(sa.Column("revalue_effective_date", sa.String(20), nullable=True))
         batch_op.add_column(sa.Column("billing_mode", sa.String(20), nullable=True, server_default="cost"))
         batch_op.add_column(sa.Column("responsible_dept_id", sa.Integer(), nullable=True))
-        # 重建所有现有约束
+        # Rebuild all existing constraints
         batch_op.create_check_constraint(
             "ck_assets_type",
             "asset_type IN ('physical', 'virtual', 'network_device', 'other', 'cloud_server')",
@@ -157,7 +157,7 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    # 重建 assets 表移除成本字段
+    # Rebuild assets table to remove cost columns
     with op.batch_alter_table("assets", recreate="always") as batch_op:
         batch_op.drop_column("responsible_dept_id")
         batch_op.drop_column("billing_mode")
@@ -169,7 +169,7 @@ def downgrade() -> None:
         batch_op.drop_column("residual_rate")
         batch_op.drop_column("depreciation_months")
         batch_op.drop_column("purchase_price")
-        # 重建原始约束
+        # Rebuild original constraints
         batch_op.create_check_constraint(
             "ck_assets_type",
             "asset_type IN ('physical', 'virtual', 'network_device', 'other', 'cloud_server')",

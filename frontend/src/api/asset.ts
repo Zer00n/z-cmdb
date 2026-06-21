@@ -1,5 +1,5 @@
 /**
- * 资产管理 API 封装
+ * Asset management API wrappers
  */
 import request from './request'
 import type {
@@ -10,32 +10,32 @@ import type {
   AssetUpdateRequest,
 } from '@/types/asset'
 
-/** 资产列表（支持筛选/搜索/分页） */
+/** Asset list (supports filtering/search/pagination) */
 export function fetchAssetList(params?: AssetQueryParams): Promise<AssetListResponse> {
   return request.get('/api/assets', { params })
 }
 
-/** 资产详情（含端口列表） */
+/** Asset detail (includes port list) */
 export function fetchAsset(id: number): Promise<Asset> {
   return request.get(`/api/assets/${id}`)
 }
 
-/** 手动新增资产 */
+/** Manually create asset */
 export function createAsset(data: AssetCreateRequest): Promise<Asset> {
   return request.post('/api/assets', data)
 }
 
-/** 更新资产 */
+/** Update asset */
 export function updateAsset(id: number, data: AssetUpdateRequest): Promise<Asset> {
   return request.patch(`/api/assets/${id}`, data)
 }
 
-/** 下线资产（软删除） */
+/** Decommission asset (soft delete) */
 export function decommissionAsset(id: number): Promise<void> {
   return request.delete(`/api/assets/${id}`)
 }
 
-/** 导出资产 CSV */
+/** Export asset CSV */
 export function exportAssetsCsv(params?: AssetQueryParams): Promise<Blob> {
   return request.get('/api/assets/export', {
     params,
@@ -43,7 +43,7 @@ export function exportAssetsCsv(params?: AssetQueryParams): Promise<Blob> {
   })
 }
 
-/** 导出资产+应用为威胁狩猎助手兼容 CSV */
+/** Export assets+apps as threat hunting compatible CSV */
 export function exportAssetsForThreatHunting(params?: AssetQueryParams & {
   skip_empty_apps?: boolean
   include_decommissioned?: boolean

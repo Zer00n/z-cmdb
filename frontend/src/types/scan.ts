@@ -1,5 +1,5 @@
 /**
- * 扫描批次相关 TypeScript 类型定义
+ * Scan batch related TypeScript type definitions
  */
 
 export interface ScanBatch {
@@ -38,7 +38,7 @@ export interface ScanConfirmRequest {
   }>
 }
 
-// ── 差异详情类型 ──────────────────────────────────────────
+// ── Diff detail types ──────────────────────────────────────────
 
 export interface DiffPort {
   port_number: number

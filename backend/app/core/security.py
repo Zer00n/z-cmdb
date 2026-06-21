@@ -1,5 +1,5 @@
 """
-安全模块：密码哈希（argon2id）+ JWT 编解码
+Security module: password hashing (argon2id) + JWT encode/decode
 """
 import logging
 from datetime import datetime, timedelta, timezone
@@ -13,7 +13,7 @@ from app.core.exceptions import AuthenticationError
 
 logger = logging.getLogger(__name__)
 
-# argon2id 参数：m=65536(64MB), t=3, p=4（符合 PRD 9.1）
+# argon2id params: m=65536(64MB), t=3, p=4 (per PRD 9.1)
 _ph = PasswordHasher(
     memory_cost=65536,
     time_cost=3,
@@ -24,14 +24,14 @@ _ph = PasswordHasher(
 
 
 def hash_password(plain: str) -> str:
-    """对明文密码进行 argon2id 哈希"""
+    """Hash a plaintext password with argon2id"""
     return _ph.hash(plain)
 
 
 def verify_password(plain: str, hashed: str) -> bool:
     """
-    验证密码，返回 True/False。
-    不抛异常，由调用方决定后续逻辑。
+    Verify a password, return True/False.
+    Does not raise exceptions; the caller decides next steps.
     """
     try:
         return _ph.verify(hashed, plain)
@@ -43,12 +43,12 @@ def verify_password(plain: str, hashed: str) -> bool:
 
 
 def needs_rehash(hashed: str) -> bool:
-    """检查哈希是否需要升级（参数变更时）"""
+    """Check if the hash needs to be upgraded (when parameters change)"""
     return _ph.check_needs_rehash(hashed)
 
 
 def create_access_token(user_id: int, role: str) -> str:
-    """生成 access_token，有效期 JWT_ACCESS_EXPIRE_MINUTES 分钟"""
+    """Generate an access_token, valid for JWT_ACCESS_EXPIRE_MINUTES minutes"""
     expire = datetime.now(timezone.utc) + timedelta(
         minutes=settings.JWT_ACCESS_EXPIRE_MINUTES
     )
@@ -62,7 +62,7 @@ def create_access_token(user_id: int, role: str) -> str:
 
 
 def create_refresh_token(user_id: int, role: str) -> str:
-    """生成 refresh_token，有效期 JWT_REFRESH_EXPIRE_DAYS 天"""
+    """Generate a refresh_token, valid for JWT_REFRESH_EXPIRE_DAYS days"""
     expire = datetime.now(timezone.utc) + timedelta(
         days=settings.JWT_REFRESH_EXPIRE_DAYS
     )
@@ -77,17 +77,17 @@ def create_refresh_token(user_id: int, role: str) -> str:
 
 def decode_token(token: str, expected_type: str = "access") -> dict:
     """
-    解码并验证 JWT。
-    失败时抛 AuthenticationError。
+    Decode and verify a JWT.
+    Raises AuthenticationError on failure.
     """
     try:
         payload = jwt.decode(
             token, settings.jwt_secret, algorithms=[settings.JWT_ALGORITHM]
         )
     except JWTError as exc:
-        raise AuthenticationError(f"Token 无效或已过期: {exc}") from exc
+        raise AuthenticationError(f"Token invalid or expired: {exc}") from exc
 
     if payload.get("type") != expected_type:
-        raise AuthenticationError(f"Token 类型错误，期望 {expected_type}")
+        raise AuthenticationError(f"Wrong token type, expected {expected_type}")
 
     return payload

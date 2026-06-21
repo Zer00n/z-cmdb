@@ -1,9 +1,9 @@
 """
-部门管理路由
-GET    /api/departments          部门列表
-POST   /api/departments          创建部门 (super_admin)
-PUT    /api/departments/{id}     更新部门 (super_admin)
-DELETE /api/departments/{id}     删除部门 (super_admin)
+Department management routes
+GET    /api/departments          Department list
+POST   /api/departments          Create department (super_admin)
+PUT    /api/departments/{id}     Update department (super_admin)
+DELETE /api/departments/{id}     Delete department (super_admin)
 """
 from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel
@@ -32,7 +32,7 @@ def list_departments(
     _current_user: AnyUser = None,
     db: Session = Depends(get_db),
 ) -> list[dict]:
-    """部门列表"""
+    """Department list"""
     depts = cost_repo.get_departments(db)
     return [
         {"id": d.id, "name": d.name, "code": d.code}
@@ -47,7 +47,7 @@ def create_department(
     current_user: SuperAdminUser = None,
     db: Session = Depends(get_db),
 ) -> dict:
-    """创建部门"""
+    """Create department"""
     dept = cost_repo.create_department(db, name=body.name, code=body.code)
     audit_service.log_from_request(
         db, request, action_type="CREATE", user=current_user,
@@ -66,7 +66,7 @@ def update_department(
     current_user: SuperAdminUser = None,
     db: Session = Depends(get_db),
 ) -> dict:
-    """更新部门"""
+    """Update department"""
     dept = cost_repo.update_department(
         db, dept_id,
         name=body.name,
@@ -87,11 +87,11 @@ def delete_department(
     current_user: SuperAdminUser = None,
     db: Session = Depends(get_db),
 ) -> dict:
-    """删除部门"""
+    """Delete department"""
     cost_repo.delete_department(db, dept_id)
     audit_service.log_from_request(
         db, request, action_type="DELETE", user=current_user,
         target_type="department", target_id=str(dept_id),
     )
     db.commit()
-    return {"message": "部门已删除"}
+    return {"message": "Department deleted"}

@@ -1,6 +1,6 @@
 """
-扫描批次业务逻辑
-上传、解析、差异分析、确认导入
+Scan batch business logic
+Upload, parse, diff analysis, confirm import
 """
 import logging
 import uuid
@@ -32,38 +32,38 @@ def upload_and_parse(
     user_id: int,
 ) -> ScanBatch:
     """
-    上传 nmap XML 文件，解析并创建扫描批次。
-    返回 ScanBatch（status=pending）。
+    Upload an nmap XML file, parse it, and create a scan batch.
+    Returns a ScanBatch with status=pending.
     """
-    # 文件大小校验（从系统配置读取上限）
+    # File size validation (limit read from system config)
     from app.services.config_service import get_upload_max_size_mb
     max_mb = get_upload_max_size_mb(db)
     max_bytes = max_mb * 1024 * 1024
     if len(file_content) > max_bytes:
         raise FileTooLargeError(
-            f"文件大小 {len(file_content) / 1024 / 1024:.1f}MB 超过限制 {max_mb}MB"
+            f"File size {len(file_content) / 1024 / 1024:.1f}MB exceeds the {max_mb}MB limit"
         )
 
-    # 文件类型校验
+    # File type validation
     if not filename.lower().endswith(".xml"):
-        raise InvalidFileTypeError("仅支持 .xml 格式的 nmap 扫描报告")
+        raise InvalidFileTypeError("Only .xml format nmap scan reports are supported")
 
-    # 解析 XML
+    # Parse XML
     parsed = parse_nmap_xml(file_content)
 
-    # 保存文件（UUID 命名，防猜测）
+    # Save file (UUID naming to prevent guessing)
     upload_dir = Path(__file__).parent.parent.parent / "uploads"
     upload_dir.mkdir(parents=True, exist_ok=True)
     safe_name = f"{uuid.uuid4().hex}.xml"
     file_path = upload_dir / safe_name
     file_path.write_bytes(file_content)
 
-    # 创建批次记录
+    # Create batch record
     batch = ScanBatch(
         batch_name=filename,
         uploaded_by=user_id,
         uploaded_at=datetime.now(timezone.utc),
-        scan_started_at=None,  # TODO: 从 parsed 提取
+        scan_started_at=None,  # TODO: extract from parsed data
         scan_finished_at=None,
         file_path=str(file_path),
         file_size_bytes=len(file_content),
@@ -73,13 +73,13 @@ def upload_and_parse(
     db.add(batch)
     db.flush()
 
-    # 计算差异
+    # Compute diff
     diff_summary = compute_diff(db, parsed.hosts)
     batch.new_count = diff_summary.new_count
     batch.changed_count = diff_summary.changed_count
     batch.missing_count = diff_summary.missing_count
 
-    # 保存快照项
+    # Save snapshot items
     for host in parsed.hosts:
         for port in host.ports:
             item = ScanSnapshotItem(
@@ -96,7 +96,7 @@ def upload_and_parse(
             )
             db.add(item)
 
-        # 如果主机没有端口，也要记录一条
+        # If the host has no ports, still record one entry
         if not host.ports:
             item = ScanSnapshotItem(
                 scan_batch_id=batch.id,
@@ -123,7 +123,7 @@ def upload_and_parse(
 
 
 def _get_host_diff_type(host: ParsedHost, diff_summary) -> str:
-    """获取主机的差异类型"""
+    """Get the diff type for a host"""
     for r in diff_summary.new_hosts:
         if r.ip_address == host.ip_address:
             return "new"
@@ -139,14 +139,14 @@ def _get_host_diff_type(host: ParsedHost, diff_summary) -> str:
 def get_batch(db: Session, batch_id: int) -> ScanBatch:
     batch = db.get(ScanBatch, batch_id)
     if batch is None:
-        raise ScanBatchNotFoundError(f"扫描批次 {batch_id} 不存在")
+        raise ScanBatchNotFoundError(f"Scan batch {batch_id} not found")
     return batch
 
 
 def get_batch_diff(db: Session, batch_id: int):
     """
-    获取扫描批次的差异详情，返回 ScanDiffResponse。
-    基于 scan_snapshot_items 中的 diff_type 分组，并补充端口变更细节。
+    Get diff details for a scan batch, returning ScanDiffResponse.
+    Groups by diff_type from scan_snapshot_items and supplements with port change details.
     """
     from sqlalchemy import select as sa_select
 
@@ -161,12 +161,12 @@ def get_batch_diff(db: Session, batch_id: int):
 
     batch = get_batch(db, batch_id)
 
-    # 获取所有快照项
+    # Get all snapshot items
     items = list(db.scalars(
         sa_select(ScanSnapshotItem).where(ScanSnapshotItem.scan_batch_id == batch_id)
     ).all())
 
-    # 按 IP 分组
+    # Group by IP
     hosts_by_ip: dict[str, list[ScanSnapshotItem]] = {}
     for item in items:
         hosts_by_ip.setdefault(item.ip_address, []).append(item)
@@ -200,7 +200,7 @@ def get_batch_diff(db: Session, batch_id: int):
             ))
 
         elif diff_type in ("changed", "restored"):
-            # 获取当前资产端口
+            # Get current asset ports
             scan_ports = [
                 DiffPortRead(
                     port_number=item.port_number,
@@ -213,7 +213,7 @@ def get_batch_diff(db: Session, batch_id: int):
                 if item.port_number is not None
             ]
 
-            # 获取当前资产信息
+            # Get current asset info
             asset = asset_repo.get_by_ip(db, ip)
             current_ports: list[DiffPortRead] = []
             port_changes: list[DiffHostPortChange] = []
@@ -235,7 +235,7 @@ def get_batch_diff(db: Session, batch_id: int):
                     for p in existing_ports
                 ]
 
-                # 计算端口变更
+                # Compute port changes
                 existing_map = {(p.port_number, p.protocol): p for p in existing_ports}
                 scanned_map = {(p.port_number, p.protocol): p for p in scan_ports}
 
@@ -290,7 +290,7 @@ def get_batch_diff(db: Session, batch_id: int):
                 scan_ports=scan_ports,
             ))
 
-    # MISSING：查找在线资产中未出现在本次扫描的
+    # MISSING: find online assets that did not appear in this scan
     from app.schemas.asset import AssetQueryParams
     all_online_params = AssetQueryParams(page=1, page_size=100000, status="online")
     online_assets, _ = asset_repo.list_assets(db, all_online_params)
@@ -340,17 +340,17 @@ def confirm_batch(
     new_assets_data: list[dict] | None = None,
 ) -> ScanBatch:
     """
-    确认导入批次：
-    - 新发现资产入库
-    - 变更资产更新端口 + 同步应用清单
-    - MISSING 资产 missing_count + 1
-    - RESTORED 资产 missing_count 归零
+    Confirm a batch import:
+    - New discovered assets are added to the database
+    - Changed assets have their ports and app inventory updated
+    - MISSING assets get missing_count + 1
+    - RESTORED assets have missing_count reset to zero
     """
     batch = get_batch(db, batch_id)
     if batch.status != "pending":
-        raise ValidationError(f"批次状态为 {batch.status}，无法确认")
+        raise ValidationError(f"Batch status is {batch.status}, cannot confirm")
 
-    # 获取差异数据（重新解析快照项）
+    # Get diff data (re-parse snapshot items)
     from sqlalchemy import select
     from app.repositories import asset_app_repo
 
@@ -358,7 +358,7 @@ def confirm_batch(
         select(ScanSnapshotItem).where(ScanSnapshotItem.scan_batch_id == batch_id)
     ).all())
 
-    # 按 IP 分组
+    # Group by IP
     hosts_by_ip: dict[str, list[ScanSnapshotItem]] = {}
     for item in items:
         hosts_by_ip.setdefault(item.ip_address, []).append(item)
@@ -366,19 +366,19 @@ def confirm_batch(
     now = datetime.now(timezone.utc)
 
     def _sync_ports_and_apps(asset: Asset, host_items: list[ScanSnapshotItem]) -> None:
-        """将扫描快照的端口和服务信息同步写入 asset_ports 和 asset_apps。"""
+        """Sync port and service info from scan snapshot into asset_ports and asset_apps."""
         for item in host_items:
             if item.port_number is None:
                 continue
-            # 同步端口
+            # Sync port
             asset_repo.upsert_port(
                 db, asset.id,
                 item.port_number, item.protocol or "tcp",
                 item.service_name, item.service_version,
             )
-            # 同步应用：service_name 有值才写入
+            # Sync app: only write if service_name is present
             if item.service_name:
-                # 从 service_version banner 中提取版本号（取第一个空格前的词）
+                # Extract version from service_version banner (take the first word before space)
                 version: str | None = None
                 if item.service_version:
                     version = item.service_version.split()[0] if item.service_version.strip() else None
@@ -392,13 +392,13 @@ def confirm_batch(
                     protocol=item.protocol or "tcp",
                 )
 
-    # 处理各类差异
+    # Process each type of diff
     for ip, host_items in hosts_by_ip.items():
         first = host_items[0]
         diff_type = first.diff_type
 
         if diff_type == "new":
-            # 新资产：需要 new_assets_data 提供补充字段
+            # New asset: requires supplementary fields from new_assets_data
             if new_assets_data:
                 asset_data = next(
                     (d for d in new_assets_data if d.get("ip_address") == ip), None
@@ -425,7 +425,7 @@ def confirm_batch(
                 asset.last_seen_at = now
                 asset.last_scan_batch_id = batch.id
 
-    # 处理 MISSING：所有在线资产中未出现在本次扫描的
+    # Process MISSING: all online assets that did not appear in this scan
     from app.schemas.asset import AssetQueryParams
     all_online_params = AssetQueryParams(page=1, page_size=100000, status="online")
     online_assets, _ = asset_repo.list_assets(db, all_online_params)
@@ -434,7 +434,7 @@ def confirm_batch(
     for asset in online_assets:
         if asset.ip_address not in scanned_ips:
             asset.missing_count = (asset.missing_count or 0) + 1
-            # 消失保护：从系统配置读取阈值
+            # Missing protection: read threshold from system config
             from app.services.config_service import get_missing_threshold
             threshold = get_missing_threshold(db)
             if asset.missing_count >= threshold:
@@ -448,10 +448,10 @@ def confirm_batch(
 
 
 def reject_batch(db: Session, batch_id: int) -> None:
-    """拒绝并删除批次"""
+    """Reject and delete a batch"""
     batch = get_batch(db, batch_id)
     if batch.status != "pending":
-        raise ValidationError(f"批次状态为 {batch.status}，无法拒绝")
+        raise ValidationError(f"Batch status is {batch.status}, cannot reject")
     batch.status = "rejected"
     db.commit()
     logger.info("scan batch rejected", extra={"batch_id": batch.id})

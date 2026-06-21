@@ -1,10 +1,10 @@
 """
-安全报表路由
-GET /api/reports/dashboard-summary   大屏聚合数据
-GET /api/reports/port-exposure       端口暴露面
-GET /api/reports/dangerous-ports     危险端口列表
-GET /api/reports/shadow-assets       影子资产
-GET /api/reports/asset-changes       资产变化时间线
+Security report routes
+GET /api/reports/dashboard-summary   Dashboard aggregate data
+GET /api/reports/port-exposure       Port exposure surface
+GET /api/reports/dangerous-ports     Dangerous port list
+GET /api/reports/shadow-assets       Shadow assets
+GET /api/reports/asset-changes       Asset change timeline
 """
 import logging
 
@@ -22,20 +22,20 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/reports", tags=["reports"])
 
 
-# ── 大屏聚合接口 ────────────────────────────────────────────
+# ── Dashboard aggregate API ────────────────────────────────────
 
 @router.get("/dashboard-summary")
 def dashboard_summary(
-    force: bool = Query(False, description="强制刷新，跳过缓存"),
+    force: bool = Query(False, description="Force refresh, bypass cache"),
     _current_user: AnyUser = None,
     db: Session = Depends(get_db),
 ) -> dict:
-    """大屏聚合数据（单一请求返回全部面板数据）"""
+    """Dashboard aggregate data (single request returns all panel data)"""
     from app.services.dashboard_service import get_summary
     return get_summary(db, force=force)
 
 
-# ── 端口暴露面 ──────────────────────────────────────────────
+# ── Port exposure surface ──────────────────────────────────────
 
 @router.get("/port-exposure")
 def port_exposure(
@@ -43,11 +43,11 @@ def port_exposure(
     db: Session = Depends(get_db),
 ) -> dict:
     """
-    端口暴露面分析：
-    - 全网开放端口 Top 10
-    - 按网络区域分组的端口统计
+    Port exposure analysis:
+    - Top 10 open ports across all assets
+    - Port statistics grouped by network zone
     """
-    # Top 10 端口
+    # Top 10 ports
     top_ports_stmt = (
         select(AssetPort.port_number, func.count().label("count"))
         .where(AssetPort.state == "open")
@@ -60,7 +60,7 @@ def port_exposure(
         for row in db.execute(top_ports_stmt).all()
     ]
 
-    # 按区域统计
+    # Stats by zone
     zone_stats_stmt = (
         select(Asset.network_zone, func.count(AssetPort.id).label("port_count"))
         .join(AssetPort, Asset.id == AssetPort.asset_id)
@@ -82,8 +82,8 @@ def dangerous_ports(
     db: Session = Depends(get_db),
 ) -> dict:
     """
-    危险端口告警列表：
-    危险端口清单与高危区域从 system_configs 配置读取
+    Dangerous port alert list:
+    Dangerous port list and high-risk zones are read from system_configs
     """
     dangerous_ports_set = config_service.get_dangerous_ports_list(db)
     dangerous_zones_set = config_service.get_dangerous_zones(db)
@@ -132,13 +132,13 @@ def shadow_assets(
     db: Session = Depends(get_db),
 ) -> dict:
     """
-    影子资产识别：
-    - 被扫到但缺少业务系统/负责人字段的资产
-    - 长期 offline 的资产（missing_count 超过阈值）
+    Shadow asset identification:
+    - Assets detected by scan but missing business_system/owner fields
+    - Long-term offline assets (missing_count exceeds threshold)
     """
     offline_threshold = config_service.get_shadow_offline_days(db)
 
-    # 缺少关键字段的资产
+    # Assets missing key fields
     incomplete_stmt = (
         select(Asset)
         .where(Asset.source == "scan")
@@ -149,7 +149,7 @@ def shadow_assets(
     )
     incomplete = list(db.scalars(incomplete_stmt).all())
 
-    # 长期 offline（missing_count >= 阈值）
+    # Long-term offline (missing_count >= threshold)
     long_offline_stmt = (
         select(Asset)
         .where(Asset.missing_count >= offline_threshold)
@@ -160,7 +160,7 @@ def shadow_assets(
     return {
         "incomplete_assets": [
             {"id": a.id, "asset_no": a.asset_no, "ip_address": a.ip_address,
-             "hostname": a.hostname, "reason": "缺少业务系统或负责人"}
+             "hostname": a.hostname, "reason": "Missing business system or owner"}
             for a in incomplete
         ],
         "long_offline_assets": [
@@ -178,8 +178,8 @@ def asset_changes(
     db: Session = Depends(get_db),
 ) -> dict:
     """
-    资产变化时间线（简化版）：
-    返回最近的扫描快照变化记录
+    Asset change timeline (simplified):
+    Returns recent scan snapshot change records
     """
     from app.models.scan import ScanSnapshotItem
     stmt = (
@@ -212,7 +212,7 @@ def export_dangerous_ports(
     _current_user: AnyUser = None,
     db: Session = Depends(get_db),
 ) -> Response:
-    """导出危险端口报表为 CSV"""
+    """Export dangerous ports report as CSV"""
     import csv
     import io
 
@@ -221,7 +221,7 @@ def export_dangerous_ports(
     data = dangerous_ports(_current_user, db)
     output = io.StringIO()
     writer = csv.writer(output)
-    writer.writerow(["资产编号", "IP地址", "主机名", "网络区域", "端口", "协议", "服务", "严重性"])
+    writer.writerow(["AssetNo", "IPAddress", "Hostname", "NetworkZone", "Port", "Protocol", "Service", "Severity"])
     for a in data["alerts"]:
         writer.writerow([
             a["asset_no"], a["ip_address"], a["hostname"] or "",
@@ -240,7 +240,7 @@ def export_shadow_assets(
     _current_user: AnyUser = None,
     db: Session = Depends(get_db),
 ) -> Response:
-    """导出影子资产报表为 CSV"""
+    """Export shadow assets report as CSV"""
     import csv
     import io
 
@@ -249,11 +249,11 @@ def export_shadow_assets(
     data = shadow_assets(_current_user, db)
     output = io.StringIO()
     writer = csv.writer(output)
-    writer.writerow(["资产编号", "IP地址", "主机名", "原因/连续未扫到次数"])
+    writer.writerow(["AssetNo", "IPAddress", "Hostname", "Reason/ConsecutiveMisses"])
     for a in data["incomplete_assets"]:
         writer.writerow([a["asset_no"], a["ip_address"], a["hostname"] or "", a["reason"]])
     for a in data["long_offline_assets"]:
-        writer.writerow([a["asset_no"], a["ip_address"], a["hostname"] or "", f"连续未扫到 {a['missing_count']} 次"])
+        writer.writerow([a["asset_no"], a["ip_address"], a["hostname"] or "", f"Missed {a['missing_count']} consecutive scans"])
     return Response(
         content=output.getvalue().encode("utf-8-sig"),
         media_type="text/csv",

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /**
- * 成本费率设置页
- * 折旧、电力、带宽、资源单价表、分摊动因 — 全局生效
+ * Cost rates settings page
+ * Depreciation, power, bandwidth, resource price book, allocation drivers -- apply globally
  */
 import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -365,7 +365,7 @@ function handleCancel() {
         </div>
       </div>
 
-      <!-- ===== SECTION 1: 成本参数 ===== -->
+      <!-- ===== SECTION 1: Cost parameters ===== -->
       <div class="sec-card">
         <div class="sec-head">
           <div class="sec-icon sec-icon--purple">
@@ -573,7 +573,7 @@ function handleCancel() {
         </div>
       </div>
 
-      <!-- ===== SECTION 2: 资源单价表 ===== -->
+      <!-- ===== SECTION 2: Resource price book ===== -->
       <div class="sec-card">
         <div class="sec-head">
           <div class="sec-icon sec-icon--cyan">
@@ -643,7 +643,7 @@ function handleCancel() {
         </div>
       </div>
 
-      <!-- ===== SECTION 3: 分摊默认动因 ===== -->
+      <!-- ===== SECTION 3: Default allocation drivers ===== -->
       <div class="sec-card">
         <div class="sec-head">
           <div class="sec-icon sec-icon--green">
