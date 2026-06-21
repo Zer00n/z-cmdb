@@ -8,7 +8,7 @@ import { ElMessage } from 'element-plus'
 import { useI18n } from 'vue-i18n'
 import { fetchAuditLogs, exportAuditReport } from '@/api/audit'
 import type { AuditLog, AuditQueryParams } from '@/types/audit'
-import dayjs from 'dayjs'
+import { useTimeFormat } from '@/composables/useTimeFormat'
 
 const { t } = useI18n()
 const loading = ref(false)
@@ -61,10 +61,11 @@ async function handleExport() {
 }
 
 function formatTime(t: string): string {
-  return dayjs(t).format('YYYY-MM-DD HH:mm:ss')
+  return useTimeFormat().formatTime(t, 'YYYY-MM-DD HH:mm:ss')
 }
 
 function actionLabel(action: string): string {
+  if (!action) return action || ''
   const key = `audit.actions.${action}`
   return t(key) !== key ? t(key) : action
 }
@@ -83,6 +84,7 @@ function actionClass(action: string): string {
 }
 
 function roleLabel(r: string): string {
+  if (!r) return r || ''
   const key = `audit.roles.${r}`
   return t(key) !== key ? t(key) : r
 }

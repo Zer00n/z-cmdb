@@ -13,6 +13,7 @@ import settings from './settings'
 import help from './help'
 import components from './components'
 import constants from './constants'
+import cost from './cost'
 
 export default {
   common,
@@ -30,4 +31,5 @@ export default {
   help,
   components,
   constants,
+  cost,
 }

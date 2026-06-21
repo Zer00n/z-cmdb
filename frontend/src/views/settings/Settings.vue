@@ -4,12 +4,16 @@
  * 复用 AssetForm（Design 06）的分段卡片布局
  */
 import { ref, computed, onMounted } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { fetchConfig, updateConfig } from '@/api/config'
+import { useFeatureStore } from '@/stores/feature'
+import { useAuthStore } from '@/stores/auth'
 import { useI18n } from 'vue-i18n'
 import { setLocale } from '@/i18n'
 
 const { t, locale } = useI18n()
+const featureStore = useFeatureStore()
+const authStore = useAuthStore()
 
 interface ConfigItem {
   value: string
@@ -103,6 +107,30 @@ async function handleSave() {
   }
 }
 
+const costToggling = ref(false)
+
+async function handleCostToggle(val: boolean) {
+  if (!val) {
+    try {
+      await ElMessageBox.confirm(
+        t('settings.costCard.confirmOff'),
+        t('settings.costCard.confirmTitle'),
+        { confirmButtonText: t('settings.costCard.confirmYes'), cancelButtonText: t('settings.costCard.confirmCancel'), type: 'warning' },
+      )
+    } catch {
+      return // user cancelled
+    }
+  }
+  costToggling.value = true
+  try {
+    await updateConfig({ feature_cost_accounting_enabled: val ? 'true' : 'false' })
+    await featureStore.fetchFeatureFlags()
+    ElMessage.success(val ? t('settings.costCard.enabled') : t('settings.costCard.disabled'))
+  } finally {
+    costToggling.value = false
+  }
+}
+
 onMounted(loadConfig)
 </script>
 
@@ -125,6 +153,59 @@ onMounted(loadConfig)
             {{ t('settings.save') }}
           </el-button>
         </div>
+      </div>
+
+      <!-- 功能开关：资产成本核算 -->
+      <div
+        class="feature-card"
+        :class="{ 'feature-card--enabled': featureStore.costAccounting }"
+      >
+        <div class="feature-card__body">
+          <div class="feature-card__left">
+            <div class="feature-card__icon" :class="{ 'feature-card__icon--enabled': featureStore.costAccounting }">
+              <el-icon size="22"><TrendCharts /></el-icon>
+            </div>
+            <div class="feature-card__info">
+              <div class="feature-card__title-row">
+                <span class="feature-card__title">{{ t('settings.costCard.title') }}</span>
+                <span
+                  class="feature-card__badge"
+                  :class="featureStore.costAccounting ? 'feature-card__badge--on' : 'feature-card__badge--off'"
+                >
+                  {{ featureStore.costAccounting ? t('settings.costCard.badgeOn') : t('settings.costCard.badgeOff') }}
+                </span>
+              </div>
+              <p class="feature-card__desc">{{ t('settings.costCard.desc') }}</p>
+              <div class="feature-card__meta">
+                <span class="feature-card__dep" v-for="dep in ['costOverview', 'deptBilling', 'costRates', 'assetCost']" :key="dep">
+                  <span class="feature-card__dot" :class="featureStore.costAccounting ? 'feature-card__dot--on' : ''"></span>
+                  {{ t(`settings.costCard.dep.${dep}`) }}
+                </span>
+              </div>
+            </div>
+          </div>
+          <div class="feature-card__right">
+            <el-switch
+              :model-value="featureStore.costAccounting"
+              :disabled="!authStore.isSuperAdmin || costToggling"
+              :loading="costToggling"
+              @update:model-value="handleCostToggle"
+            />
+          </div>
+        </div>
+        <transition name="fade">
+          <div v-if="featureStore.costAccounting" class="feature-card__links">
+            <router-link to="/cost/overview" class="feature-card__link">
+              <el-icon><DataLine /></el-icon> {{ t('settings.costCard.links.overview') }}
+            </router-link>
+            <router-link to="/cost/billing" class="feature-card__link">
+              <el-icon><OfficeBuilding /></el-icon> {{ t('settings.costCard.links.billing') }}
+            </router-link>
+            <router-link to="/cost/rates" class="feature-card__link">
+              <el-icon><PriceTag /></el-icon> {{ t('settings.costCard.links.rates') }}
+            </router-link>
+          </div>
+        </transition>
       </div>
 
       <el-form label-width="160px" label-position="right">
@@ -348,5 +429,151 @@ onMounted(loadConfig)
 .hint-card b {
   font-weight: 600;
   color: var(--color-primary-700);
+}
+
+/* ── 功能开关 Hero Card ── */
+.feature-card {
+  background: var(--surface-base);
+  border: 1px solid var(--neutral-200);
+  border-radius: var(--radius-lg);
+  margin-bottom: var(--space-4);
+  box-shadow: var(--shadow-subtle);
+  transition: border-color var(--dur-base) var(--ease-out), box-shadow var(--dur-base) var(--ease-out);
+  overflow: hidden;
+}
+.feature-card--enabled {
+  border-color: var(--color-primary-200);
+  box-shadow: 0 0 0 1px var(--color-primary-100), var(--shadow-medium);
+}
+.feature-card__body {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-4) var(--space-6);
+  border-bottom: var(--border-base);
+  background: linear-gradient(180deg, rgba(37, 99, 235, 0.02) 0%, transparent 100%);
+}
+.feature-card__left {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-4);
+  min-width: 0;
+}
+.feature-card__icon {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-md);
+  background: var(--neutral-100);
+  color: var(--neutral-500);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background var(--dur-base) var(--ease-out), color var(--dur-base) var(--ease-out);
+}
+.feature-card__icon--enabled {
+  background: rgba(37, 99, 235, 0.1);
+  color: var(--color-primary-600);
+}
+.feature-card__info {
+  min-width: 0;
+}
+.feature-card__title-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-1);
+}
+.feature-card__title {
+  font-size: var(--fs-h4);
+  font-weight: 600;
+  color: var(--neutral-900);
+}
+.feature-card__badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 1px 8px;
+  border-radius: 10px;
+  line-height: 1.6;
+}
+.feature-card__badge--on {
+  background: rgba(16, 185, 129, 0.12);
+  color: #059669;
+}
+.feature-card__badge--off {
+  background: var(--neutral-100);
+  color: var(--neutral-500);
+}
+.feature-card__desc {
+  font-size: var(--fs-caption);
+  color: var(--neutral-500);
+  margin: 0;
+  max-width: 480px;
+  line-height: 1.5;
+}
+.feature-card__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-top: var(--space-2);
+}
+.feature-card__dep {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: 11px;
+  color: var(--neutral-500);
+}
+.feature-card__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--neutral-300);
+  transition: background var(--dur-base) var(--ease-out);
+}
+.feature-card__dot--on {
+  background: #10b981;
+}
+.feature-card__right {
+  flex-shrink: 0;
+  margin-left: var(--space-4);
+}
+
+/* 快捷链接 */
+.feature-card__links {
+  display: flex;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-6) var(--space-6);
+  padding-left: calc(var(--space-6) + 44px + var(--space-4));
+}
+.feature-card__link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-primary-600);
+  text-decoration: none;
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-md);
+  background: rgba(37, 99, 235, 0.04);
+  transition: background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+}
+.feature-card__link:hover {
+  background: rgba(37, 99, 235, 0.1);
+  color: var(--color-primary-700);
+}
+
+/* fade transition */
+.fade-enter-active, .fade-leave-active {
+  transition: opacity 0.25s ease, max-height 0.25s ease;
+}
+.fade-enter-from, .fade-leave-to {
+  opacity: 0;
+  max-height: 0;
+}
+.fade-enter-to, .fade-leave-from {
+  opacity: 1;
+  max-height: 60px;
 }
 </style>

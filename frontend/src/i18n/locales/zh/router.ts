@@ -12,4 +12,7 @@ export default {
   users: '用户管理',
   settings: '系统配置',
   help: '帮助',
+  costOverview: '成本总览',
+  deptBilling: '部门账单',
+  costRates: '成本费率设置',
 }

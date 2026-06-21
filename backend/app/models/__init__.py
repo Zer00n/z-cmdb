@@ -8,6 +8,9 @@ from app.models.config import SystemConfig
 from app.models.llm_log import LlmCallLog
 from app.models.scan import ScanBatch, ScanSnapshotItem
 from app.models.topology import Topology
+from app.models.cost import (
+    Department, AssetCostItem, AssetRelation, AssetDeptAssignment, CostRate,
+)
 
 __all__ = [
     "User",
@@ -20,4 +23,9 @@ __all__ = [
     "ScanBatch",
     "ScanSnapshotItem",
     "Topology",
+    "Department",
+    "AssetCostItem",
+    "AssetRelation",
+    "AssetDeptAssignment",
+    "CostRate",
 ]

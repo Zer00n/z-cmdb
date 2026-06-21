@@ -21,6 +21,13 @@ from app.routers.config import router as config_router
 from app.routers.topology import router as topology_router
 from app.routers.asset_apps import router as asset_apps_router
 from app.routers.dashboard import router as dashboard_router
+from app.routers.features import router as features_router
+from app.routers.departments import router as departments_router
+from app.routers.cost import router as cost_router
+from app.routers.billing import router as billing_router
+from app.routers.cost_rates import router as cost_rates_router
+from app.routers.asset_relations import router as asset_relations_router
+from app.routers.asset_cost_details import router as asset_cost_details_router
 
 # 初始化日志（必须在其他模块 import 之前）
 setup_logging()
@@ -112,6 +119,13 @@ app.include_router(config_router)
 app.include_router(topology_router)
 app.include_router(asset_apps_router)
 app.include_router(dashboard_router)
+app.include_router(features_router)
+app.include_router(departments_router)
+app.include_router(cost_router)
+app.include_router(billing_router)
+app.include_router(cost_rates_router)
+app.include_router(asset_relations_router)
+app.include_router(asset_cost_details_router)
 
 
 # ── 启动事件 ─────────────────────────────────────────────────

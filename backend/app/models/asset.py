@@ -4,7 +4,7 @@
 from datetime import datetime
 
 from sqlalchemy import (
-    CheckConstraint, DateTime, ForeignKey, Index,
+    CheckConstraint, DateTime, Float, ForeignKey, Index,
     Integer, String, Text, UniqueConstraint,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -49,6 +49,20 @@ class Asset(Base):
 
     # 备注
     remark: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    # V0.4 成本核算字段（可选，功能关闭时不影响现有逻辑）
+    purchase_price: Mapped[float | None] = mapped_column(Float, nullable=True)
+    depreciation_months: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    residual_rate: Mapped[float | None] = mapped_column(Float, nullable=True)
+    depreciation_method: Mapped[str | None] = mapped_column(String(20), nullable=True, default="straight_line")
+    end_of_life_strategy: Mapped[str | None] = mapped_column(String(20), nullable=True, default="zero")
+    revalue_amount: Mapped[float | None] = mapped_column(Float, nullable=True)
+    revalue_months: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    revalue_effective_date: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    billing_mode: Mapped[str | None] = mapped_column(String(20), nullable=True, default="cost")
+    responsible_dept_id: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("departments.id", ondelete="SET NULL"), nullable=True
+    )
 
     # 状态与来源
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="online")

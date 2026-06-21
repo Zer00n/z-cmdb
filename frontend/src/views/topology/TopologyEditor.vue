@@ -15,8 +15,10 @@ import {
   rollbackTopology,
 } from '@/api/topology'
 import type { TopologyDetail, TopologyVersion } from '@/types/topology'
+import { useTimeFormat } from '@/composables/useTimeFormat'
 
 const { t } = useI18n()
+const { now, formatTime, nowFormatted } = useTimeFormat()
 
 const loading = ref(false)
 const generating = ref(false)
@@ -37,11 +39,8 @@ const rightTab = ref<'versions' | 'logs'>('versions')
 const genLogs = ref<LogEntry[]>([])
 
 function addLog(level: LogEntry['level'], message: string) {
-  const now = new Date()
-  const hh = String(now.getHours()).padStart(2, '0')
-  const mm = String(now.getMinutes()).padStart(2, '0')
-  const ss = String(now.getSeconds()).padStart(2, '0')
-  genLogs.value.push({ time: `${hh}:${mm}:${ss}`, level, message })
+  const n = now()
+  genLogs.value.push({ time: n.format('HH:mm:ss'), level, message })
 }
 
 const llmDetail = ref<{
@@ -186,7 +185,7 @@ async function handleSave() {
     return
   }
   await saveTopology({
-    title: t('topology.saveTopologyTitle', { date: new Date().toLocaleDateString() }),
+    title: t('topology.saveTopologyTitle', { date: nowFormatted('YYYY-MM-DD') }),
     drawio_xml: drawioXml.value,
   })
   ElMessage.success(t('topology.saveSuccess'))
@@ -224,7 +223,7 @@ onBeforeUnmount(() => {
           <span v-if="currentTopology" class="ui-page-count">{{ currentTopology.version_no }}</span>
         </h1>
         <p class="ui-page-subtitle" v-if="currentTopology">
-          {{ t('topology.versionPrefix', { date: currentTopology.created_at, count: versions.length }) }}
+          {{ t('topology.versionPrefix', { date: formatTime(currentTopology.created_at, 'YYYY-MM-DD HH:mm'), count: versions.length }) }}
         </p>
         <p class="ui-page-subtitle" v-else>{{ t('topology.noTopology') }}</p>
       </div>
@@ -302,7 +301,7 @@ onBeforeUnmount(() => {
                   </span>
                 </div>
                 <span class="v-title" v-if="v.title">{{ v.title }}</span>
-                <span class="v-time">{{ v.created_at }}</span>
+                <span class="v-time">{{ formatTime(v.created_at, 'MM-DD HH:mm') }}</span>
               </div>
               <div class="v-actions">
                 <el-button

@@ -12,4 +12,7 @@ export default {
   users: 'User Management',
   settings: 'System Config',
   help: 'Help',
+  costOverview: 'Cost Overview',
+  deptBilling: 'Department Billing',
+  costRates: 'Cost Rate Settings',
 }

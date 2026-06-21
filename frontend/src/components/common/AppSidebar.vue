@@ -7,6 +7,7 @@ import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
+import { useFeatureStore } from '@/stores/feature'
 import type { UserRole } from '@/types/auth'
 
 interface NavItem {
@@ -14,12 +15,14 @@ interface NavItem {
   route: string
   icon: string
   requiredRoles?: UserRole[]
+  requiredFeature?: string
   badge?: number
 }
 
 interface NavGroup {
   title: string
   requiredRoles?: UserRole[]
+  requiredFeature?: string
   items: NavItem[]
 }
 
@@ -29,6 +32,7 @@ const props = defineProps<{
 
 const route = useRoute()
 const authStore = useAuthStore()
+const featureStore = useFeatureStore()
 const { t } = useI18n()
 
 const navGroups = computed<NavGroup[]>(() => [
@@ -62,6 +66,15 @@ const navGroups = computed<NavGroup[]>(() => [
       { title: t('layout.sidebar.securityReports'), route: '/reports', icon: 'DataAnalysis' },
     ],
   },
+  // V0.4 成本核算（受 featureStore 控制）
+  {
+    title: t('layout.sidebar.costAccounting'),
+    requiredFeature: 'costAccounting',
+    items: [
+      { title: t('layout.sidebar.costOverview'), route: '/cost/overview', icon: 'TrendCharts', requiredFeature: 'costAccounting' },
+      { title: t('layout.sidebar.deptBilling'), route: '/cost/billing', icon: 'Tickets', requiredFeature: 'costAccounting' },
+    ],
+  },
   {
     title: t('layout.sidebar.audit'),
     requiredRoles: ['super_admin', 'auditor'],
@@ -75,6 +88,7 @@ const navGroups = computed<NavGroup[]>(() => [
     items: [
       { title: t('layout.sidebar.userManagement'), route: '/users', icon: 'User', requiredRoles: ['super_admin'] },
       { title: t('layout.sidebar.systemConfig'), route: '/settings', icon: 'Setting', requiredRoles: ['super_admin'] },
+      { title: t('layout.sidebar.costRates'), route: '/cost/rates', icon: 'PriceTag', requiredRoles: ['super_admin'], requiredFeature: 'costAccounting' },
     ],
   },
 ])
@@ -84,16 +98,28 @@ const visibleGroups = computed(() => {
   if (!role) return []
 
   return navGroups.value
-    .filter((g) => !g.requiredRoles || g.requiredRoles.includes(role))
+    .filter((g) => {
+      if (g.requiredRoles && !g.requiredRoles.includes(role)) return false
+      if (g.requiredFeature === 'costAccounting' && !featureStore.costAccounting) return false
+      return true
+    })
     .map((g) => ({
       ...g,
-      items: g.items.filter((item) => !item.requiredRoles || item.requiredRoles.includes(role)),
+      items: g.items.filter((item) => {
+        if (item.requiredRoles && !item.requiredRoles.includes(role)) return false
+        if (item.requiredFeature === 'costAccounting' && !featureStore.costAccounting) return false
+        return true
+      }),
     }))
     .filter((g) => g.items.length > 0)
 })
 
 function isActive(itemRoute: string) {
-  return route.path === itemRoute || route.path.startsWith(itemRoute + '/')
+  const p = route.path
+  if (p === itemRoute) return true
+  // Only match child routes, not sibling routes that share a prefix
+  // e.g. /cost/billing should NOT activate /cost, but /assets/123 should activate /assets
+  return p.startsWith(itemRoute + '/')
 }
 </script>
 

@@ -24,6 +24,65 @@ Z-CMDB Lite is designed for IT operations and security engineers in **small-to-m
 
 ---
 
+## V0.4 Highlights
+
+V0.4 adds an **opt-in Asset Cost Accounting** module to Z-CMDB Lite, covering hardware depreciation, department billing, and cost governance. The feature is off by default — when disabled, the system behaves exactly as V0.3.
+
+![Cost Overview](img/v04-cost-overview.png)
+
+### Cost Overview (`/cost/overview`)
+
+- 6 KPI cards (Monthly Total, Annualized, CapEx/OpEx Ratio, New Cost Assets, Missing Data)
+- 4 charts: Department Ranking, Asset Type Distribution, Cloud vs On-Prem, Cost Trend
+- Cost Governance list (Shadow Cost / Low Utilization / Depreciation Expiring / Missing Data)
+- Period selector with recent 12 months, CSV export
+
+| KPI Strip & Charts | Governance List |
+|--------------------|-----------------|
+| ![Cost KPI](img/v04-cost-kpi.png) | ![Governance](img/v04-cost-governance.png) |
+
+### Department Billing (`/cost/billing`)
+
+- Two-column layout: searchable department list + billing content
+- Period summary (Day/Month/Year/Custom) with 3 KPIs
+- Resource detail table + Cost Type donut + Resource Ranking bar chart
+- CSV export with full billing detail
+
+| Summary | Detail & Charts |
+|---------|-----------------|
+| ![Billing Summary](img/v04-billing-summary.png) | ![Billing Detail](img/v04-billing-detail.png) |
+
+### Asset Cost Panel (Asset Detail → Cost Breakdown tab)
+
+- 3 KPI cards: Full-Loaded Monthly Cost, Net Value, Remaining Depreciation Months
+- Cost distribution donut + detail list with progress bars
+- Depreciation info section with progress bar
+- Expiry warning banner with strategy selection
+
+### Cost Rate Settings (`/cost/rates`)
+
+- Depreciation table (6 asset types × years/residual/method/strategy)
+- Power, bandwidth, datacenter parameters
+- Resource Price Book with enable toggles
+- Allocation drivers per asset type
+- Currency selector (CNY/USD) — all displays switch automatically
+
+### System Config — Feature Toggle
+
+- Hero-style toggle card to enable/disable the entire cost module
+- Super_admin only, confirmation dialog when disabling
+- Quick-access links when enabled
+
+### Other Changes
+
+- **Asset list sorting**: all 10 columns support click-to-sort
+- **Timezone-aware display**: timestamps switch between Asia/Shanghai and America/New_York by UI language
+- **Currency-aware display**: amounts switch between ¥/CNY and $/USD by cost rate settings
+- **GoatCounter analytics**: privacy-friendly page visit tracking
+- **Version bumped to V0.4.0**
+
+---
+
 ## V0.3 Highlights
 
 V0.3 brings **full internationalization (i18n)** to Z-CMDB Lite, adding English/Chinese bilingual support across the entire frontend. The default language is now English, with one-click switching available from any page via the topbar toggle or System Config. The README documentation is also split into separate English and Chinese editions.
@@ -383,6 +442,38 @@ If your use case involves concurrent writes from multiple users (>50 people), hi
 ---
 
 ## Changelog
+
+### V0.4 (2026-06-21)
+
+**Asset Cost Accounting (opt-in)**
+- Added `feature_cost_accounting_enabled` feature flag in System Config (default OFF, super_admin only)
+- Cost Overview dashboard (`/cost/overview`): 6 KPIs, 4 ECharts (dept ranking, type donut, cloud vs local, trend), governance list with tabs
+- Department Billing (`/cost/billing`): searchable dept list, period selector (day/month/year), resource detail table, cost type donut + resource ranking bar, CSV export
+- Asset Detail → Cost Breakdown tab: 3 KPIs (full-loaded monthly, net value, remaining months), cost distribution donut, depreciation progress bar, expiry warning
+- Cost Rate Settings (`/cost/rates`): depreciation params per asset type, power/bandwidth/datacenter params, resource Price Book (vCPU/mem/storage/bandwidth/IP), allocation drivers, currency selector (CNY/USD)
+- Asset Form → Section 04 cost fields (purchase price, depreciation months, residual rate, method, strategy, billing mode, responsible department)
+- 5 new database tables: departments, asset_cost_items, asset_relations, asset_dept_assignments, cost_rates
+- Asset table extended with 10 cost fields (purchase_price, depreciation_months, residual_rate, etc.)
+- Pure computation engine: straight-line depreciation, revalue strategy, shared cost allocation (by driver/even split), conservation check
+- All cost APIs guarded by centralized `require_cost_feature` dependency; feature off → 403
+
+**Asset List Sorting**
+- All 10 columns (asset_no, IP, hostname, type, zone, business system, OS, importance, status, owner) now support click-to-sort ascending/descending via Element Plus `sortable`
+
+**Timezone & Currency**
+- All timestamps switch timezone by UI language: zh → Asia/Shanghai (UTC+8), en → America/New_York
+- Cost amounts switch currency symbol by rate settings: CNY → ¥, USD → $
+- New `useTimeFormat` and `useCostCurrency` composables centralize all display logic
+
+**i18n**
+- Added `cost.ts` locale module (en + zh) with 200+ keys covering all cost pages, forms, charts, CSV exports
+- Fixed `[intlify] Not found` warnings: array values use `tm()`, null-safe guards on all label functions
+- Fixed `el-pagination` `small` prop deprecation → `size="small"`
+
+**Analytics**
+- Integrated GoatCounter page visit tracking (privacy-friendly, async)
+- `allow_local: true` enables localhost/dev tracking
+- Fallback script injection in Login.vue in case index.html script is removed
 
 ### V0.3 (2026-06-20)
 

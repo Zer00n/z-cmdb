@@ -10,13 +10,16 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { fetchAsset, decommissionAsset, updateAsset } from '@/api/asset'
 import type { Asset } from '@/types/asset'
 import AppServiceTable from '@/components/asset/AppServiceTable.vue'
+import AssetCostPanel from '@/views/cost/AssetCostPanel.vue'
 import { useTranslatedLabels } from '@/composables/useTranslatedLabels'
-import dayjs from 'dayjs'
+import { useFeatureStore } from '@/stores/feature'
+import { useTimeFormat } from '@/composables/useTimeFormat'
 
 const route = useRoute()
 const router = useRouter()
 const { t } = useI18n()
 const { zoneLabel, typeLabel, importanceLabel, statusLabel } = useTranslatedLabels()
+const featureStore = useFeatureStore()
 
 const loading = ref(true)
 const asset = ref<Asset | null>(null)
@@ -59,8 +62,7 @@ async function handleRestore() {
 }
 
 function formatTime(time: string | null): string {
-  if (!time) return '-'
-  return dayjs(time).format('YYYY-MM-DD HH:mm')
+  return useTimeFormat().formatTime(time)
 }
 
 function zoneClass(zone: string): string {
@@ -225,6 +227,15 @@ onMounted(loadAsset)
                 @ports-changed="loadAsset"
               />
             </div>
+          </el-tab-pane>
+
+          <!-- V0.4 成本构成 Tab（受 featureStore 控制） -->
+          <el-tab-pane
+            v-if="featureStore.costAccounting"
+            :label="t('cost.assetCost.tabTitle')"
+            name="cost"
+          >
+            <AssetCostPanel :asset-id="assetId" />
           </el-tab-pane>
         </el-tabs>
       </div>

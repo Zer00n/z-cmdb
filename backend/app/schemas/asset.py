@@ -53,6 +53,16 @@ class AssetCreate(BaseModel):
     warranty_expiry: str | None = Field(None, max_length=20)
     remark: str | None = None
     source: AssetSource = "manual"
+    # V0.4 cost fields
+    purchase_price: float | None = None
+    depreciation_months: int | None = None
+    residual_rate: float | None = None
+    depreciation_method: str | None = None
+    end_of_life_strategy: str | None = None
+    revalue_amount: float | None = None
+    revalue_months: int | None = None
+    billing_mode: str | None = None
+    responsible_dept_id: int | None = None
 
     @field_validator("ip_address")
     @classmethod
@@ -84,6 +94,16 @@ class AssetUpdate(BaseModel):
     warranty_expiry: str | None = Field(None, max_length=20)
     remark: str | None = None
     status: AssetStatus | None = None
+    # V0.4 cost fields
+    purchase_price: float | None = None
+    depreciation_months: int | None = None
+    residual_rate: float | None = None
+    depreciation_method: str | None = None
+    end_of_life_strategy: str | None = None
+    revalue_amount: float | None = None
+    revalue_months: int | None = None
+    billing_mode: str | None = None
+    responsible_dept_id: int | None = None
 
     @field_validator("ip_address")
     @classmethod
@@ -130,6 +150,17 @@ class AssetRead(BaseModel):
     created_at: datetime
     updated_at: datetime
     ports: list[AssetPortRead] = []
+    # V0.4 cost fields
+    purchase_price: float | None = None
+    depreciation_months: int | None = None
+    residual_rate: float | None = None
+    depreciation_method: str | None = None
+    end_of_life_strategy: str | None = None
+    revalue_amount: float | None = None
+    revalue_months: int | None = None
+    revalue_effective_date: str | None = None
+    billing_mode: str | None = None
+    responsible_dept_id: int | None = None
 
 
 class AssetListItem(BaseModel):

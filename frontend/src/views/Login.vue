@@ -3,7 +3,7 @@
  * 登录页
  * 2026 UI Redesign：双栏（左侧产品介绍 + 右侧登录卡片），保持原有逻辑
  */
-import { ref, reactive, computed } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
 import { useI18n } from 'vue-i18n'
@@ -17,6 +17,18 @@ const authStore = useAuthStore()
 
 const formRef = ref<FormInstance>()
 const loading = ref(false)
+
+// Fallback GoatCounter: load if not already present in index.html
+onMounted(() => {
+  if (!document.querySelector('[data-goatcounter]')) {
+    ;(window as any).goatcounter = { allow_local: true }
+    const s = document.createElement('script')
+    s.dataset.goatcounter = 'https://alex57xp32.goatcounter.com/count'
+    s.async = true
+    s.src = '//gc.zgo.at/count.js'
+    document.head.appendChild(s)
+  }
+})
 
 const form = reactive({
   username: '',
@@ -66,7 +78,7 @@ const features = computed(() => [
         </span>
         <span class="brand-name">Z-CMDB <em>Lite</em></span>
       </div>
-      <span class="top-version">v0.3.0</span>
+      <span class="top-version">v0.4.0</span>
     </header>
 
     <!-- 主体：左侧介绍 + 右侧登录卡 -->

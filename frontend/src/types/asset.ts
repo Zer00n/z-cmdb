@@ -47,6 +47,17 @@ export interface Asset {
   created_at: string
   updated_at: string
   ports: AssetPort[]
+  // V0.4 cost fields
+  purchase_price?: number | null
+  depreciation_months?: number | null
+  residual_rate?: number | null
+  depreciation_method?: string | null
+  end_of_life_strategy?: string | null
+  revalue_amount?: number | null
+  revalue_months?: number | null
+  revalue_effective_date?: string | null
+  billing_mode?: string | null
+  responsible_dept_id?: number | null
 }
 
 export interface AssetListItem {
@@ -97,6 +108,16 @@ export interface AssetCreateRequest {
   warranty_expiry?: string | null
   remark?: string | null
   source?: AssetSource
+  // V0.4 cost fields
+  purchase_price?: number | null
+  depreciation_months?: number | null
+  residual_rate?: number | null
+  depreciation_method?: string | null
+  end_of_life_strategy?: string | null
+  revalue_amount?: number | null
+  revalue_months?: number | null
+  billing_mode?: string | null
+  responsible_dept_id?: number | null
 }
 
 export interface AssetUpdateRequest {
@@ -117,6 +138,16 @@ export interface AssetUpdateRequest {
   warranty_expiry?: string | null
   remark?: string | null
   status?: AssetStatus
+  // V0.4 cost fields
+  purchase_price?: number | null
+  depreciation_months?: number | null
+  residual_rate?: number | null
+  depreciation_method?: string | null
+  end_of_life_strategy?: string | null
+  revalue_amount?: number | null
+  revalue_months?: number | null
+  billing_mode?: string | null
+  responsible_dept_id?: number | null
 }
 
 export interface AssetQueryParams {

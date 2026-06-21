@@ -268,31 +268,31 @@ onMounted(loadData)
         :row-style="{ cursor: 'pointer' }"
         @row-click="(row: AssetListItem) => goDetail(row.id)"
       >
-        <el-table-column prop="asset_no" :label="t('asset.list.columns.assetNo')" width="160">
+        <el-table-column prop="asset_no" :label="t('asset.list.columns.assetNo')" width="160" sortable>
           <template #default="{ row }">
             <span class="ui-id-link">{{ row.asset_no }}</span>
           </template>
         </el-table-column>
 
-        <el-table-column prop="ip_address" :label="t('asset.list.columns.ip')" width="140">
+        <el-table-column prop="ip_address" :label="t('asset.list.columns.ip')" width="140" sortable>
           <template #default="{ row }">
             <span class="ui-mono">{{ row.ip_address }}</span>
           </template>
         </el-table-column>
 
-        <el-table-column prop="hostname" :label="t('asset.list.columns.hostname')" width="180" show-overflow-tooltip>
+        <el-table-column prop="hostname" :label="t('asset.list.columns.hostname')" width="180" show-overflow-tooltip sortable>
           <template #default="{ row }">
             <span style="color: var(--neutral-700)">{{ row.hostname || '-' }}</span>
           </template>
         </el-table-column>
 
-        <el-table-column prop="asset_type" :label="t('asset.list.columns.type')" width="110">
+        <el-table-column prop="asset_type" :label="t('asset.list.columns.type')" width="110" sortable>
           <template #default="{ row }">
             <el-tag size="small" effect="plain">{{ typeLabel(row.asset_type) }}</el-tag>
           </template>
         </el-table-column>
 
-        <el-table-column prop="network_zone" :label="t('asset.list.columns.zone')" width="110">
+        <el-table-column prop="network_zone" :label="t('asset.list.columns.zone')" width="110" sortable>
           <template #default="{ row }">
             <span class="ui-zone" :class="zoneClass(row.network_zone)">
               {{ zoneLabel(row.network_zone) }}
@@ -300,27 +300,27 @@ onMounted(loadData)
           </template>
         </el-table-column>
 
-        <el-table-column prop="business_system" :label="t('asset.list.columns.businessSystem')" width="140" show-overflow-tooltip>
+        <el-table-column prop="business_system" :label="t('asset.list.columns.businessSystem')" width="140" show-overflow-tooltip sortable>
           <template #default="{ row }">
             <span v-if="row.business_system" class="ui-mono" style="color: var(--neutral-700)">{{ row.business_system }}</span>
             <span v-else class="ui-mono-muted" style="font-size: 12px">-</span>
           </template>
         </el-table-column>
 
-        <el-table-column prop="os_info" :label="t('asset.list.columns.os')" width="160" show-overflow-tooltip>
+        <el-table-column prop="os_info" :label="t('asset.list.columns.os')" width="160" show-overflow-tooltip sortable>
           <template #default="{ row }">
             <span v-if="row.os_info" style="color: var(--neutral-700)">{{ row.os_info }}</span>
             <span v-else class="ui-mono-muted" style="font-size: 12px">{{ t('asset.list.osUnidentified') }}</span>
           </template>
         </el-table-column>
 
-        <el-table-column prop="importance" :label="t('asset.list.columns.importance')" width="100">
+        <el-table-column prop="importance" :label="t('asset.list.columns.importance')" width="100" sortable>
           <template #default="{ row }">
             <span class="ui-imp" :class="'is-' + row.importance">{{ importanceLabel(row.importance) }}</span>
           </template>
         </el-table-column>
 
-        <el-table-column prop="status" :label="t('asset.list.columns.status')" width="110">
+        <el-table-column prop="status" :label="t('asset.list.columns.status')" width="110" sortable>
           <template #default="{ row }">
             <span class="ui-status" :class="'is-' + row.status">
               {{ statusLabel(row.status) }}
@@ -328,7 +328,7 @@ onMounted(loadData)
           </template>
         </el-table-column>
 
-        <el-table-column prop="owner" :label="t('asset.list.columns.owner')" width="100" />
+        <el-table-column prop="owner" :label="t('asset.list.columns.owner')" width="100" sortable />
 
         <el-table-column :label="t('asset.list.columns.actions')" width="160" fixed="right">
           <template #default="{ row }">

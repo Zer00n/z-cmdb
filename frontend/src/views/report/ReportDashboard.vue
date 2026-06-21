@@ -33,11 +33,11 @@ watch(dpFilter, () => { dpPage.value = 1 }, { deep: true })
 
 const ZONE_OPTIONS = computed(() => [
   { label: t('report.filters.allZones'), value: '' },
-  { label: t('report.zones.intranet'), value: 'intranet' },
-  { label: t('report.zones.dmz'), value: 'dmz' },
-  { label: t('report.zones.office'), value: 'office' },
-  { label: t('report.zones.management'), value: 'management' },
-  { label: t('report.zones.other'), value: 'other' },
+  { label: t('constants.zones.intranet'), value: 'intranet' },
+  { label: 'DMZ', value: 'dmz' },
+  { label: t('constants.zones.office'), value: 'office' },
+  { label: t('constants.zones.management'), value: 'management' },
+  { label: t('constants.zones.other'), value: 'other' },
 ])
 
 const SEVERITY_OPTIONS = computed(() => [
@@ -91,7 +91,8 @@ async function loadData() {
 }
 
 function zoneLabel(zone: string): string {
-  const key = `report.zones.${zone}`
+  if (!zone) return zone || ''
+  const key = `constants.zones.${zone}`
   return t(key) !== key ? t(key) : zone
 }
 
@@ -102,6 +103,13 @@ function zoneClass(zone: string): string {
     office: 'zone-office',
     management: 'zone-mgmt',
     other: 'zone-other',
+    aliyun: 'zone-cloud',
+    tencent: 'zone-cloud',
+    huawei: 'zone-cloud',
+    aws: 'zone-cloud',
+    azure: 'zone-cloud',
+    gcp: 'zone-cloud',
+    other_cloud: 'zone-cloud',
   }
   return map[zone] || 'zone-other'
 }
@@ -382,7 +390,7 @@ onMounted(loadData)
           :page-sizes="[20, 50, 100]"
           layout="total, sizes, prev, pager, next, jumper"
           background
-          small
+          size="small"
         />
       </div>
     </div>

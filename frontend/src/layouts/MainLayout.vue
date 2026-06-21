@@ -8,6 +8,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { ElMessageBox } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
+import { useFeatureStore } from '@/stores/feature'
 import { logout } from '@/api/auth'
 import { setLocale } from '@/i18n'
 import { useTranslatedLabels } from '@/composables/useTranslatedLabels'
@@ -17,6 +18,7 @@ import ChangePasswordDialog from '@/components/common/ChangePasswordDialog.vue'
 const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
+const featureStore = useFeatureStore()
 const { t, locale } = useI18n()
 const { roleLabel: getRoleLabel } = useTranslatedLabels()
 
@@ -37,6 +39,8 @@ onMounted(() => {
   if (authStore.mustChangePassword) {
     showChangePwd.value = true
   }
+  // 拉取功能特性开关状态
+  featureStore.fetchFeatureFlags()
 })
 
 watch(showChangePwd, (newVal) => {
@@ -107,7 +111,7 @@ function toggleLocale() {
       <div class="topbar-right">
         <span class="env-chip">
           <span class="env-dot" />
-          v0.3
+          v0.4
         </span>
 
         <button class="lang-toggle" @click="toggleLocale" :title="t('layout.topbar.switchLanguage')">

@@ -7,6 +7,7 @@ import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useEventListener, useDebounceFn, usePreferredReducedMotion } from '@vueuse/core'
 import { useDashboardStore } from '@/stores/dashboard'
+import { useTimeFormat } from '@/composables/useTimeFormat'
 import * as echarts from 'echarts/core'
 import { GraphChart, PieChart, BarChart } from 'echarts/charts'
 import { TooltipComponent, LegendComponent, GridComponent } from 'echarts/components'
@@ -21,6 +22,7 @@ echarts.use([GraphChart, PieChart, BarChart, TooltipComponent, LegendComponent, 
 const router = useRouter()
 const store = useDashboardStore()
 const { t, locale } = useI18n()
+const { formatTime } = useTimeFormat()
 const { zoneLabel } = useTranslatedLabels()
 const summary = computed(() => store.summary)
 const kpi = computed(() => summary.value?.kpi)
@@ -245,7 +247,7 @@ onUnmounted(() => {
         <h1>{{ t('dashboard.title') }}</h1>
         <div class="sub" v-if="summary">
           <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6"/><path d="M8 4.5V8l2 1.5"/></svg>
-          {{ t('dashboard.dataUpdatedAt') }} <span class="ts">{{ new Date(summary.generated_at).toLocaleString(locale === 'zh' ? 'zh-CN' : 'en-US') }}</span>
+          {{ t('dashboard.dataUpdatedAt') }} <span class="ts">{{ formatTime(summary.generated_at, 'YYYY-MM-DD HH:mm:ss') }}</span>
         </div>
       </div>
       <button class="btn-refresh" :disabled="store.loading || undefined" @click="store.fetchSummary(true)">

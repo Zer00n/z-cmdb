@@ -76,6 +76,25 @@ const router = createRouter({
           component: () => import('@/views/report/ReportDashboard.vue'),
           meta: { title: 'router.reports' },
         },
+        // V0.4 成本核算路由
+        {
+          path: 'cost/overview',
+          name: 'CostOverview',
+          component: () => import('@/views/cost/CostOverview.vue'),
+          meta: { title: 'router.costOverview' },
+        },
+        {
+          path: 'cost/billing',
+          name: 'DeptBilling',
+          component: () => import('@/views/cost/DeptBilling.vue'),
+          meta: { title: 'router.deptBilling' },
+        },
+        {
+          path: 'cost/rates',
+          name: 'CostRates',
+          component: () => import('@/views/cost/CostRates.vue'),
+          meta: { title: 'router.costRates', roles: ['super_admin'] },
+        },
         {
           path: 'audit',
           name: 'AuditLog',

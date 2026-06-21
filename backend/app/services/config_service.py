@@ -95,3 +95,11 @@ def get_dangerous_zones(db: Session) -> set[str]:
 def get_shadow_offline_days(db: Session) -> int:
     """长期离线判定天数（默认 30）"""
     return get_config_int(db, "shadow_offline_days", 30)
+
+
+# ── V0.4 成本核算 ──────────────────────────────────────────────
+
+
+def is_cost_accounting_enabled(db: Session) -> bool:
+    """成本核算功能是否启用（默认关闭）"""
+    return get_config_value(db, "feature_cost_accounting_enabled", "false").lower() == "true"

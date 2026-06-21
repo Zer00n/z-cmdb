@@ -140,3 +140,11 @@ class LLMCallError(CMDBException):
 
     def __init__(self, message: str = "LLM 调用失败") -> None:
         super().__init__(message)
+
+
+class FeatureDisabledError(CMDBException):
+    status_code = 403
+    error_code = "FEATURE_DISABLED"
+
+    def __init__(self, message: str = "该功能未启用") -> None:
+        super().__init__(message)

@@ -8,7 +8,7 @@ import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { fetchScanBatches, uploadScan, rejectBatch } from '@/api/scan'
 import type { ScanBatch } from '@/types/scan'
-import dayjs from 'dayjs'
+import { useTimeFormat } from '@/composables/useTimeFormat'
 import { useI18n } from 'vue-i18n'
 import { useTranslatedLabels } from '@/composables/useTranslatedLabels'
 
@@ -61,7 +61,7 @@ async function handleReject(row: ScanBatch) {
 }
 
 function formatTime(t: string): string {
-  return dayjs(t).format('YYYY-MM-DD HH:mm')
+  return useTimeFormat().formatTime(t)
 }
 
 function statusBadgeClass(s: string): string {

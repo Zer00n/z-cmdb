@@ -101,3 +101,20 @@ def require_auditor_exists(
 
 
 AuditorExists = Annotated[None, Depends(require_auditor_exists)]
+
+
+# ── V0.4 成本核算功能开关依赖 ───────────────────────────────────
+
+
+def _require_cost_feature(
+    db: Session = Depends(get_db),
+) -> None:
+    """集中校验成本核算功能开关，关闭时抛 FeatureDisabledError。
+    所有成本/账单/费率/关系路由统一挂此依赖，禁止各接口内重复判断。"""
+    from app.services.config_service import is_cost_accounting_enabled
+    from app.core.exceptions import FeatureDisabledError
+    if not is_cost_accounting_enabled(db):
+        raise FeatureDisabledError("资产成本核算功能未启用，请在系统配置中开启")
+
+
+RequireCostFeature = Annotated[None, Depends(_require_cost_feature)]

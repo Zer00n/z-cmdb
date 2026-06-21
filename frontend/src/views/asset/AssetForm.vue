@@ -9,13 +9,17 @@ import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
 import { createAsset, fetchAsset, updateAsset } from '@/api/asset'
+import { fetchDepartments, type Department } from '@/api/cost'
 import type { AssetCreateRequest, AssetUpdateRequest } from '@/types/asset'
 import { osOptionGroups } from '@/constants/os-options'
 import { getOsFieldMode, filterVisibleOsGroups } from './os-policy'
+import { useFeatureStore } from '@/stores/feature'
 
 const route = useRoute()
 const router = useRouter()
 const { t } = useI18n()
+const featureStore = useFeatureStore()
+const departments = ref<Department[]>([])
 
 const formRef = ref<FormInstance>()
 const loading = ref(false)
@@ -45,6 +49,16 @@ const form = reactive<AssetCreateRequest>({
   warranty_expiry: '',
   remark: '',
   source: 'manual',
+  // V0.4 成本字段
+  purchase_price: undefined,
+  depreciation_months: undefined,
+  residual_rate: undefined,
+  depreciation_method: 'straight_line',
+  end_of_life_strategy: 'zero',
+  revalue_amount: undefined,
+  revalue_months: undefined,
+  billing_mode: 'cost',
+  responsible_dept_id: undefined,
 })
 
 const rules = computed<FormRules>(() => ({
@@ -127,6 +141,16 @@ async function loadAsset() {
       purchase_date: asset.purchase_date || '',
       warranty_expiry: asset.warranty_expiry || '',
       remark: asset.remark || '',
+      // V0.4 成本字段
+      purchase_price: asset.purchase_price ?? undefined,
+      depreciation_months: asset.depreciation_months ?? undefined,
+      residual_rate: asset.residual_rate ?? undefined,
+      depreciation_method: asset.depreciation_method || 'straight_line',
+      end_of_life_strategy: asset.end_of_life_strategy || 'zero',
+      revalue_amount: asset.revalue_amount ?? undefined,
+      revalue_months: asset.revalue_months ?? undefined,
+      billing_mode: asset.billing_mode || 'cost',
+      responsible_dept_id: asset.responsible_dept_id ?? undefined,
     })
   } finally {
     loading.value = false
@@ -162,7 +186,12 @@ function handleCancel() {
   router.back()
 }
 
-onMounted(loadAsset)
+onMounted(async () => {
+  await loadAsset()
+  if (featureStore.costAccounting) {
+    try { departments.value = await fetchDepartments() } catch { /* ignore */ }
+  }
+})
 </script>
 
 <template>
@@ -371,6 +400,108 @@ onMounted(loadAsset)
                 :placeholder="t('asset.form.fields.remarkPlaceholder')"
                 style="width: 100%; max-width: 720px"
               />
+            </el-form-item>
+          </div>
+        </div>
+
+        <!-- V0.4 段 4：成本信息（受 featureStore 控制） -->
+        <div v-if="featureStore.costAccounting" class="sec-card">
+          <div class="sec-head">
+            <span class="sec-num">04</span>
+            <span class="sec-title">{{ t('cost.assetForm.sectionTitle') }}</span>
+            <el-tag size="small" effect="plain">{{ t('asset.form.sections.optional') }}</el-tag>
+          </div>
+          <div class="sec-body">
+            <el-form-item :label="t('cost.assetForm.purchasePrice')">
+              <el-input-number
+                v-model="form.purchase_price"
+                :min="0"
+                :precision="2"
+                :placeholder="t('cost.assetForm.purchasePricePlaceholder')"
+                style="width: 240px"
+              />
+              <span class="zone-hint">CNY</span>
+            </el-form-item>
+
+            <el-form-item :label="t('cost.assetForm.depreciationMonths')">
+              <el-input-number
+                v-model="form.depreciation_months"
+                :min="1"
+                :max="1200"
+                :placeholder="t('cost.assetForm.depreciationMonthsPlaceholder')"
+                style="width: 240px"
+              />
+            </el-form-item>
+
+            <el-form-item :label="t('cost.assetForm.residualRate')">
+              <el-input-number
+                v-model="form.residual_rate"
+                :min="0"
+                :max="1"
+                :step="0.01"
+                :precision="2"
+                :placeholder="t('cost.assetForm.residualRatePlaceholder')"
+                style="width: 240px"
+              />
+            </el-form-item>
+
+            <el-form-item :label="t('cost.assetForm.depreciationMethod')">
+              <el-select v-model="form.depreciation_method" style="width: 240px">
+                <el-option :label="t('cost.rates.deprTable.straightLine')" value="straight_line" />
+                <el-option :label="t('cost.rates.deprTable.accelerated')" value="accelerated" />
+              </el-select>
+            </el-form-item>
+
+            <el-form-item :label="t('cost.assetForm.eolStrategy')">
+              <el-radio-group v-model="form.end_of_life_strategy">
+                <el-radio value="zero">{{ t('cost.rates.deprTable.zero') }}</el-radio>
+                <el-radio value="revalue">{{ t('cost.rates.deprTable.revalue') }}</el-radio>
+              </el-radio-group>
+            </el-form-item>
+
+            <!-- 续值字段（仅到期续值时显示） -->
+            <template v-if="form.end_of_life_strategy === 'revalue'">
+              <el-form-item :label="t('cost.assetForm.revalueAmount')">
+                <el-input-number
+                  v-model="form.revalue_amount"
+                  :min="0"
+                  :precision="2"
+                  :placeholder="t('cost.assetForm.revalueAmountPlaceholder')"
+                  style="width: 240px"
+                />
+              </el-form-item>
+              <el-form-item :label="t('cost.assetForm.revalueMonths')">
+                <el-input-number
+                  v-model="form.revalue_months"
+                  :min="1"
+                  :max="120"
+                  :placeholder="t('cost.assetForm.revalueMonthsPlaceholder')"
+                  style="width: 240px"
+                />
+              </el-form-item>
+            </template>
+
+            <el-form-item :label="t('cost.assetForm.billingMode')">
+              <el-radio-group v-model="form.billing_mode">
+                <el-radio value="cost">{{ t('cost.assetForm.billingModeCost') }}</el-radio>
+                <el-radio value="unit_price">{{ t('cost.assetForm.billingModeUnitPrice') }}</el-radio>
+              </el-radio-group>
+            </el-form-item>
+
+            <el-form-item :label="t('cost.assetForm.responsibleDept')">
+              <el-select
+                v-model="form.responsible_dept_id"
+                :placeholder="t('cost.assetForm.selectDept')"
+                clearable
+                style="width: 360px"
+              >
+                <el-option
+                  v-for="dept in departments"
+                  :key="dept.id"
+                  :label="dept.name"
+                  :value="dept.id"
+                />
+              </el-select>
             </el-form-item>
           </div>
         </div>

@@ -45,6 +45,8 @@ DEFAULT_CONFIGS = {
     },
     "shadow_offline_days": {"value": "30", "description": "长期离线判定天数"},
     "dashboard_default_layout": {"value": "", "description": "大屏全局默认布局 JSON"},
+    # V0.4 成本核算
+    "feature_cost_accounting_enabled": {"value": "false", "description": "启用资产成本核算（super_admin 可切换，关闭后数据保留）"},
 }
 
 
