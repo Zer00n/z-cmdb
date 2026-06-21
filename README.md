@@ -28,8 +28,6 @@ Z-CMDB Lite is designed for IT operations and security engineers in **small-to-m
 
 V0.4 adds an **opt-in Asset Cost Accounting** module to Z-CMDB Lite, covering hardware depreciation, department billing, and cost governance. The feature is off by default — when disabled, the system behaves exactly as V0.3.
 
-![Cost Overview](img/v04-cost-overview.png)
-
 ### Cost Overview (`/cost/overview`)
 
 - 6 KPI cards (Monthly Total, Annualized, CapEx/OpEx Ratio, New Cost Assets, Missing Data)
@@ -37,9 +35,9 @@ V0.4 adds an **opt-in Asset Cost Accounting** module to Z-CMDB Lite, covering ha
 - Cost Governance list (Shadow Cost / Low Utilization / Depreciation Expiring / Missing Data)
 - Period selector with recent 12 months, CSV export
 
-| KPI Strip & Charts | Governance List |
-|--------------------|-----------------|
-| ![Cost KPI](img/v04-cost-kpi.png) | ![Governance](img/v04-cost-governance.png) |
+| KPI Strip & Charts |
+|--------------------|
+| ![Cost KPI](img/v04-cost-kpi.png)  |
 
 ### Department Billing (`/cost/billing`)
 
@@ -48,9 +46,9 @@ V0.4 adds an **opt-in Asset Cost Accounting** module to Z-CMDB Lite, covering ha
 - Resource detail table + Cost Type donut + Resource Ranking bar chart
 - CSV export with full billing detail
 
-| Summary | Detail & Charts |
-|---------|-----------------|
-| ![Billing Summary](img/v04-billing-summary.png) | ![Billing Detail](img/v04-billing-detail.png) |
+| Summary  |
+|---------|
+| ![Billing Summary](img/v04-billing-summary.png)  |
 
 ### Asset Cost Panel (Asset Detail → Cost Breakdown tab)
 
