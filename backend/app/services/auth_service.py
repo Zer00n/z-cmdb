@@ -22,6 +22,7 @@ from app.core.security import (
 )
 from app.models.user import User
 from app.repositories import user_repo
+from app.services.config_service import get_session_timeout_minutes
 
 logger = logging.getLogger(__name__)
 
@@ -71,7 +72,8 @@ def login(db: Session, username: str, password: str) -> tuple[str, str]:
     user_repo.reset_failed_login(db, user)
     db.commit()
 
-    access_token = create_access_token(user.id, user.role)
+    timeout = get_session_timeout_minutes(db)
+    access_token = create_access_token(user.id, user.role, expire_minutes=timeout)
     refresh_token = create_refresh_token(user.id, user.role)
 
     logger.info("user login success", extra={"user_id": user.id, "username": username})
@@ -90,7 +92,8 @@ def refresh_access_token(db: Session, refresh_token: str) -> str:
     if user.status == "disabled":
         raise AuthenticationError("Account has been disabled")
 
-    return create_access_token(user.id, user.role)
+    timeout = get_session_timeout_minutes(db)
+    return create_access_token(user.id, user.role, expire_minutes=timeout)
 
 
 def change_password(

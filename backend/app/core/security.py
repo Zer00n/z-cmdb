@@ -47,11 +47,12 @@ def needs_rehash(hashed: str) -> bool:
     return _ph.check_needs_rehash(hashed)
 
 
-def create_access_token(user_id: int, role: str) -> str:
-    """Generate an access_token, valid for JWT_ACCESS_EXPIRE_MINUTES minutes"""
-    expire = datetime.now(timezone.utc) + timedelta(
-        minutes=settings.JWT_ACCESS_EXPIRE_MINUTES
-    )
+def create_access_token(
+    user_id: int, role: str, expire_minutes: int | None = None
+) -> str:
+    """Generate an access_token, valid for expire_minutes (falls back to settings default)"""
+    minutes = expire_minutes if expire_minutes is not None else settings.JWT_ACCESS_EXPIRE_MINUTES
+    expire = datetime.now(timezone.utc) + timedelta(minutes=minutes)
     payload = {
         "sub": str(user_id),
         "role": role,

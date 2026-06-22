@@ -92,6 +92,12 @@ def get_dangerous_zones(db: Session) -> set[str]:
     return set(DEFAULT_DANGEROUS_ZONES)
 
 
+def get_session_timeout_minutes(db: Session) -> int:
+    """Session timeout in minutes (default 30, clamped to 5–480)"""
+    val = get_config_int(db, "session_timeout_minutes", 30)
+    return max(5, min(val, 480))
+
+
 def get_shadow_offline_days(db: Session) -> int:
     """Days threshold for long-term offline detection (default 30)"""
     return get_config_int(db, "shadow_offline_days", 30)
