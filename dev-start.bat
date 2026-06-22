@@ -1,16 +1,16 @@
 @echo off
 chcp 65001 >nul
-title CMDB Lite 开发环境
+title CMDB Lite Dev Server
 
 echo.
 echo ============================================
-echo   CMDB Lite 开发环境启动
+echo   CMDB Lite Dev Server
 echo ============================================
 echo.
 
-:: 检查 venv 是否存在
+:: Check venv
 if not exist "backend\.venv\Scripts\activate.bat" (
-    echo [错误] 未找到 backend\.venv，请先执行：
+    echo [ERROR] backend\.venv not found. Please run first:
     echo   cd backend
     echo   python -m venv .venv
     echo   .venv\Scripts\activate
@@ -19,32 +19,33 @@ if not exist "backend\.venv\Scripts\activate.bat" (
     exit /b 1
 )
 
-:: 检查 node_modules 是否存在
+:: Check node_modules
 if not exist "frontend\node_modules" (
-    echo [错误] 未找到 frontend\node_modules，请先执行：
+    echo [ERROR] frontend\node_modules not found. Please run first:
     echo   cd frontend
     echo   pnpm install
     pause
     exit /b 1
 )
 
-echo [1/2] 启动后端 (FastAPI · http://localhost:8000) ...
+echo [1/2] Starting backend (FastAPI . http://localhost:8000) ...
 start "CMDB-Backend" cmd /k "cd /d %~dp0backend && call .venv\Scripts\activate.bat && set PYTHONPATH=. && uvicorn app.main:app --reload --host 0.0.0.0 --port 8000"
 
-:: 等待后端启动
+:: Wait for backend to start
 timeout /t 2 /nobreak >nul
 
-echo [2/2] 启动前端 (Vite · http://localhost:5173) ...
+echo [2/2] Starting frontend (Vite . http://localhost:5173) ...
 start "CMDB-Frontend" cmd /k "cd /d %~dp0frontend && pnpm dev"
 
 echo.
 echo ============================================
-echo   启动完成！
-echo   后端: http://localhost:8000
-echo   前端: http://localhost:5173
-echo   API文档: http://localhost:8000/docs
+echo   Done!
+echo   Backend:  http://localhost:8000
+echo   Frontend: http://localhost:5173
+echo   API Docs: http://localhost:8000/docs
 echo ============================================
 echo.
-echo 关闭此窗口不会停止服务，请直接关闭对应终端窗口。
+echo Close this window will NOT stop services.
+echo Close the corresponding terminal windows instead.
 echo.
 pause
