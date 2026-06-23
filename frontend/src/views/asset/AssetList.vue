@@ -7,13 +7,25 @@ import { ref, reactive, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { fetchAssetList, decommissionAsset, exportAssetsCsv, exportAssetsForThreatHunting, updateAsset } from '@/api/asset'
+import { fetchAssetList, decommissionAsset, exportAssetsCsv, exportAssetsForThreatHunting, updateAsset, bulkUpdateAssets } from '@/api/asset'
 import type { AssetListItem, AssetListResponse, AssetQueryParams } from '@/types/asset'
 import { useTranslatedLabels } from '@/composables/useTranslatedLabels'
+import { useImportPresetStore } from '@/stores/importPreset'
+import PresetSelect from '@/components/PresetSelect.vue'
 
 const router = useRouter()
 const { t } = useI18n()
 const { zoneLabel, importanceLabel, statusLabel, typeLabel } = useTranslatedLabels()
+const presetStore = useImportPresetStore()
+
+// Batch edit state
+const selectedRows = ref<AssetListItem[]>([])
+const batchDialogVisible = ref(false)
+const batchSubmitting = ref(false)
+const batchForm = reactive({
+  field: 'owner' as string,
+  value: '' as string,
+})
 
 // Data
 const loading = ref(false)
@@ -162,7 +174,36 @@ const onlineCount = computed(() =>
   tableData.value.filter((a) => a.status === 'online').length
 )
 
-onMounted(loadData)
+// Batch edit functions
+function handleSelectionChange(rows: AssetListItem[]) {
+  selectedRows.value = rows
+}
+
+function openBatchEdit() {
+  batchForm.field = 'owner'
+  batchForm.value = ''
+  batchDialogVisible.value = true
+}
+
+async function handleBatchApply() {
+  if (!batchForm.value || !selectedRows.value.length) return
+  batchSubmitting.value = true
+  try {
+    const ids = selectedRows.value.map(r => r.id)
+    const payload = { ids, updates: { [batchForm.field]: batchForm.value } }
+    const res = await bulkUpdateAssets(payload)
+    ElMessage.success(t('asset.list.batchSuccess', { count: res.count }))
+    batchDialogVisible.value = false
+    selectedRows.value = []
+    loadData()
+  } finally {
+    batchSubmitting.value = false
+  }
+}
+
+onMounted(async () => {
+  await Promise.all([loadData(), presetStore.ensureLoaded()])
+})
 </script>
 
 <template>
@@ -257,6 +298,15 @@ onMounted(loadData)
       </el-button>
     </div>
 
+    <!-- Batch edit toolbar -->
+    <div v-if="selectedRows.length > 0" class="batch-bar">
+      <span class="batch-info">{{ t('asset.list.batchSelected', { count: selectedRows.length }) }}</span>
+      <el-button type="primary" size="small" @click="openBatchEdit">
+        <el-icon><Edit /></el-icon>
+        {{ t('asset.list.batchEdit') }}
+      </el-button>
+    </div>
+
     <!-- Table -->
     <div class="ui-table-card">
       <el-table
@@ -267,7 +317,9 @@ onMounted(loadData)
         style="width: 100%"
         :row-style="{ cursor: 'pointer' }"
         @row-click="(row: AssetListItem) => goDetail(row.id)"
+        @selection-change="handleSelectionChange"
       >
+        <el-table-column type="selection" width="45" />
         <el-table-column prop="asset_no" :label="t('asset.list.columns.assetNo')" width="160" sortable>
           <template #default="{ row }">
             <span class="ui-id-link">{{ row.asset_no }}</span>
@@ -370,6 +422,37 @@ onMounted(loadData)
         />
       </div>
     </div>
+
+    <!-- Batch edit dialog -->
+    <el-dialog
+      v-model="batchDialogVisible"
+      :title="t('asset.list.batchEdit')"
+      width="440px"
+      destroy-on-close
+    >
+      <el-form label-position="top">
+        <el-form-item :label="t('asset.list.batchField')">
+          <el-select v-model="batchForm.field" style="width: 100%">
+            <el-option :label="t('asset.list.columns.owner')" value="owner" />
+            <el-option :label="t('asset.list.columns.businessSystem')" value="business_system" />
+            <el-option :label="t('asset.form.fields.location')" value="location" />
+          </el-select>
+        </el-form-item>
+        <el-form-item :label="t('asset.list.batchValue')">
+          <PresetSelect
+            :category="batchForm.field"
+            v-model="batchForm.value"
+          />
+        </el-form-item>
+      </el-form>
+      <p class="batch-hint">{{ t('asset.list.batchHint', { count: selectedRows.length }) }}</p>
+      <template #footer>
+        <el-button @click="batchDialogVisible = false">{{ t('common.cancel') }}</el-button>
+        <el-button type="primary" :loading="batchSubmitting" :disabled="!batchForm.value" @click="handleBatchApply">
+          {{ t('common.confirm') }}
+        </el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -377,5 +460,23 @@ onMounted(loadData)
 /* Brighten ID link on table row hover */
 :deep(.el-table__row:hover) .ui-id-link {
   color: var(--color-primary-700);
+}
+
+.batch-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 8px 12px;
+  background: var(--el-fill-color-light);
+  border-radius: var(--radius-md);
+}
+.batch-info {
+  font-size: 13px;
+  color: var(--neutral-600);
+}
+.batch-hint {
+  font-size: 12px;
+  color: var(--neutral-500);
+  margin-top: 4px;
 }
 </style>

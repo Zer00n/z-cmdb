@@ -10,14 +10,19 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { fetchScanDiff, confirmBatch, rejectBatch } from '@/api/scan'
 import type { ScanDiffResponse, DiffNewHost, DiffChangedHost, DiffMissingHost, ScanConfirmRequest } from '@/types/scan'
 import { useI18n } from 'vue-i18n'
+import { useImportPresetStore } from '@/stores/importPreset'
+import PresetSelect from '@/components/PresetSelect.vue'
+import BatchPresetToolbar from '@/components/BatchPresetToolbar.vue'
 
 const { t } = useI18n()
 
 const route = useRoute()
 const router = useRouter()
+const presetStore = useImportPresetStore()
 
 const batchId = computed(() => Number(route.params.id))
 const loading = ref(true)
+const loadingStep = ref<'presets' | 'diff'>('presets')
 const submitting = ref(false)
 const activeTab = ref('new')
 
@@ -41,17 +46,23 @@ const newAssetForms = ref<NewAssetForm[]>([])
 
 async function loadDiff() {
   loading.value = true
+  loadingStep.value = 'presets'
   try {
+    await presetStore.ensureLoaded()
+    loadingStep.value = 'diff'
     diffData.value = await fetchScanDiff(batchId.value)
-    // Initialize new asset forms
+    // Initialize new asset forms with preset defaults
+    const defaultLocation = presetStore.defaultValue('location')
+    const defaultOwner = presetStore.defaultValue('owner')
+    const defaultBusinessSystem = presetStore.defaultValue('business_system')
     newAssetForms.value = (diffData.value.new_hosts || []).map((h: DiffNewHost) => ({
       ip_address: h.ip_address,
       hostname: h.hostname,
       os_info: h.os_info,
       asset_type: 'virtual',
-      location: '',
-      owner: '',
-      business_system: '',
+      location: defaultLocation,
+      owner: defaultOwner,
+      business_system: defaultBusinessSystem,
       importance: 'normal',
       network_zone: 'intranet',
       selected: true,
@@ -128,11 +139,49 @@ function toggleAllNew(checked: boolean) {
 
 const allNewSelected = computed(() => newAssetForms.value.every(f => f.selected))
 
+// Batch preset apply handler
+function handleBatchApply(payload: { category: string; value: string; scope: string }) {
+  const fieldMap: Record<string, keyof NewAssetForm> = {
+    location: 'location',
+    owner: 'owner',
+    business_system: 'business_system',
+  }
+  const field = fieldMap[payload.category]
+  if (!field) return
+
+  let targets = newAssetForms.value
+  if (payload.scope === 'selected') {
+    targets = targets.filter(f => f.selected)
+  }
+  // 'all' uses all forms as-is
+  for (const form of targets) {
+    ;(form as any)[field] = payload.value
+  }
+}
+
 onMounted(loadDiff)
 </script>
 
 <template>
   <div v-loading="loading" class="scan-confirm-page">
+    <!-- Loading step hint -->
+    <div v-if="loading" class="loading-steps">
+      <div class="loading-step-item" :class="{ active: loadingStep === 'presets', done: loadingStep === 'diff' }">
+        <span class="step-dot" /> {{ t('scan.confirm.loadingPresets') }}
+      </div>
+      <div class="loading-step-item" :class="{ active: loadingStep === 'diff' }">
+        <span class="step-dot" /> {{ t('scan.confirm.loadingDiff') }}
+      </div>
+    </div>
+
+    <!-- Import overlay -->
+    <div v-if="submitting" class="import-overlay">
+      <div class="import-overlay-content">
+        <el-icon class="import-spinner" size="32"><Loading /></el-icon>
+        <p>{{ t('scan.confirm.importing') }}</p>
+      </div>
+    </div>
+
     <template v-if="diffData">
       <!-- Page header -->
       <div class="ui-page-head">
@@ -194,6 +243,10 @@ onMounted(loadDiff)
           <el-tab-pane :label="`${t('scan.confirm.tabs.new')} (${diffData.new_count})`" name="new">
             <div v-if="newAssetForms.length === 0" class="empty-hint">{{ t('scan.confirm.newTab.empty') }}</div>
             <template v-else>
+              <BatchPresetToolbar
+                :diff-types="['newDiscovery']"
+                @apply="handleBatchApply"
+              />
               <div class="tab-toolbar">
                 <el-checkbox :model-value="allNewSelected" @change="toggleAllNew">{{ t('scan.confirm.newTab.selectAll') }}</el-checkbox>
                 <span class="hint">{{ t('scan.confirm.newTab.hint') }}</span>
@@ -245,15 +298,15 @@ onMounted(loadDiff)
                       </div>
                       <div class="form-item">
                         <label>{{ t('scan.confirm.newTab.location') }}</label>
-                        <el-input v-model="form.location" size="small" :placeholder="t('scan.confirm.newTab.locationPlaceholder')" />
+                        <PresetSelect category="location" v-model="form.location" size="small" />
                       </div>
                       <div class="form-item">
                         <label>{{ t('scan.confirm.newTab.owner') }}</label>
-                        <el-input v-model="form.owner" size="small" :placeholder="t('scan.confirm.newTab.ownerPlaceholder')" />
+                        <PresetSelect category="owner" v-model="form.owner" size="small" />
                       </div>
                       <div class="form-item">
                         <label>{{ t('scan.confirm.newTab.businessSystem') }}</label>
-                        <el-input v-model="form.business_system" size="small" :placeholder="t('scan.confirm.newTab.businessSystemPlaceholder')" />
+                        <PresetSelect category="business_system" v-model="form.business_system" size="small" />
                       </div>
                     </div>
                   </div>
@@ -626,4 +679,76 @@ onMounted(loadDiff)
 .action-right { display: flex; gap: var(--space-3); }
 
 .mono { font-family: var(--font-mono); font-size: 13px; }
+
+/* Loading step indicators */
+.loading-steps {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: var(--space-8) 0;
+}
+.loading-step-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: var(--neutral-400);
+  transition: color 0.3s;
+}
+.loading-step-item.active {
+  color: var(--color-primary-600);
+  font-weight: 500;
+}
+.loading-step-item.done {
+  color: var(--color-success);
+}
+.step-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--neutral-300);
+  transition: background 0.3s;
+}
+.loading-step-item.active .step-dot {
+  background: var(--color-primary-500);
+  animation: pulse-dot 1s infinite;
+}
+.loading-step-item.done .step-dot {
+  background: var(--color-success);
+}
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+/* Import overlay */
+.import-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.import-overlay-content {
+  text-align: center;
+  color: var(--neutral-700);
+  font-size: 16px;
+  font-weight: 500;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+.import-spinner {
+  animation: spin 1s linear infinite;
+  color: var(--color-primary-500);
+}
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
 </style>

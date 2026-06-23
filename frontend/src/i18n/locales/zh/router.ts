@@ -15,4 +15,5 @@ export default {
   costOverview: '成本总览',
   deptBilling: '部门账单',
   costRates: '成本费率设置',
+  importPresets: '录入设置',
 }

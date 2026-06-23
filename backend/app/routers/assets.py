@@ -234,7 +234,7 @@ def bulk_update_assets(
         from app.core.exceptions import ValidationError
         raise ValidationError("ids and updates cannot be empty")
 
-    allowed_fields = {"owner", "status", "business_system", "importance", "network_zone"}
+    allowed_fields = {"owner", "status", "business_system", "importance", "network_zone", "location"}
     filtered = {k: v for k, v in updates.items() if k in allowed_fields}
     if not filtered:
         from app.core.exceptions import ValidationError

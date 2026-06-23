@@ -42,6 +42,12 @@ export default {
     pagination: '{total} items · Page {page} / {totalPages}',
     traditionalZones: 'Traditional Zones',
     cloudProviders: 'Cloud Providers',
+    batchSelected: '{count} asset(s) selected',
+    batchEdit: 'Batch Edit',
+    batchField: 'Field to Update',
+    batchValue: 'New Value',
+    batchHint: 'This will update the selected field for {count} asset(s).',
+    batchSuccess: 'Successfully updated {count} asset(s)',
   },
   form: {
     createTitle: 'New Asset',

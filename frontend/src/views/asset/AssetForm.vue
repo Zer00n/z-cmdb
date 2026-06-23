@@ -14,11 +14,14 @@ import type { AssetCreateRequest, AssetUpdateRequest } from '@/types/asset'
 import { osOptionGroups } from '@/constants/os-options'
 import { getOsFieldMode, filterVisibleOsGroups } from './os-policy'
 import { useFeatureStore } from '@/stores/feature'
+import { useImportPresetStore } from '@/stores/importPreset'
+import PresetSelect from '@/components/PresetSelect.vue'
 
 const route = useRoute()
 const router = useRouter()
 const { t } = useI18n()
 const featureStore = useFeatureStore()
+const presetStore = useImportPresetStore()
 const departments = ref<Department[]>([])
 
 const formRef = ref<FormInstance>()
@@ -187,7 +190,13 @@ function handleCancel() {
 }
 
 onMounted(async () => {
-  await loadAsset()
+  await Promise.all([loadAsset(), presetStore.ensureLoaded()])
+  // Pre-fill defaults for new assets
+  if (!isEdit.value) {
+    form.location = presetStore.defaultValue('location')
+    form.owner = presetStore.defaultValue('owner')
+    form.business_system = presetStore.defaultValue('business_system')
+  }
   if (featureStore.costAccounting) {
     try { departments.value = await fetchDepartments() } catch { /* ignore */ }
   }
@@ -327,15 +336,15 @@ onMounted(async () => {
           </div>
           <div class="sec-body">
             <el-form-item :label="t('asset.form.fields.location')" prop="location">
-              <el-input v-model="form.location" :placeholder="t('asset.form.fields.locationPlaceholder')" style="width: 360px" />
+              <PresetSelect category="location" v-model="form.location" style="width: 360px" />
             </el-form-item>
 
             <el-form-item :label="t('asset.form.fields.owner')" prop="owner">
-              <el-input v-model="form.owner" :placeholder="t('asset.form.fields.ownerPlaceholder')" style="width: 360px" />
+              <PresetSelect category="owner" v-model="form.owner" style="width: 360px" />
             </el-form-item>
 
             <el-form-item :label="t('asset.form.fields.businessSystem')" prop="business_system">
-              <el-input v-model="form.business_system" :placeholder="t('asset.form.fields.businessSystemPlaceholder')" style="width: 360px" />
+              <PresetSelect category="business_system" v-model="form.business_system" style="width: 360px" />
             </el-form-item>
 
             <el-form-item :label="t('asset.form.fields.importance')" prop="importance">

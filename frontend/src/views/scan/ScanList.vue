@@ -6,7 +6,7 @@
 import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { fetchScanBatches, uploadScan, rejectBatch } from '@/api/scan'
+import { fetchScanBatches, uploadScanWithProgress, rejectBatch } from '@/api/scan'
 import type { ScanBatch } from '@/types/scan'
 import { useTimeFormat } from '@/composables/useTimeFormat'
 import { useI18n } from 'vue-i18n'
@@ -21,6 +21,8 @@ const tableData = ref<ScanBatch[]>([])
 const total = ref(0)
 const page = ref(1)
 const uploading = ref(false)
+const uploadPercent = ref(0)
+const uploadPhase = ref<'idle' | 'uploading' | 'processing'>('idle')
 
 async function loadData() {
   loading.value = true
@@ -35,10 +37,20 @@ async function loadData() {
 
 async function handleUpload(file: File) {
   uploading.value = true
+  uploadPercent.value = 0
+  uploadPhase.value = 'uploading'
   try {
-    await uploadScan(file)
+    await uploadScanWithProgress(file, ({ phase, percent }) => {
+      uploadPhase.value = phase
+      uploadPercent.value = percent
+    })
+    uploadPhase.value = 'idle'
     ElMessage.success(t('scan.list.uploadSuccess'))
     loadData()
+  } catch (err: any) {
+    uploadPhase.value = 'idle'
+    const msg = err?.message || err?.response?.data?.message
+    ElMessage.error(msg || t('common.error'))
   } finally {
     uploading.value = false
   }
@@ -110,6 +122,26 @@ onMounted(loadData)
           </el-button>
         </el-upload>
       </div>
+    </div>
+
+    <!-- Upload progress bar -->
+    <div v-if="uploading" class="upload-progress-card">
+      <div class="upload-progress-info">
+        <span class="upload-phase-text">
+          {{ uploadPhase === 'uploading' ? t('scan.list.uploading') : t('scan.list.processing') }}
+        </span>
+        <span class="upload-percent">{{ uploadPercent }}%</span>
+      </div>
+      <el-progress
+        :percentage="uploadPercent"
+        :status="uploadPhase === 'processing' ? undefined : undefined"
+        :indeterminate="uploadPhase === 'processing'"
+        :stroke-width="8"
+        :show-text="false"
+      />
+      <p v-if="uploadPhase === 'processing'" class="upload-hint">
+        {{ t('scan.list.uploadComplete') }}
+      </p>
     </div>
 
     <div class="ui-table-card">
@@ -223,4 +255,35 @@ onMounted(loadData)
 .num-blue { color: var(--color-primary-500); }
 .num-warning { color: var(--color-warning); }
 .num-muted { color: var(--neutral-500); }
+
+.upload-progress-card {
+  background: var(--surface-base);
+  border: var(--border-base);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4) var(--space-6);
+  box-shadow: var(--shadow-subtle);
+}
+.upload-progress-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.upload-phase-text {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--neutral-700);
+}
+.upload-percent {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-primary-600);
+}
+.upload-hint {
+  font-size: 12px;
+  color: var(--neutral-500);
+  margin-top: 6px;
+  margin-bottom: 0;
+}
 </style>

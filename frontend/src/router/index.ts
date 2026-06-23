@@ -65,6 +65,12 @@ const router = createRouter({
           meta: { title: 'router.scanConfirm' },
         },
         {
+          path: 'import-presets',
+          name: 'ImportPresets',
+          component: () => import('@/views/ImportPresetSettings.vue'),
+          meta: { title: 'router.importPresets' },
+        },
+        {
           path: 'topology',
           name: 'TopologyEditor',
           component: () => import('@/views/topology/TopologyEditor.vue'),

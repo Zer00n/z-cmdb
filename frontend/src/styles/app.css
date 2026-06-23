@@ -25,24 +25,20 @@ html, body {
   min-height: 100vh;
 }
 
-/* ── 滚动条（细且有质感） ── */
+/* ── 滚动条 ── */
 *::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 10px;
+  height: 10px;
 }
 *::-webkit-scrollbar-track {
   background: transparent;
 }
 *::-webkit-scrollbar-thumb {
   background: var(--neutral-200);
-  border-radius: 8px;
-  border: 2px solid transparent;
-  background-clip: padding-box;
+  border-radius: 5px;
 }
 *::-webkit-scrollbar-thumb:hover {
   background: var(--neutral-300);
-  background-clip: padding-box;
-  border: 2px solid transparent;
 }
 
 /* ── 文本选中颜色 ── */

@@ -52,6 +52,7 @@ const navGroups = computed<NavGroup[]>(() => [
     title: t('layout.sidebar.scanImport'),
     items: [
       { title: t('layout.sidebar.scanBatches'), route: '/scans', icon: 'Upload' },
+      { title: t('layout.sidebar.importPresets'), route: '/import-presets', icon: 'Memo' },
     ],
   },
   {

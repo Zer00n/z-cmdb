@@ -24,6 +24,56 @@ Z-CMDB Lite is designed for IT operations and security engineers in **small-to-m
 
 ---
 
+## V0.5 Highlights
+
+V0.5 adds an **Import Preset** system to eliminate repetitive data entry during scan import, manual asset creation, and batch editing. It also improves the scan workflow with upload progress indicators and batch processing feedback.
+
+### Import Presets (`/import-presets`)
+
+- New settings page under "Scan Import" in the sidebar — two-column layout (category list + preset table)
+- Three preset categories: Physical Location, Owner, Business System
+- Full CRUD: add, edit, delete, search, sort order, remarks
+- One default value per category (DB-enforced via partial unique index)
+- **Sync from Assets**: one-click extract distinct values from existing assets into the preset library
+- Presets are team-global, not per-user; deleting a preset does not affect existing asset values
+
+### PresetSelect Component
+
+- Reusable dropdown (`PresetSelect`) shared across three scenes: scan confirm, manual create, batch edit
+- Filterable `el-select` with clearable selection
+- **Inline add**: footer slot with input field — add a new preset value directly from any dropdown without leaving the page
+- Default value auto-fill when creating new assets or importing scans
+
+### Scan Confirm Page Improvements
+
+- Location / Owner / Business System fields replaced with `PresetSelect` (was plain text input)
+- **Batch Preset Toolbar**: field selector + value selector + scope (selected rows / all rows) + apply button — batch-set values across hundreds of rows in one click
+- **Step loading indicator**: shows "Loading presets..." → "Computing diff..." with animated dots instead of blank spinner
+- **Import overlay**: full-screen overlay with spinner during confirm submission, prevents double-click
+
+### Asset Form & Asset List
+
+- **Manual create/edit**: Location, Owner, Business System fields now use `PresetSelect` with default pre-fill
+- **Batch edit**: asset list gets checkbox multi-select + batch edit dialog — select assets, choose field (owner / business system / location), pick preset value, apply
+
+### Upload Progress Bar
+
+- XML upload now shows a real progress bar with percentage (XHR `upload.onprogress`)
+- After file transfer completes, switches to indeterminate pulse animation ("Processing scan data...")
+- Axios timeout for scan APIs increased from 30s to 120s
+
+### Other Changes
+
+- Global scrollbar style updated to 10px solid (was 4px visible with transparent border trick)
+- New database table: `import_preset` (category, value, is_default, sort_order, remark)
+- New Alembic migration: `c7d8e9f0a1b2`
+- New API endpoints: 7 endpoints under `/api/import-presets`
+- `PATCH /api/assets/bulk` now supports `location` field
+- Full i18n: all new UI strings bilingual (English + Chinese)
+- **Version bumped to V0.5.0**
+
+---
+
 ## V0.4 Highlights
 
 V0.4 adds an **opt-in Asset Cost Accounting** module to Z-CMDB Lite, covering hardware depreciation, department billing, and cost governance. The feature is off by default — when disabled, the system behaves exactly as V0.3.
@@ -440,6 +490,43 @@ If your use case involves concurrent writes from multiple users (>50 people), hi
 ---
 
 ## Changelog
+
+### V0.5 (2026-06-23)
+
+**Import Presets**
+- New `/import-presets` settings page under "Scan Import" sidebar group, two-column layout (category list + preset table)
+- Three preset categories: `location`, `owner`, `business_system` — full CRUD with search, sort order, remarks
+- One default value per category enforced by partial unique index (`ix_preset_one_default`)
+- "Sync from Assets" button: extracts distinct non-empty values from existing assets, deduplicates against existing presets
+- New database table `import_preset` with Alembic migration `c7d8e9f0a1b2`
+- 7 new API endpoints under `/api/import-presets` (list, categories, create, update, set-default, delete, sync-from-assets)
+- All write operations logged to audit via `audit_service.log_from_request`
+
+**PresetSelect Component**
+- Reusable `el-select` component with `filterable` + `clearable` + footer slot for inline add
+- Shared across scan confirm, manual asset create, and batch edit
+- Backed by Pinia store (`useImportPresetStore`) with lazy-loading and per-category cache
+
+**Scan Confirm Page**
+- Location / Owner / Business System fields replaced with `PresetSelect` (was `el-input`)
+- Default values auto-filled from preset library on page load
+- Batch Preset Toolbar: field + value + scope (selected/all) + apply — pure frontend operation
+- Step loading indicator: "Loading presets..." → "Computing diff..." with animated dots
+- Full-screen import overlay during confirm submission (prevents double-click)
+
+**Asset Form & Asset List**
+- Asset create/edit form: Location, Owner, Business System replaced with `PresetSelect`, defaults pre-filled for new assets
+- Asset list: new checkbox selection column + batch edit dialog with `PresetSelect`
+- `PATCH /api/assets/bulk` extended to support `location` field
+
+**Scan Upload Progress**
+- Upload uses `XMLHttpRequest.upload.onprogress` for real percentage display (0–100%)
+- After file transfer, switches to indeterminate pulse animation during server-side processing
+- Axios timeout for scan upload/diff/confirm APIs increased from 30s to 120s
+
+**Other**
+- Global scrollbar width increased to 10px solid (was 4px effective with transparent border)
+- All new UI strings fully bilingual (English + Chinese) via vue-i18n
 
 ### V0.4 (2026-06-21)
 

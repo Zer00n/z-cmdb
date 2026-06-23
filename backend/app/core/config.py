@@ -43,7 +43,7 @@ class Settings(BaseSettings):
     # Application
     APP_ENV: str = "development"
     APP_TITLE: str = "Z-CMDB Lite"
-    APP_VERSION: str = "0.2.0"
+    APP_VERSION: str = "0.5.0"
 
     # CORS (allow frontend dev server during development)
     CORS_ORIGINS: list[str] = ["http://localhost:5173", "http://127.0.0.1:5173"]

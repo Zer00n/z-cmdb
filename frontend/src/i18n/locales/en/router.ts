@@ -15,4 +15,5 @@ export default {
   costOverview: 'Cost Overview',
   deptBilling: 'Department Billing',
   costRates: 'Cost Rate Settings',
+  importPresets: 'Import Presets',
 }

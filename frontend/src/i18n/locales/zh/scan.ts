@@ -32,6 +32,10 @@ export default {
     rejectBtn: '确认拒绝',
     rejectSuccess: '批次已拒绝',
     pagination: '共 {total} 条',
+    uploading: '上传中...',
+    processing: '正在解析扫描数据...',
+    uploadProgress: '上传 {percent}%',
+    uploadComplete: '上传完成，服务端处理中...',
   },
   confirm: {
     title: '扫描批次确认',
@@ -110,5 +114,8 @@ export default {
       rejected: '批次已拒绝',
       rejectConfirm: '确认拒绝此批次？拒绝后数据不会入库。',
     },
+    loadingPresets: '加载预设值...',
+    loadingDiff: '计算差异...',
+    importing: '正在导入资产，请稍候...',
   },
 }

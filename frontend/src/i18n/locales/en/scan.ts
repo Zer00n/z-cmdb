@@ -32,6 +32,10 @@ export default {
     rejectBtn: 'Confirm Reject',
     rejectSuccess: 'Batch rejected',
     pagination: '{total} items',
+    uploading: 'Uploading...',
+    processing: 'Processing scan data...',
+    uploadProgress: 'Upload {percent}%',
+    uploadComplete: 'Upload complete, server processing...',
   },
   confirm: {
     title: 'Scan Batch Confirmation',
@@ -110,5 +114,8 @@ export default {
       rejected: 'Batch rejected',
       rejectConfirm: 'Reject this batch? Rejected data will not be imported.',
     },
+    loadingPresets: 'Loading presets...',
+    loadingDiff: 'Computing diff...',
+    importing: 'Importing assets, please wait...',
   },
 }

@@ -42,6 +42,12 @@ export default {
     pagination: '共 {total} 条 · 第 {page} / {totalPages} 页',
     traditionalZones: '传统区域',
     cloudProviders: '云服务商',
+    batchSelected: '已选择 {count} 项资产',
+    batchEdit: '批量编辑',
+    batchField: '修改字段',
+    batchValue: '新值',
+    batchHint: '将为选中的 {count} 项资产更新所选字段。',
+    batchSuccess: '成功更新 {count} 项资产',
   },
   form: {
     createTitle: '新增资产',

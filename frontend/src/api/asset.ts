@@ -54,3 +54,11 @@ export function exportAssetsForThreatHunting(params?: AssetQueryParams & {
     responseType: 'blob',
   })
 }
+
+/** Bulk update assets */
+export function bulkUpdateAssets(payload: {
+  ids: number[]
+  updates: Record<string, string>
+}): Promise<{ message: string; count: number }> {
+  return request.patch('/api/assets/bulk', payload)
+}
