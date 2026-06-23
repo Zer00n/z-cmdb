@@ -493,6 +493,8 @@ If your use case involves concurrent writes from multiple users (>50 people), hi
 
 ### V0.5 (2026-06-23)
 
+> **Upgrade note**: After pulling V0.5, run `alembic upgrade head` in the `backend/` directory to create the new `import_preset` table. Without this step the application will fail to start.
+
 **Import Presets**
 - New `/import-presets` settings page under "Scan Import" sidebar group, two-column layout (category list + preset table)
 - Three preset categories: `location`, `owner`, `business_system` — full CRUD with search, sort order, remarks
