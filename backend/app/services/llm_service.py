@@ -111,10 +111,33 @@ class ClaudeProvider(LLMProvider):
                 body["system"] = system_prompt
 
             url = self.base_url or "https://api.anthropic.com/v1/messages"
-            resp = httpx.post(url, json=body, headers=headers, timeout=120)
-            resp.raise_for_status()
-            data = resp.json()
-            return data["content"][0]["text"]
+            last_exc = None
+            for attempt in range(3):
+                try:
+                    resp = httpx.post(url, json=body, headers=headers, timeout=120)
+                    resp.raise_for_status()
+                    data = resp.json()
+                    return data["content"][0]["text"]
+                except (httpx.RemoteProtocolError, httpx.ReadTimeout, httpx.ConnectTimeout) as exc:
+                    last_exc = exc
+                    logger.warning(
+                        "Claude API transient error, retrying",
+                        extra={"attempt": attempt + 1, "error": str(exc)},
+                    )
+                    time.sleep(2 ** attempt)
+                except (ValueError, KeyError) as exc:
+                    last_exc = exc
+                    logger.warning(
+                        "Claude API response parse error, retrying",
+                        extra={"attempt": attempt + 1, "error": str(exc)},
+                    )
+                    time.sleep(2 ** attempt)
+                except Exception as exc:
+                    raise LLMCallError(f"Claude API call failed: {exc}") from exc
+
+            raise LLMCallError(f"Claude API call failed (3 retries): {last_exc}") from last_exc
+        except LLMCallError:
+            raise
         except Exception as exc:
             raise LLMCallError(f"Claude API call failed: {exc}") from exc
 
@@ -200,7 +223,7 @@ def call_llm(
             provider=provider_name,
             model=model,
             purpose=purpose,
-            sanitized_request=prompt[:500] if prompt else None,
+            sanitized_request=prompt[:200] if prompt else None,
             response_summary=response_text[:200] if response_text else None,
             elapsed_ms=elapsed_ms,
             success=success,

@@ -78,7 +78,7 @@ const features = computed(() => [
         </span>
         <span class="brand-name">Z-CMDB <em>Lite</em></span>
       </div>
-      <span class="top-version">v0.4.0</span>
+      <span class="top-version">v0.5.1</span>
     </header>
 
     <!-- Main body: left intro + right login card -->

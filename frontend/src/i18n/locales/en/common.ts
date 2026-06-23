@@ -37,4 +37,7 @@ export default {
     offline: 'Offline',
     decommissioned: 'Decommissioned',
   },
+  request_failed: 'Request failed, please try again later',
+  permission_denied: 'Permission denied',
+  server_error: 'Internal server error, please contact the administrator',
 }

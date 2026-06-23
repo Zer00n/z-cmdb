@@ -111,7 +111,7 @@ function toggleLocale() {
       <div class="topbar-right">
         <span class="env-chip">
           <span class="env-dot" />
-          v0.4
+          v0.5.1
         </span>
 
         <button class="lang-toggle" @click="toggleLocale" :title="t('layout.topbar.switchLanguage')">

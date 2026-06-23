@@ -96,6 +96,7 @@ def disable_user(
 ) -> None:
     """Disable user (soft delete, super_admin only)"""
     user = user_repo.get_by_id(db, user_id)
+    user.token_version = (user.token_version or 0) + 1
     user_repo.update_user(db, user, status="disabled")
     audit_service.log_action(
         db, action_type="DELETE", user=current_user,  # type: ignore[arg-type]

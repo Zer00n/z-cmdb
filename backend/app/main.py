@@ -69,7 +69,6 @@ async def add_security_headers(request: Request, call_next):
     )
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "SAMEORIGIN"
-    response.headers["X-XSS-Protection"] = "1; mode=block"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
     return response
 
@@ -138,6 +137,21 @@ async def on_startup() -> None:
         extra={"env": settings.APP_ENV, "version": settings.APP_VERSION},
     )
 
+    # 生产环境密钥校验
+    from app.core.config import validate_runtime_secrets
+    validate_runtime_secrets()
+
+    # CORS 配置安全告警
+    if "*" in settings.CORS_ORIGINS:
+        logger.warning(
+            "CORS_ORIGINS contains '*' while credentials are allowed; "
+            "this is unsafe in production. Set explicit origins."
+        )
+    if settings.APP_ENV.lower() in ("production", "prod"):
+        _insecure = [o for o in settings.CORS_ORIGINS if o.startswith("http://") and "localhost" not in o and "127.0.0.1" not in o]
+        if _insecure:
+            logger.warning("CORS origins over plain HTTP in production: %s", _insecure)
+
     # Skip initialization in testing environment (test data is managed independently)
     if settings.APP_ENV == "testing":
         return
@@ -148,6 +162,15 @@ async def on_startup() -> None:
     # First startup: create initial admin account if users table is empty
     with SessionLocal() as db:
         ensure_initial_admin(db)
+
+    # 若初始明文密码文件仍存在，提醒尽快改密
+    from app.core.config import settings as _settings
+    _pw_file = _settings.db_path.parent / "INITIAL_ADMIN_PASSWORD.txt"
+    if _pw_file.exists():
+        logger.warning(
+            "INITIAL_ADMIN_PASSWORD.txt still present on disk; "
+            "change the admin password to auto-remove it"
+        )
 
 
 @app.on_event("shutdown")

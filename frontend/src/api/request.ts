@@ -4,6 +4,9 @@
  */
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
+import i18n from '@/i18n'
+
+const t = (key: string) => i18n.global.t(key)
 
 const request = axios.create({
   baseURL: '/',
@@ -31,7 +34,7 @@ request.interceptors.response.use(
       (Array.isArray(error.response?.data?.detail)
         ? error.response.data.detail.map((d: any) => d.msg).join('；')
         : error.response?.data?.detail) ||
-      '请求失败，请稍后重试'
+      t('common.request_failed')
 
     if (status === 401) {
       // Clear local token, redirect to login page
@@ -44,7 +47,7 @@ request.interceptors.response.use(
     }
 
     if (status === 403) {
-      ElMessage.error('权限不足')
+      ElMessage.error(message)
       return Promise.reject(error)
     }
 
@@ -54,7 +57,7 @@ request.interceptors.response.use(
     }
 
     if (status && status >= 500) {
-      ElMessage.error('服务器内部错误，请联系管理员')
+      ElMessage.error(t('common.server_error'))
       return Promise.reject(error)
     }
 

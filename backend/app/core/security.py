@@ -48,7 +48,7 @@ def needs_rehash(hashed: str) -> bool:
 
 
 def create_access_token(
-    user_id: int, role: str, expire_minutes: int | None = None
+    user_id: int, role: str, expire_minutes: int | None = None, token_version: int = 0
 ) -> str:
     """Generate an access_token, valid for expire_minutes (falls back to settings default)"""
     minutes = expire_minutes if expire_minutes is not None else settings.JWT_ACCESS_EXPIRE_MINUTES
@@ -56,13 +56,14 @@ def create_access_token(
     payload = {
         "sub": str(user_id),
         "role": role,
+        "tv": token_version,
         "exp": int(expire.timestamp()),
         "type": "access",
     }
     return jwt.encode(payload, settings.jwt_secret, algorithm=settings.JWT_ALGORITHM)
 
 
-def create_refresh_token(user_id: int, role: str) -> str:
+def create_refresh_token(user_id: int, role: str, token_version: int = 0) -> str:
     """Generate a refresh_token, valid for JWT_REFRESH_EXPIRE_DAYS days"""
     expire = datetime.now(timezone.utc) + timedelta(
         days=settings.JWT_REFRESH_EXPIRE_DAYS
@@ -70,6 +71,7 @@ def create_refresh_token(user_id: int, role: str) -> str:
     payload = {
         "sub": str(user_id),
         "role": role,
+        "tv": token_version,
         "exp": int(expire.timestamp()),
         "type": "refresh",
     }

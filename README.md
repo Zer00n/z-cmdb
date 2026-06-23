@@ -24,6 +24,68 @@ Z-CMDB Lite is designed for IT operations and security engineers in **small-to-m
 
 ---
 
+## ⚠️ Upgrade Notice
+
+> **After pulling V0.5.1, you MUST run database migrations before starting the application:**
+>
+> ```bash
+> # If using a virtual environment, activate it first:
+> # Windows:   cd backend && .venv\Scripts\activate
+> # Linux/Mac: cd backend && source .venv/bin/activate
+>
+> cd backend && alembic upgrade head
+> ```
+>
+> Docker users: no action needed — migrations run automatically on container startup.
+>
+> This applies two new migrations:
+> - `e9f0a1b2c3d4` — adds `token_version` column to `users` table (for token revocation on password change / account disable)
+> - `f0a1b2c3d4e5` — adds index on `scan_snapshot_items.ip_address` (performance optimization)
+>
+> **Without running this command, the application will fail to start.**
+
+---
+
+## V0.5.1 — Security Hardening & Bug Fixes
+
+V0.5.1 is a security-focused patch that addresses findings from a full codebase audit. No new features; all changes improve security posture, robustness, and data integrity.
+
+### Security Fixes
+
+- **Initial admin password file auto-cleanup**: `INITIAL_ADMIN_PASSWORD.txt` is now automatically deleted after the admin changes their password; a startup warning is logged if the file still exists
+- **Production JWT secret guard**: the app now refuses to start with the default `JWT_SECRET` when `APP_ENV=production`
+- **Bulk update enum validation**: `PATCH /api/assets/bulk` now validates `status`, `importance`, and `network_zone` values against allowed enums
+- **Upload filename sanitization**: nmap XML upload filenames are stripped of HTML/control characters to prevent stored XSS
+- **Removed deprecated `X-XSS-Protection` header**
+- **ClaudeProvider retry logic**: Claude API calls now retry 3 times with exponential backoff (matching OpenAIProvider behavior)
+- **Frontend error messages i18n**: hardcoded Chinese error strings replaced with vue-i18n translation keys
+- **`decrypt_value` error handling**: decryption failures now log a warning and return empty string instead of silently returning raw ciphertext
+- **Config API masking**: non-super_admin users now see `****` for all API key fields (super_admin retains partial masking)
+- **CORS startup warning**: logs a warning if `CORS_ORIGINS` contains `*` or HTTP origins in production
+
+### Token Revocation (New)
+
+- **`token_version` mechanism**: added to the `users` table — when a user changes their password or is disabled, all existing JWT tokens are immediately invalidated
+- Backward compatible: tokens issued before this update (without `tv` claim) continue to work until the user changes their password
+
+### Performance
+
+- **IP address index** on `scan_snapshot_items` table for faster scan history queries
+- **LLM log prompt truncation** reduced from 500 to 200 characters
+
+### Bug Fixes
+
+- **Asset list default sort**: changed from IP address to asset number (`asset_no`)
+- **403 error display**: now shows the actual backend error message (e.g., "Feature not enabled") instead of a generic "Permission denied"
+- **Cost feature toggle**: added error handling — if the toggle API fails, the user now sees an error message instead of a silent failure
+
+### Migration
+
+- New Alembic migration: `e9f0a1b2c3d4` (token_version), `f0a1b2c3d4e5` (ip index)
+- **Version bumped to V0.5.1**
+
+---
+
 ## V0.5 Highlights
 
 V0.5 adds an **Import Preset** system to eliminate repetitive data entry during scan import, manual asset creation, and batch editing. It also improves the scan workflow with upload progress indicators and batch processing feedback.

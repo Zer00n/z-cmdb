@@ -95,8 +95,8 @@ def list_assets(db: Session, params: AssetQueryParams) -> tuple[list[Asset], int
         stmt = stmt.where(and_(*filters))
         count_stmt = count_stmt.where(and_(*filters))
 
-    # Sort by: network_zone + ip_address
-    stmt = stmt.order_by(Asset.network_zone, Asset.ip_address)
+    # Sort by: asset_no
+    stmt = stmt.order_by(Asset.asset_no)
 
     # Total count
     total = db.scalar(count_stmt) or 0

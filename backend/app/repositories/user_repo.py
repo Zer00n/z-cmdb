@@ -104,6 +104,7 @@ def lock_user(db: Session, user: User, until: datetime) -> User:
 def update_password(db: Session, user: User, new_hash: str) -> User:
     user.password_hash = new_hash
     user.password_changed_at = datetime.now(timezone.utc)
+    user.token_version = (user.token_version or 0) + 1   # 失效所有旧 token
     user.updated_at = datetime.now(timezone.utc)
     db.flush()
     return user

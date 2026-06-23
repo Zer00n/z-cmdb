@@ -51,6 +51,11 @@ def upload_and_parse(
     # Parse XML
     parsed = parse_nmap_xml(file_content)
 
+    # 文件名消毒：去除路径分量与控制/标签字符，截断长度
+    import re
+    _raw_name = Path(filename).name  # 去除任何路径前缀
+    _safe_batch_name = re.sub(r'[<>"\'&\x00-\x1f]', "", _raw_name)[:200] or "scan.xml"
+
     # Save file (UUID naming to prevent guessing)
     upload_dir = Path(__file__).parent.parent.parent / "uploads"
     upload_dir.mkdir(parents=True, exist_ok=True)
@@ -60,7 +65,7 @@ def upload_and_parse(
 
     # Create batch record
     batch = ScanBatch(
-        batch_name=filename,
+        batch_name=_safe_batch_name,
         uploaded_by=user_id,
         uploaded_at=datetime.now(timezone.utc),
         scan_started_at=None,  # TODO: extract from parsed data

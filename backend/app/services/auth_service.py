@@ -73,8 +73,8 @@ def login(db: Session, username: str, password: str) -> tuple[str, str]:
     db.commit()
 
     timeout = get_session_timeout_minutes(db)
-    access_token = create_access_token(user.id, user.role, expire_minutes=timeout)
-    refresh_token = create_refresh_token(user.id, user.role)
+    access_token = create_access_token(user.id, user.role, expire_minutes=timeout, token_version=user.token_version)
+    refresh_token = create_refresh_token(user.id, user.role, token_version=user.token_version)
 
     logger.info("user login success", extra={"user_id": user.id, "username": username})
     return access_token, refresh_token
@@ -92,8 +92,11 @@ def refresh_access_token(db: Session, refresh_token: str) -> str:
     if user.status == "disabled":
         raise AuthenticationError("Account has been disabled")
 
+    if int(payload.get("tv", 0)) != (user.token_version or 0):
+        raise AuthenticationError("Token has been revoked, please log in again")
+
     timeout = get_session_timeout_minutes(db)
-    return create_access_token(user.id, user.role, expire_minutes=timeout)
+    return create_access_token(user.id, user.role, expire_minutes=timeout, token_version=user.token_version)
 
 
 def change_password(
@@ -112,6 +115,9 @@ def change_password(
     new_hash = hash_password(new_password)
     user_repo.update_password(db, user, new_hash)
     db.commit()
+
+    # 改密成功后清除可能残留的初始明文密码文件
+    _purge_initial_password_file()
 
     logger.info("password changed", extra={"user_id": user.id})
 
@@ -163,6 +169,19 @@ def _persist_initial_password(password: str) -> None:
     print(f"  Password: {password}")
     print(f"  Please change your password immediately after logging in!")
     print(f"{'='*60}\n")
+
+
+def _purge_initial_password_file() -> None:
+    """删除初始明文密码文件（改密后调用，幂等）。"""
+    from app.core.config import settings
+
+    pw_file = settings.db_path.parent / "INITIAL_ADMIN_PASSWORD.txt"
+    try:
+        if pw_file.exists():
+            pw_file.unlink()
+            logger.info("initial admin password file removed after password change")
+    except OSError as exc:
+        logger.warning("failed to remove initial password file", extra={"error": str(exc)})
 
 
 def ensure_initial_admin(db: Session) -> None:

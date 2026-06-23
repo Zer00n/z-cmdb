@@ -66,7 +66,7 @@ def ensure_defaults(db: Session) -> None:
 
 @router.get("")
 def get_config(
-    _current_user: AnyUser = None,
+    current_user: AnyUser = None,
     db: Session = Depends(get_db),
 ) -> dict:
     """Read all system configurations"""
@@ -75,11 +75,15 @@ def get_config(
 
     configs = list(db.scalars(select(SystemConfig)).all())
     result = {}
+    is_super = bool(current_user and getattr(current_user, "role", None) == "super_admin")
     for cfg in configs:
         # Hide sensitive field values
         value = cfg.value
         if "api_key" in cfg.key and value:
-            value = value[:4] + "****" + value[-4:] if len(value) > 8 else "****"
+            if is_super:
+                value = value[:4] + "****" + value[-4:] if len(value) > 8 else "****"
+            else:
+                value = "****"  # 非 super_admin 完全打码
         result[cfg.key] = {
             "value": value,
             "description": cfg.description,
@@ -117,6 +121,7 @@ def update_config(
         cfg.updated_at = datetime.now(timezone.utc)
         cfg.updated_by = current_user.id if current_user else None  # type: ignore[union-attr]
         updated_keys.append(key)
+        logger.info("config updated: %s = %s", key, str_value[:50])
 
     if updated_keys:
         audit_service.log_from_request(

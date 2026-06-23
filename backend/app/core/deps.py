@@ -34,6 +34,9 @@ def get_current_user(
     user_id = int(payload["sub"])
     user = user_repo.get_by_id(db, user_id)
 
+    if int(payload.get("tv", 0)) != (user.token_version or 0):
+        raise AuthenticationError("Token has been revoked, please log in again")
+
     if user.status == "disabled":
         raise AuthenticationError("Account has been disabled")
 

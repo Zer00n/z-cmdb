@@ -43,7 +43,7 @@ class Settings(BaseSettings):
     # Application
     APP_ENV: str = "development"
     APP_TITLE: str = "Z-CMDB Lite"
-    APP_VERSION: str = "0.5.0"
+    APP_VERSION: str = "0.5.1"
 
     # CORS (allow frontend dev server during development)
     CORS_ORIGINS: list[str] = ["http://localhost:5173", "http://127.0.0.1:5173"]
@@ -71,3 +71,20 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+
+def validate_runtime_secrets() -> None:
+    """生产环境密钥校验，在应用启动事件中调用。"""
+    import logging
+    _logger = logging.getLogger(__name__)
+    is_prod = settings.APP_ENV.lower() in ("production", "prod")
+    weak = settings.jwt_secret in ("", "change-me-in-production") or len(settings.jwt_secret) < 16
+
+    if weak:
+        msg = (
+            "JWT_SECRET is using the default/weak value. "
+            "Set a strong JWT_SECRET (>=32 random chars) or JWT_SECRET_FILE."
+        )
+        if is_prod:
+            raise RuntimeError(msg + " Refusing to start in production.")
+        _logger.warning(msg)

@@ -126,6 +126,8 @@ async function handleCostToggle(val: boolean) {
     await updateConfig({ feature_cost_accounting_enabled: val ? 'true' : 'false' })
     await featureStore.fetchFeatureFlags()
     ElMessage.success(val ? t('settings.costCard.enabled') : t('settings.costCard.disabled'))
+  } catch (e: any) {
+    ElMessage.error(e?.response?.data?.message || e?.message || 'Toggle failed')
   } finally {
     costToggling.value = false
   }

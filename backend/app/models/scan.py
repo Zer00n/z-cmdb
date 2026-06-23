@@ -15,7 +15,7 @@ class ScanBatch(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     batch_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     uploaded_by: Mapped[int | None] = mapped_column(
-        Integer, ForeignKey("users.id"), nullable=True
+        Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )
     uploaded_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, default=utc_now
@@ -46,7 +46,7 @@ class ScanSnapshotItem(Base):
     scan_batch_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("scan_batches.id", ondelete="CASCADE"), nullable=False
     )
-    ip_address: Mapped[str] = mapped_column(String(45), nullable=False)
+    ip_address: Mapped[str] = mapped_column(String(45), nullable=False, index=True)
     mac_address: Mapped[str | None] = mapped_column(String(32), nullable=True)
     hostname: Mapped[str | None] = mapped_column(String(255), nullable=True)
     os_info: Mapped[str | None] = mapped_column(String(255), nullable=True)
@@ -56,7 +56,7 @@ class ScanSnapshotItem(Base):
     service_version: Mapped[str | None] = mapped_column(String(255), nullable=True)
     state: Mapped[str | None] = mapped_column(String(20), nullable=True)
     matched_asset_id: Mapped[int | None] = mapped_column(
-        Integer, ForeignKey("assets.id"), nullable=True
+        Integer, ForeignKey("assets.id", ondelete="SET NULL"), nullable=True
     )
     diff_type: Mapped[str | None] = mapped_column(String(20), nullable=True)
 

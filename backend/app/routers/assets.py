@@ -240,6 +240,22 @@ def bulk_update_assets(
         from app.core.exceptions import ValidationError
         raise ValidationError(f"Bulk-modifiable fields not supported, allowed: {allowed_fields}")
 
+    # 枚举字段值校验（与 schemas/asset.py 中的 Literal 定义保持一致）
+    _enum_whitelist = {
+        "status": {"online", "offline", "decommissioned"},
+        "importance": {"core", "important", "normal"},
+        "network_zone": {
+            "dmz", "intranet", "office", "management", "other",
+            "aliyun", "tencent", "huawei", "aws", "azure", "gcp", "other_cloud",
+        },
+    }
+    from app.core.exceptions import ValidationError
+    for _field, _allowed in _enum_whitelist.items():
+        if _field in filtered and filtered[_field] not in _allowed:
+            raise ValidationError(
+                f"Invalid value for '{_field}': {filtered[_field]!r}. Allowed: {sorted(_allowed)}"
+            )
+
     count = asset_service.bulk_update(db, ids, filtered)
     audit_service.log_from_request(
         db, request, action_type="UPDATE", user=current_user,

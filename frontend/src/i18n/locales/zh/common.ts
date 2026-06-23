@@ -37,4 +37,7 @@ export default {
     offline: '离线',
     decommissioned: '已下线',
   },
+  request_failed: '请求失败，请稍后重试',
+  permission_denied: '权限不足',
+  server_error: '服务器内部错误，请联系管理员',
 }

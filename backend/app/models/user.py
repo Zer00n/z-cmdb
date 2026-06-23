@@ -25,6 +25,7 @@ class User(Base):
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="active")
     password_changed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     failed_login_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    token_version: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
     locked_until: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, default=utc_now
