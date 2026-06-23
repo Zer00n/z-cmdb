@@ -54,6 +54,7 @@ class ScanSnapshotItem(Base):
     protocol: Mapped[str | None] = mapped_column(String(10), nullable=True)
     service_name: Mapped[str | None] = mapped_column(String(50), nullable=True)
     service_version: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    state: Mapped[str | None] = mapped_column(String(20), nullable=True)
     matched_asset_id: Mapped[int | None] = mapped_column(
         Integer, ForeignKey("assets.id"), nullable=True
     )

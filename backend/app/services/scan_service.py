@@ -92,6 +92,7 @@ def upload_and_parse(
                 protocol=port.protocol,
                 service_name=port.service_name,
                 service_version=port.service_version,
+                state=port.state,
                 diff_type=_get_host_diff_type(host, diff_summary),
             )
             db.add(item)
@@ -375,6 +376,7 @@ def confirm_batch(
                 db, asset.id,
                 item.port_number, item.protocol or "tcp",
                 item.service_name, item.service_version,
+                state=item.state or "open",
             )
             # Sync app: only write if service_name is present
             if item.service_name:
