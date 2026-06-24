@@ -29,6 +29,12 @@ from app.routers.cost_rates import router as cost_rates_router
 from app.routers.asset_relations import router as asset_relations_router
 from app.routers.asset_cost_details import router as asset_cost_details_router
 from app.routers.import_presets import router as import_presets_router
+# V0.6 project-perspective routers
+from app.routers.projects import router as projects_router
+from app.routers.units import router as units_router
+from app.routers.unclaimed import router as unclaimed_router
+from app.routers.billing_policy import router as billing_policy_router
+from app.routers.relations import router as relations_router
 
 # Initialize logging (must be done before other module imports)
 setup_logging()
@@ -127,6 +133,12 @@ app.include_router(cost_rates_router)
 app.include_router(asset_relations_router)
 app.include_router(asset_cost_details_router)
 app.include_router(import_presets_router)
+# V0.6 project-perspective routers
+app.include_router(projects_router)
+app.include_router(units_router)
+app.include_router(unclaimed_router)
+app.include_router(billing_policy_router)
+app.include_router(relations_router)
 
 
 # ── Startup event ─────────────────────────────────────────────

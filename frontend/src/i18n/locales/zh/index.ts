@@ -15,6 +15,7 @@ import components from './components'
 import constants from './constants'
 import cost from './cost'
 import preset from './preset'
+import project from './project'
 
 export default {
   common,
@@ -34,4 +35,5 @@ export default {
   constants,
   cost,
   preset,
+  project,
 }

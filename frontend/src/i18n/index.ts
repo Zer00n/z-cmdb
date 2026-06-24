@@ -7,7 +7,7 @@ const STORAGE_KEY = 'cmdb-locale'
 function getDefaultLocale(): string {
   const stored = localStorage.getItem(STORAGE_KEY)
   if (stored && ['en', 'zh'].includes(stored)) return stored
-  return 'en'
+  return 'zh'
 }
 
 const i18n = createI18n({

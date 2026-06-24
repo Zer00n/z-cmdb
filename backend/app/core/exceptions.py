@@ -148,3 +148,62 @@ class FeatureDisabledError(CMDBException):
 
     def __init__(self, message: str = "Feature not enabled") -> None:
         super().__init__(message)
+
+
+# ── V0.6 project-perspective exceptions ──────────────────────────
+
+
+class ProjectNotFoundError(CMDBException):
+    status_code = 404
+    error_code = "PROJECT_NOT_FOUND"
+
+    def __init__(self, message: str = "Project not found") -> None:
+        super().__init__(message)
+
+
+class UnitNotFoundError(CMDBException):
+    status_code = 404
+    error_code = "UNIT_NOT_FOUND"
+
+    def __init__(self, message: str = "Consuming unit not found") -> None:
+        super().__init__(message)
+
+
+class HostNotFoundError(CMDBException):
+    status_code = 404
+    error_code = "HOST_NOT_FOUND"
+
+    def __init__(self, message: str = "Host resource not found") -> None:
+        super().__init__(message)
+
+
+class ConservationViolationError(CMDBException):
+    status_code = 500
+    error_code = "CONSERVATION_VIOLATION"
+
+    def __init__(self, host_id: str, allocated: float, idle_share: float) -> None:
+        self.host_id = host_id
+        self.allocated = allocated
+        self.idle_share = idle_share
+        msg = (
+            f"Conservation violated on host {host_id}: "
+            f"allocated={allocated:.6f} + idle={idle_share:.6f} != 1.0"
+        )
+        super().__init__(msg)
+
+
+class PolicyFreezeError(CMDBException):
+    status_code = 422
+    error_code = "POLICY_FREEZE_IMMUTABLE"
+
+    def __init__(self, message: str = "Billing freeze cannot be disabled") -> None:
+        super().__init__(message)
+
+
+class DuplicateSnapshotError(CMDBException):
+    status_code = 409
+    error_code = "DUPLICATE_SNAPSHOT"
+
+    def __init__(self, project_id: str, period: str) -> None:
+        msg = f"Bill snapshot already exists for project {project_id} period {period}"
+        super().__init__(msg)

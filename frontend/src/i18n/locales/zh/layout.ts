@@ -32,5 +32,9 @@ export default {
     deptBilling: '部门账单',
     costRates: '成本费率',
     importPresets: '录入设置',
+    projectManagement: '项目管理',
+    projectList: '项目列表',
+    unclaimedResources: '待认领资源',
+    billingPolicy: '计费策略',
   },
 }

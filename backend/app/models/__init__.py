@@ -11,6 +11,14 @@ from app.models.topology import Topology
 from app.models.cost import (
     Department, AssetCostItem, AssetRelation, AssetDeptAssignment, CostRate,
 )
+# V0.6 project-perspective models
+from app.models.project import Project
+from app.models.host_resource import HostResource
+from app.models.consuming_unit import ConsumingUnit
+from app.models.placement import Placement
+from app.models.unit_relation import UnitRelation
+from app.models.billing_policy import BillingPolicy
+from app.models.bill_snapshot import BillSnapshot
 
 __all__ = [
     "User",
@@ -28,4 +36,12 @@ __all__ = [
     "AssetRelation",
     "AssetDeptAssignment",
     "CostRate",
+    # V0.6
+    "Project",
+    "HostResource",
+    "ConsumingUnit",
+    "Placement",
+    "UnitRelation",
+    "BillingPolicy",
+    "BillSnapshot",
 ]

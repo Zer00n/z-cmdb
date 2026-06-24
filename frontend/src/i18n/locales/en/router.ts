@@ -16,4 +16,8 @@ export default {
   deptBilling: 'Department Billing',
   costRates: 'Cost Rate Settings',
   importPresets: 'Import Presets',
+  projectList: 'Project List',
+  projectArchitecture: 'Project Architecture',
+  unclaimedResources: 'Unclaimed Resources',
+  billingPolicy: 'Billing Policy',
 }

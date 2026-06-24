@@ -46,6 +46,14 @@ const navGroups = computed<NavGroup[]>(() => [
     title: t('layout.sidebar.assetManagement'),
     items: [
       { title: t('layout.sidebar.assetList'), route: '/assets', icon: 'Monitor' },
+      { title: t('layout.sidebar.unclaimedResources'), route: '/assets/unclaimed', icon: 'WarningFilled' },
+    ],
+  },
+  // V0.6 Project management
+  {
+    title: t('layout.sidebar.projectManagement'),
+    items: [
+      { title: t('layout.sidebar.projectList'), route: '/projects', icon: 'Folder' },
     ],
   },
   {
@@ -90,6 +98,7 @@ const navGroups = computed<NavGroup[]>(() => [
       { title: t('layout.sidebar.userManagement'), route: '/users', icon: 'User', requiredRoles: ['super_admin'] },
       { title: t('layout.sidebar.systemConfig'), route: '/settings', icon: 'Setting', requiredRoles: ['super_admin'] },
       { title: t('layout.sidebar.costRates'), route: '/cost/rates', icon: 'PriceTag', requiredRoles: ['super_admin'], requiredFeature: 'costAccounting' },
+      { title: t('layout.sidebar.billingPolicy'), route: '/settings/billing-policy', icon: 'Coin', requiredRoles: ['super_admin'] },
     ],
   },
 ])

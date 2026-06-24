@@ -25,6 +25,14 @@ from app.models.topology import Topology  # noqa: F401
 from app.models.llm_log import LlmCallLog  # noqa: F401
 from app.models.asset_app import AssetApp  # noqa: F401
 from app.models.cost import Department, AssetCostItem, AssetRelation, AssetDeptAssignment, CostRate  # noqa: F401
+# V0.6 project-perspective models
+from app.models.project import Project  # noqa: F401
+from app.models.host_resource import HostResource  # noqa: F401
+from app.models.consuming_unit import ConsumingUnit  # noqa: F401
+from app.models.placement import Placement  # noqa: F401
+from app.models.unit_relation import UnitRelation  # noqa: F401
+from app.models.billing_policy import BillingPolicy  # noqa: F401
+from app.models.bill_snapshot import BillSnapshot  # noqa: F401
 
 config = context.config
 

@@ -125,6 +125,31 @@ const router = createRouter({
           component: () => import('@/views/Help.vue'),
           meta: { title: 'router.help' },
         },
+        // V0.6 project-perspective routes
+        {
+          path: 'projects',
+          name: 'ProjectList',
+          component: () => import('@/views/project/ProjectList.vue'),
+          meta: { title: 'router.projectList' },
+        },
+        {
+          path: 'projects/:id',
+          name: 'ProjectArchitecture',
+          component: () => import('@/views/project/ProjectArchitecture.vue'),
+          meta: { title: 'router.projectArchitecture' },
+        },
+        {
+          path: 'assets/unclaimed',
+          name: 'UnclaimedResources',
+          component: () => import('@/views/asset/UnclaimedResources.vue'),
+          meta: { title: 'router.unclaimedResources' },
+        },
+        {
+          path: 'settings/billing-policy',
+          name: 'BillingPolicy',
+          component: () => import('@/views/settings/BillingPolicy.vue'),
+          meta: { title: 'router.billingPolicy', roles: ['super_admin'] },
+        },
       ],
     },
     {
