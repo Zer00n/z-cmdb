@@ -7,7 +7,7 @@ import { ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { fetchProjectList, createProject } from '@/api/project'
+import { fetchProjectList, createProject, updateProject } from '@/api/project'
 import type { ProjectListItem, ProjectCreateRequest } from '@/types/project'
 
 const { t } = useI18n()
@@ -15,6 +15,7 @@ const router = useRouter()
 
 const loading = ref(true)
 const projects = ref<ProjectListItem[]>([])
+const origOwnerMap = ref<Record<string, string>>({})
 const total = ref(0)
 const page = ref(1)
 const pageSize = ref(20)
@@ -40,6 +41,7 @@ async function loadData() {
     })
     projects.value = res.items
     total.value = res.total
+    res.items.forEach(item => { origOwnerMap.value[item.id] = item.owner || '' })
   } catch (e: any) {
     ElMessage.error(e?.message || t('project.list.loadError'))
   } finally {
@@ -95,6 +97,20 @@ async function handleCreate() {
     ElMessage.error(e?.message || t('project.list.createError'))
   } finally {
     creating.value = false
+  }
+}
+
+async function handleOwnerBlur(row: ProjectListItem) {
+  const newVal = (row.owner || '').trim()
+  const oldVal = origOwnerMap.value[row.id] ?? ''
+  if (newVal === oldVal) return
+  try {
+    await updateProject(row.id, { owner: newVal || null })
+    origOwnerMap.value[row.id] = newVal
+    if (!newVal) row.owner = null
+  } catch (e: any) {
+    ElMessage.error(e?.message || t('project.architecture.updateError'))
+    row.owner = (oldVal || null) as any
   }
 }
 
@@ -155,7 +171,18 @@ onMounted(loadData)
             </div>
           </template>
         </el-table-column>
-        <el-table-column :label="t('project.list.colOwner')" prop="owner" width="120" />
+        <el-table-column :label="t('project.list.colOwner')" width="120">
+          <template #default="{ row }">
+            <input
+              class="v06-inline-input"
+              :value="row.owner || ''"
+              @mousedown.stop
+              @input="row.owner = ($event.target as HTMLInputElement).value"
+              @blur="handleOwnerBlur(row)"
+              @keyup.enter="($event.target as HTMLInputElement).blur()"
+            />
+          </template>
+        </el-table-column>
         <el-table-column :label="t('project.list.colBusinessUnit')" width="130">
           <template #default="{ row }">
             <span v-if="row.business_unit" class="v06-tag v06-tag-info">{{ row.business_unit }}</span>
@@ -291,4 +318,13 @@ onMounted(loadData)
 /* ── Mono / Time ── */
 .v06-mono { font-family: var(--font-mono); font-size: 13px; }
 .v06-time { font-size: 12px; color: var(--neutral-500); }
+
+/* ── Inline editable input ── */
+.v06-inline-input {
+  width: 100%; border: 1px solid transparent; border-radius: 4px;
+  padding: 4px 8px; font-size: 13px; background: transparent;
+  outline: none; transition: border-color 0.15s, background 0.15s;
+}
+.v06-inline-input:hover { border-color: var(--neutral-300); background: var(--neutral-50); }
+.v06-inline-input:focus { border-color: var(--color-primary-500); background: white; box-shadow: 0 0 0 2px rgba(59,130,246,0.15); }
 </style>

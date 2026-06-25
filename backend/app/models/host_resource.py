@@ -13,6 +13,7 @@ class HostResource(Base):
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     name: Mapped[str] = mapped_column(String(200), nullable=False)
+    ip_address: Mapped[str | None] = mapped_column(String(45), nullable=True)
     type: Mapped[str] = mapped_column(String(32), nullable=False)
     parent_host_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
     cpu_total: Mapped[float] = mapped_column(Float, nullable=False)

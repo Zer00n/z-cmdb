@@ -27,3 +27,16 @@ def list_by_ids(db: Session, host_ids: set[str]) -> list[HostResource]:
 
 def list_all(db: Session) -> list[HostResource]:
     return list(db.scalars(select(HostResource).order_by(HostResource.id)).all())
+
+
+def search_by_ip(db: Session, ip: str) -> list[HostResource]:
+    """Search hosts by IP address (prefix match)."""
+    return list(
+        db.scalars(
+            select(HostResource)
+            .where(HostResource.ip_address.isnot(None))
+            .where(HostResource.ip_address.like(f"%{ip}%"))
+            .order_by(HostResource.ip_address)
+            .limit(20)
+        ).all()
+    )

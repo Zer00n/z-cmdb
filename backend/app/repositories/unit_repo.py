@@ -13,6 +13,14 @@ def get_by_id(db: Session, unit_id: str) -> ConsumingUnit:
     return unit
 
 
+def create_unit(db: Session, **kwargs) -> ConsumingUnit:
+    unit = ConsumingUnit(**kwargs)
+    db.add(unit)
+    db.commit()
+    db.refresh(unit)
+    return unit
+
+
 def list_unclaimed(db: Session) -> list[ConsumingUnit]:
     return list(
         db.scalars(

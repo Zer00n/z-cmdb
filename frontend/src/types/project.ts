@@ -53,6 +53,7 @@ export interface ConsumingUnit {
   type: ConsumingUnitType
   owner: string | null
   environment: EnvironmentType | null
+  host_id?: string | null
   created_at: string
   updated_at: string
   runtime?: {
@@ -166,6 +167,8 @@ export interface TopologyResponse {
 
 export interface TopologyHost {
   id: string
+  name: string
+  ip_address: string | null
   monthly_cost: number
   shared: boolean
   shares: { project_id: string; ratio: number }[]
@@ -240,8 +243,40 @@ export interface UnclaimedResponse {
 // ── Project Summary ────────────────────────────────────────────
 
 export interface ProjectSummary {
-  overview: string
-  risk: string
+  overview: string | null
+  risk: string | null
   draft: boolean
-  disclaimer: string
+  lang?: string
+  generated_at?: string
+  disclaimer?: string
+  degraded?: boolean
+  reason?: string
+}
+
+// ── Consuming Unit Create ──────────────────────────────────────
+
+export interface ConsumingUnitCreate {
+  name: string
+  type: 'k8s_workload' | 'docker' | 'vm_app' | 'host_process'
+  owner?: string
+  environment?: 'prod' | 'staging' | 'dev'
+  project_id: string
+}
+
+export interface PlacementCreate {
+  host_id: string
+  cpu_request: number
+  mem_request: number
+  instances?: number
+  source?: string
+}
+
+export interface HostSearchResult {
+  id: string
+  name: string
+  ip_address: string | null
+  type: string
+  cpu_total: number
+  mem_total: number
+  monthly_cost: number
 }

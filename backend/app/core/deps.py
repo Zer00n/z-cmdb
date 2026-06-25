@@ -89,6 +89,25 @@ AuditorUser = Annotated[User, Depends(require_auditor)]
 AnyUser = Annotated[User, Depends(require_any)]
 
 
+def get_optional_user(
+    authorization: Annotated[str | None, Header()] = None,
+    db: Session = Depends(get_db),
+) -> User | None:
+    """Like get_current_user but returns None instead of raising on missing/invalid token."""
+    if not authorization or not authorization.startswith("Bearer "):
+        return None
+    try:
+        token = authorization[len("Bearer "):]
+        payload = decode_token(token, expected_type="access")
+        user_id = int(payload["sub"])
+        return user_repo.get_by_id(db, user_id)
+    except Exception:
+        return None
+
+
+OptionalUser = User | None
+
+
 def require_auditor_exists(
     db: Session = Depends(get_db),
 ) -> None:

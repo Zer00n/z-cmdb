@@ -1,9 +1,17 @@
-"""V0.6 placement repository (read-only)"""
+"""V0.6 placement repository"""
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.models.consuming_unit import ConsumingUnit
 from app.models.placement import Placement
+
+
+def create_placement(db: Session, **kwargs) -> Placement:
+    placement = Placement(**kwargs)
+    db.add(placement)
+    db.commit()
+    db.refresh(placement)
+    return placement
 
 
 def get_current_placement(db: Session, unit_id: str) -> Placement | None:

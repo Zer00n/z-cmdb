@@ -8,8 +8,11 @@ import type {
   ProjectCreateRequest,
   ProjectUpdateRequest,
   ConsumingUnit,
+  ConsumingUnitCreate,
   ConsumingUnitPatch,
   ClaimRequest,
+  PlacementCreate,
+  HostSearchResult,
   BillingPolicy,
   BillingPolicyUpdate,
   BillSnapshot,
@@ -55,11 +58,19 @@ export function fetchProjectBill(id: string, period: string): Promise<BillSnapsh
   return request.get(`/api/projects/${id}/bill`, { params: { period } })
 }
 
-export function fetchProjectSummary(id: string): Promise<ProjectSummary> {
-  return request.get(`/api/projects/${id}/summary`)
+export function fetchProjectSummary(id: string, lang: string = 'zh'): Promise<ProjectSummary> {
+  return request.get(`/api/projects/${id}/summary`, { params: { lang } })
+}
+
+export function regenerateProjectSummary(id: string, lang: string = 'zh'): Promise<ProjectSummary> {
+  return request.post(`/api/projects/${id}/summary/regenerate`, null, { params: { lang } })
 }
 
 // ── Units ──────────────────────────────────────────────────────
+
+export function createUnit(data: ConsumingUnitCreate): Promise<ConsumingUnit> {
+  return request.post('/api/units', data)
+}
 
 export function patchUnit(id: string, data: ConsumingUnitPatch): Promise<ConsumingUnit> {
   return request.patch(`/api/units/${id}`, data)
@@ -67,6 +78,20 @@ export function patchUnit(id: string, data: ConsumingUnitPatch): Promise<Consumi
 
 export function claimUnit(id: string, data: ClaimRequest): Promise<ConsumingUnit> {
   return request.post(`/api/units/${id}/claim`, data)
+}
+
+export function deleteUnit(id: string): Promise<void> {
+  return request.delete(`/api/units/${id}`)
+}
+
+export function createPlacement(unitId: string, data: PlacementCreate): Promise<any> {
+  return request.post(`/api/units/${unitId}/placements`, data)
+}
+
+// ── Hosts ───────────────────────────────────────────────────────
+
+export function searchHosts(query: string): Promise<HostSearchResult[]> {
+  return request.get('/api/hosts/search', { params: { q: query } })
 }
 
 // ── Unclaimed ──────────────────────────────────────────────────

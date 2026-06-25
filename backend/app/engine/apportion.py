@@ -128,30 +128,33 @@ def apportion(
             denom_cpu = sum(p.cpu_request * p.instances for p in ps)
             denom_mem = sum(p.mem_request * p.instances for p in ps)
 
+        # Pass 1: compute raw shares
+        raw: list[tuple[PlacementInput, float, float]] = []  # (placement, share, amount)
         allocated = 0.0
-        host_detail: list[tuple[str, float, float]] = []  # (unit_id, share, amount)
-
         for p in ps:
             used_cpu = p.cpu_request * p.instances
             used_mem = p.mem_request * p.instances
-
             cpu_share = (used_cpu / denom_cpu) if denom_cpu else 0.0
             mem_share = (used_mem / denom_mem) if denom_mem else 0.0
-
             share = combine(cpu_share, mem_share, policy)
+            amount = h.monthly_cost * share
+            raw.append((p, share, amount))
+            allocated += share
 
-            # v0.6: time_factor = 1.0 (simplified; function signature reserves param)
-            tf = 1.0
-            amount = h.monthly_cost * share * tf
+        # Normalize if over-allocated (requests exceed host capacity)
+        if allocated > 1.0 + TOLERANCE:
+            scale = 1.0 / allocated
+            raw = [(p, s * scale, a * scale) for p, s, a in raw]
+            allocated = 1.0
 
+        # Pass 2: commit to project costs and detail
+        host_detail: list[tuple[str, float, float]] = []
+        for p, share, amount in raw:
             unit = units_by_id.get(p.unit_id)
             if unit and unit.project_id:
                 project_cost[unit.project_id] += amount
             else:
-                # Unclaimed unit cost goes to bucket
                 bucket_idle += amount
-
-            allocated += share * tf
             host_detail.append((p.unit_id, share, amount))
             detail.append(DetailLine(unit_id=p.unit_id, host_id=h.id, share=share, amount=amount))
 

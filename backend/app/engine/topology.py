@@ -249,6 +249,8 @@ def generate_topology(db: Session, project_id: str) -> dict[str, Any]:
 
         hosts_out.append({
             "id": h.id,
+            "name": h.name,
+            "ip_address": h.ip_address,
             "monthly_cost": h.monthly_cost,
             "shared": shared,
             "shares": shares_out if shared else [],

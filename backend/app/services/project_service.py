@@ -88,6 +88,7 @@ def get_project_units(db: Session, project_id: str) -> list[dict]:
             "updated_at": u.updated_at,
         }
         if placement:
+            item["host_id"] = placement.host_id
             item["runtime"] = {
                 "instances": placement.instances,
                 "cpu": placement.cpu_request,

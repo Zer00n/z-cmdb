@@ -17,6 +17,7 @@ interface NavItem {
   requiredRoles?: UserRole[]
   requiredFeature?: string
   badge?: number
+  exact?: boolean  // 精确匹配，不激活子路由前缀（兄弟路由场景）
 }
 
 interface NavGroup {
@@ -45,8 +46,8 @@ const navGroups = computed<NavGroup[]>(() => [
   {
     title: t('layout.sidebar.assetManagement'),
     items: [
-      { title: t('layout.sidebar.assetList'), route: '/assets', icon: 'Monitor' },
-      { title: t('layout.sidebar.unclaimedResources'), route: '/assets/unclaimed', icon: 'WarningFilled' },
+      { title: t('layout.sidebar.assetList'), route: '/assets', icon: 'Monitor', exact: true },
+      { title: t('layout.sidebar.unclaimedResources'), route: '/assets/unclaimed', icon: 'WarningFilled', exact: true },
     ],
   },
   // V0.6 Project management
@@ -96,7 +97,7 @@ const navGroups = computed<NavGroup[]>(() => [
     requiredRoles: ['super_admin'],
     items: [
       { title: t('layout.sidebar.userManagement'), route: '/users', icon: 'User', requiredRoles: ['super_admin'] },
-      { title: t('layout.sidebar.systemConfig'), route: '/settings', icon: 'Setting', requiredRoles: ['super_admin'] },
+      { title: t('layout.sidebar.systemConfig'), route: '/settings', icon: 'Setting', requiredRoles: ['super_admin'], exact: true },
       { title: t('layout.sidebar.costRates'), route: '/cost/rates', icon: 'PriceTag', requiredRoles: ['super_admin'], requiredFeature: 'costAccounting' },
       { title: t('layout.sidebar.billingPolicy'), route: '/settings/billing-policy', icon: 'Coin', requiredRoles: ['super_admin'] },
     ],
@@ -124,11 +125,11 @@ const visibleGroups = computed(() => {
     .filter((g) => g.items.length > 0)
 })
 
-function isActive(itemRoute: string) {
+function isActive(itemRoute: string, exact = false) {
   const p = route.path
   if (p === itemRoute) return true
+  if (exact) return false
   // Only match child routes, not sibling routes that share a prefix
-  // e.g. /cost/billing should NOT activate /cost, but /assets/123 should activate /assets
   return p.startsWith(itemRoute + '/')
 }
 </script>
@@ -150,7 +151,7 @@ function isActive(itemRoute: string) {
           :key="item.route"
           :to="item.route"
           class="nav-item"
-          :class="{ active: isActive(item.route) }"
+          :class="{ active: isActive(item.route, item.exact) }"
         >
           <span class="nav-ico">
             <el-icon size="16">

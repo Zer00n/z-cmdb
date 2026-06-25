@@ -34,6 +34,14 @@ class ConsumingUnitPatch(BaseModel):
     environment: EnvironmentType | None = None
 
 
+class ConsumingUnitCreate(BaseModel):
+    name: str = Field(..., min_length=1, max_length=200)
+    type: ConsumingUnitType
+    owner: str | None = Field(None, max_length=100)
+    environment: EnvironmentType | None = None
+    project_id: str = Field(..., min_length=1, description="Target project ID")
+
+
 class ClaimRequest(BaseModel):
     project_id: str = Field(..., min_length=1, description="Target project ID")
 
@@ -51,6 +59,14 @@ class PlacementRead(BaseModel):
     instances: int
     source: str | None
     observed_at: str
+
+
+class PlacementCreate(BaseModel):
+    host_id: str = Field(..., min_length=1, description="Target host ID")
+    cpu_request: float = Field(..., gt=0, description="CPU cores requested")
+    mem_request: float = Field(..., gt=0, description="Memory in MB requested")
+    instances: int = Field(1, ge=1, le=1000)
+    source: str = Field("manual", pattern=r"^(k8s|agent|manual)$")
 
 
 # ── UnitRelation ─────────────────────────────────────────────────

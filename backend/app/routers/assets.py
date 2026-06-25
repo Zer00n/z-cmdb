@@ -142,6 +142,56 @@ def export_assets_threat_hunting(
     )
 
 
+@router.patch("/bulk")
+def bulk_update_assets(
+    body: dict,
+    request: Request,
+    current_user: AdminUser = None,
+    db: Session = Depends(get_db),
+) -> dict:
+    """
+    Bulk update assets.
+    body: { "ids": [1,2,3], "updates": {"owner": "John"} }
+    Supported fields: owner, status, business_system, importance, network_zone
+    """
+    ids = body.get("ids", [])
+    updates = body.get("updates", {})
+    if not ids or not updates:
+        from app.core.exceptions import ValidationError
+        raise ValidationError("ids and updates cannot be empty")
+
+    allowed_fields = {"owner", "status", "business_system", "importance", "network_zone", "location"}
+    filtered = {k: v for k, v in updates.items() if k in allowed_fields}
+    if not filtered:
+        from app.core.exceptions import ValidationError
+        raise ValidationError(f"Bulk-modifiable fields not supported, allowed: {allowed_fields}")
+
+    # 枚举字段值校验（与 schemas/asset.py 中的 Literal 定义保持一致）
+    _enum_whitelist = {
+        "status": {"online", "offline", "decommissioned"},
+        "importance": {"core", "important", "normal"},
+        "network_zone": {
+            "dmz", "intranet", "office", "management", "other",
+            "aliyun", "tencent", "huawei", "aws", "azure", "gcp", "other_cloud",
+        },
+    }
+    from app.core.exceptions import ValidationError
+    for _field, _allowed in _enum_whitelist.items():
+        if _field in filtered and filtered[_field] not in _allowed:
+            raise ValidationError(
+                f"Invalid value for '{_field}': {filtered[_field]!r}. Allowed: {sorted(_allowed)}"
+            )
+
+    count = asset_service.bulk_update(db, ids, filtered)
+    audit_service.log_from_request(
+        db, request, action_type="UPDATE", user=current_user,
+        target_type="asset",
+        details={"action": "bulk_update", "count": count, "updates": filtered, "ids": ids},
+    )
+    db.commit()
+    return {"message": f"Successfully bulk-updated {count} assets", "count": count}
+
+
 @router.get("/{asset_id}", response_model=AssetRead)
 def get_asset(
     asset_id: int,
@@ -214,53 +264,3 @@ def get_asset_history(
 ) -> dict:
     """Asset port change history (based on scan snapshots)"""
     return asset_service.get_asset_history(db, asset_id)
-
-
-@router.patch("/bulk")
-def bulk_update_assets(
-    body: dict,
-    request: Request,
-    current_user: AdminUser = None,
-    db: Session = Depends(get_db),
-) -> dict:
-    """
-    Bulk update assets.
-    body: { "ids": [1,2,3], "updates": {"owner": "John"} }
-    Supported fields: owner, status, business_system, importance, network_zone
-    """
-    ids = body.get("ids", [])
-    updates = body.get("updates", {})
-    if not ids or not updates:
-        from app.core.exceptions import ValidationError
-        raise ValidationError("ids and updates cannot be empty")
-
-    allowed_fields = {"owner", "status", "business_system", "importance", "network_zone", "location"}
-    filtered = {k: v for k, v in updates.items() if k in allowed_fields}
-    if not filtered:
-        from app.core.exceptions import ValidationError
-        raise ValidationError(f"Bulk-modifiable fields not supported, allowed: {allowed_fields}")
-
-    # 枚举字段值校验（与 schemas/asset.py 中的 Literal 定义保持一致）
-    _enum_whitelist = {
-        "status": {"online", "offline", "decommissioned"},
-        "importance": {"core", "important", "normal"},
-        "network_zone": {
-            "dmz", "intranet", "office", "management", "other",
-            "aliyun", "tencent", "huawei", "aws", "azure", "gcp", "other_cloud",
-        },
-    }
-    from app.core.exceptions import ValidationError
-    for _field, _allowed in _enum_whitelist.items():
-        if _field in filtered and filtered[_field] not in _allowed:
-            raise ValidationError(
-                f"Invalid value for '{_field}': {filtered[_field]!r}. Allowed: {sorted(_allowed)}"
-            )
-
-    count = asset_service.bulk_update(db, ids, filtered)
-    audit_service.log_from_request(
-        db, request, action_type="UPDATE", user=current_user,
-        target_type="asset",
-        details={"action": "bulk_update", "count": count, "updates": filtered, "ids": ids},
-    )
-    db.commit()
-    return {"message": f"Successfully bulk-updated {count} assets", "count": count}

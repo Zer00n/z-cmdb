@@ -81,22 +81,22 @@ def seed_v06(db: Session | None = None) -> None:
         # node-3: 4.0 core, 6827 MB, ¥5,000 — mysql + project-B component (shared)
         # zombie-host: has cost but no placements
         host1 = HostResource(
-            id="node-1", name="node-1", type="physical",
+            id="node-1", name="node-1", ip_address="172.16.1.1", type="physical",
             cpu_total=1.0, mem_total=512, monthly_cost=3000,
             source="cmdb", created_at=now, updated_at=now,
         )
         host2 = HostResource(
-            id="node-2", name="node-2", type="physical",
+            id="node-2", name="node-2", ip_address="172.16.1.2", type="physical",
             cpu_total=8.5, mem_total=8704, monthly_cost=4000,
             source="cmdb", created_at=now, updated_at=now,
         )
         host3 = HostResource(
-            id="node-3", name="node-3", type="physical",
+            id="node-3", name="node-3", ip_address="172.16.1.3", type="physical",
             cpu_total=4.0, mem_total=6827, monthly_cost=5000,
             source="cmdb", created_at=now, updated_at=now,
         )
         zombie = HostResource(
-            id="zombie-host", name="zombie-host", type="physical",
+            id="zombie-host", name="zombie-host", ip_address="172.16.1.99", type="physical",
             cpu_total=2.0, mem_total=4096, monthly_cost=520,
             source="cmdb", created_at=now, updated_at=now,
         )

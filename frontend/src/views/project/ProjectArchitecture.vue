@@ -9,14 +9,17 @@ import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import {
   fetchProject, fetchProjectTopology, fetchProjectUnits, fetchProjectBill, fetchProjectSummary,
-  patchUnit,
+  regenerateProjectSummary,
+  createUnit, createPlacement, searchHosts,
+  patchUnit, deleteUnit,
+  updateProject,
 } from '@/api/project'
 import type {
   Project, TopologyResponse, ConsumingUnit, BillSnapshot, ProjectSummary,
-  ConsumingUnitPatch,
+  ConsumingUnitPatch, ConsumingUnitCreate, HostSearchResult,
 } from '@/types/project'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const route = useRoute()
 const projectId = computed(() => route.params.id as string)
 
@@ -26,12 +29,45 @@ const topology = ref<TopologyResponse | null>(null)
 const units = ref<ConsumingUnit[]>([])
 const bill = ref<BillSnapshot | null>(null)
 const summary = ref<ProjectSummary | null>(null)
+const summaryLoading = ref(false)
 const activeTab = ref('overview')
+
+// ── Add Consuming Unit dialog state ──
+const showAddUnitDialog = ref(false)
+const addUnitStep = ref(0) // 0 = basic, 1 = deploy
+const addUnitSaving = ref(false)
+const addUnitForm = ref<{
+  name: string
+  type: string
+  owner: string
+  environment: string
+}>({ name: '', type: 'docker', owner: '', environment: 'prod' })
+const addDeployForm = ref<{
+  host_id: string
+  cpu_request: number
+  mem_request: number
+  instances: number
+}>({ host_id: '', cpu_request: 1, mem_request: 512, instances: 1 })
+const hostSearchQuery = ref('')
+const hostSearchResults = ref<HostSearchResult[]>([])
+const hostSearching = ref(false)
+const selectedHost = ref<HostSearchResult | null>(null)
 
 // Current period for billing
 const currentPeriod = computed(() => {
   const now = new Date()
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+})
+
+// Host lookup: host_id → display string
+const hostMap = computed(() => {
+  const map: Record<string, string> = {}
+  if (topology.value) {
+    for (const h of topology.value.hosts) {
+      map[h.id] = h.ip_address ? `${h.name} (${h.ip_address})` : h.name
+    }
+  }
+  return map
 })
 
 async function loadData() {
@@ -43,6 +79,7 @@ async function loadData() {
       fetchProjectUnits(projectId.value),
     ])
     project.value = proj
+    origProjectFields.value = { owner: proj.owner || '', business_unit: proj.business_unit || '' }
     topology.value = topo
     units.value = unitList
 
@@ -53,9 +90,12 @@ async function loadData() {
       } catch { /* ignore */ }
     }
 
-    // Load AI summary (may fail with 503)
+    // Load AI summary (cached in DB; passes current locale)
     try {
-      summary.value = await fetchProjectSummary(projectId.value)
+      const s = await fetchProjectSummary(projectId.value, locale.value)
+      if (s && !s.degraded) {
+        summary.value = s
+      }
     } catch { /* ignore */ }
   } catch (e: any) {
     ElMessage.error(e?.message || t('project.architecture.loadError'))
@@ -76,6 +116,133 @@ async function handlePatchUnit(unitId: string, field: string, value: any) {
   }
 }
 
+const origProjectFields = ref<Record<string, string>>({})
+
+async function handleProjectFieldBlur(field: string) {
+  if (!project.value) return
+  const newVal = ((project.value as any)[field] || '').trim()
+  const oldVal = origProjectFields.value[field] ?? ''
+  if (newVal === oldVal) return
+  try {
+    await updateProject(projectId.value, { [field]: newVal || null })
+    origProjectFields.value[field] = newVal
+    if (!newVal) (project.value as any)[field] = null
+    ElMessage.success(t('project.architecture.updated'))
+  } catch (e: any) {
+    ElMessage.error(e?.message || t('project.architecture.updateError'))
+    ;(project.value as any)[field] = oldVal || null
+  }
+}
+
+async function handleToggleBilling(val: boolean) {
+  if (!project.value) return
+  try {
+    await updateProject(projectId.value, { billing_enabled: val ? 1 : 0 })
+    project.value.billing_enabled = val ? 1 : 0
+    ElMessage.success(t('project.architecture.updated'))
+    if (val) {
+      // Reload bill data after enabling billing
+      try {
+        bill.value = await fetchProjectBill(projectId.value, currentPeriod.value)
+      } catch { /* ignore */ }
+    }
+  } catch (e: any) {
+    ElMessage.error(e?.message || t('project.architecture.updateError'))
+  }
+}
+
+async function handleDeleteUnit(unitId: string, unitName: string) {
+  try {
+    await deleteUnit(unitId)
+    ElMessage.success(t('project.architecture.deleted'))
+    units.value = await fetchProjectUnits(projectId.value)
+  } catch (e: any) {
+    ElMessage.error(e?.message || t('project.architecture.deleteError'))
+  }
+}
+
+async function handleRegenerate() {
+  summaryLoading.value = true
+  try {
+    const s = await regenerateProjectSummary(projectId.value, locale.value)
+    if (s && !s.degraded) {
+      summary.value = s
+    } else {
+      summary.value = null
+    }
+  } catch (e: any) {
+    ElMessage.error(e?.message || t('project.architecture.updateError'))
+  } finally {
+    summaryLoading.value = false
+  }
+}
+
+// ── Add Consuming Unit logic ──
+
+function openAddUnitDialog() {
+  addUnitStep.value = 0
+  addUnitForm.value = { name: '', type: 'docker', owner: '', environment: 'prod' }
+  addDeployForm.value = { host_id: '', cpu_request: 1, mem_request: 512, instances: 1 }
+  hostSearchQuery.value = ''
+  hostSearchResults.value = []
+  selectedHost.value = null
+  showAddUnitDialog.value = true
+}
+
+let searchTimer: ReturnType<typeof setTimeout> | null = null
+async function onHostSearch(query: string) {
+  hostSearchQuery.value = query
+  if (!query || query.length < 2) { hostSearchResults.value = []; return }
+  if (searchTimer) clearTimeout(searchTimer)
+  searchTimer = setTimeout(async () => {
+    hostSearching.value = true
+    try {
+      hostSearchResults.value = await searchHosts(query)
+    } catch { hostSearchResults.value = [] }
+    finally { hostSearching.value = false }
+  }, 300)
+}
+
+function onSelectHost(host: HostSearchResult) {
+  selectedHost.value = host
+  addDeployForm.value.host_id = host.id
+}
+
+async function handleAddUnit() {
+  addUnitSaving.value = true
+  try {
+    // Step 1: Create consuming unit
+    const unitData: ConsumingUnitCreate = {
+      name: addUnitForm.value.name,
+      type: addUnitForm.value.type as any,
+      owner: addUnitForm.value.owner || undefined,
+      environment: addDeployForm.value.host_id ? addUnitForm.value.environment as any : undefined,
+      project_id: projectId.value,
+    }
+    const unit = await createUnit(unitData)
+
+    // Step 2: Create placement (if host selected)
+    if (addDeployForm.value.host_id) {
+      await createPlacement(unit.id, {
+        host_id: addDeployForm.value.host_id,
+        cpu_request: addDeployForm.value.cpu_request,
+        mem_request: addDeployForm.value.mem_request,
+        instances: addDeployForm.value.instances,
+        source: 'manual',
+      })
+    }
+
+    ElMessage.success(t('project.architecture.addUnit.success'))
+    showAddUnitDialog.value = false
+    // Reload units
+    units.value = await fetchProjectUnits(projectId.value)
+  } catch (e: any) {
+    ElMessage.error(e?.message || t('project.architecture.addUnit.error'))
+  } finally {
+    addUnitSaving.value = false
+  }
+}
+
 onMounted(loadData)
 </script>
 
@@ -92,7 +259,7 @@ onMounted(loadData)
     <div v-if="project" class="v06-proj-header">
       <span class="v06-proj-name">{{ project.name }}</span>
       <span class="v06-proj-sep"></span>
-      <div class="v06-proj-field"><div class="lbl">{{ t('project.list.colOwner') }}</div><div class="val">{{ project.owner || '-' }}</div></div>
+      <div class="v06-proj-field"><div class="lbl">{{ t('project.list.colOwner') }}</div><div class="val"><input class="v06-proj-input" :value="project.owner || ''" @input="project.owner = ($event.target as HTMLInputElement).value || null" @blur="handleProjectFieldBlur('owner')" @keyup.enter="($event.target as HTMLInputElement).blur()" /></div></div>
       <span class="v06-proj-sep"></span>
       <div class="v06-proj-field"><div class="lbl">{{ t('project.list.colBusinessUnit') }}</div><div class="val">{{ project.business_unit || '-' }}</div></div>
       <span class="v06-proj-sep"></span>
@@ -100,8 +267,12 @@ onMounted(loadData)
       <span class="v06-proj-sep"></span>
       <div class="v06-proj-field"><div class="lbl">{{ t('project.list.colBillingMode') }}</div>
         <div class="val">
-          <span v-if="project.billing_enabled" class="v06-billing-on">{{ t('project.billing.enabled') }}</span>
-          <span v-else class="v06-billing-off">{{ t('project.billing.disabled') }}</span>
+          <el-switch
+            :model-value="!!project.billing_enabled"
+            :active-text="t('project.billing.enabled')"
+            :inactive-text="t('project.billing.disabled')"
+            @change="handleToggleBilling"
+          />
         </div>
       </div>
     </div>
@@ -123,7 +294,8 @@ onMounted(loadData)
           <div class="v06-card-body" v-if="topology">
             <div v-for="host in topology.hosts" :key="host.id" class="v06-host-group" :class="{ shared: host.shared }">
               <div class="v06-host-label">
-                <span class="v06-host-name">{{ host.id }}</span>
+                <span class="v06-host-name">{{ host.name }}</span>
+                <span v-if="host.ip_address" class="v06-host-ip">{{ host.ip_address }}</span>
                 <span class="v06-host-cost">¥{{ host.monthly_cost.toLocaleString() }}</span>
                 <el-tag v-if="host.shared" size="small" type="warning">{{ t('project.architecture.shared') }}</el-tag>
               </div>
@@ -161,7 +333,12 @@ onMounted(loadData)
         <div class="v06-ai-card">
           <div class="v06-card-head">
             <h3>{{ t('project.architecture.ai.title') }}</h3>
-            <span class="v06-ai-badge">{{ t('project.architecture.ai.draft') }}</span>
+            <div style="display:flex;align-items:center;gap:8px">
+              <span class="v06-ai-badge">{{ t('project.architecture.ai.draft') }}</span>
+              <el-button size="small" :loading="summaryLoading" @click="handleRegenerate">
+                {{ t('project.architecture.ai.regenerate') }}
+              </el-button>
+            </div>
           </div>
           <div class="v06-card-body" style="flex:1">
             <div v-if="summary">
@@ -182,11 +359,14 @@ onMounted(loadData)
       <div class="v06-card v06-comp-card">
         <div class="v06-card-head">
           <h3>{{ t('project.architecture.componentTable.title') }}</h3>
+          <el-button size="small" type="primary" @click="openAddUnitDialog">
+            {{ t('project.architecture.componentTable.addUnit') }}
+          </el-button>
         </div>
         <el-table :data="units" :header-cell-style="{ fontWeight: 600, fontSize: '13px' }">
           <el-table-column :label="t('project.architecture.componentTable.editable')" :label-class-name="'v06-col-group-edit'" min-width="150">
             <template #default="{ row }">
-              <el-input :model-value="row.name" size="small" @blur="handlePatchUnit(row.id, 'name', ($event.target as HTMLInputElement).value)" @keyup.enter="handlePatchUnit(row.id, 'name', ($event.target as HTMLInputElement).value)" />
+              <el-input v-model="row.name" size="small" @blur="handlePatchUnit(row.id, 'name', row.name)" @keyup.enter="($event.target as HTMLInputElement).blur()" />
             </template>
           </el-table-column>
           <el-table-column :label="t('project.architecture.componentTable.colType')" :label-class-name="'v06-col-group-edit'" width="140">
@@ -201,7 +381,7 @@ onMounted(loadData)
           </el-table-column>
           <el-table-column :label="t('project.architecture.componentTable.colOwner')" :label-class-name="'v06-col-group-edit'" width="120">
             <template #default="{ row }">
-              <el-input :model-value="row.owner || ''" size="small" @blur="handlePatchUnit(row.id, 'owner', ($event.target as HTMLInputElement).value || null)" @keyup.enter="handlePatchUnit(row.id, 'owner', ($event.target as HTMLInputElement).value || null)" />
+              <el-input v-model="row.owner" size="small" @blur="handlePatchUnit(row.id, 'owner', row.owner || null)" @keyup.enter="($event.target as HTMLInputElement).blur()" />
             </template>
           </el-table-column>
           <el-table-column :label="t('project.architecture.componentTable.colEnv')" :label-class-name="'v06-col-group-edit'" width="120">
@@ -223,17 +403,31 @@ onMounted(loadData)
           </el-table-column>
           <el-table-column :label="t('project.architecture.componentTable.colHost')" :label-class-name="'v06-col-group-read'" width="120" :class-name="'v06-td-read'">
             <template #default="{ row }">
-              <span class="v06-read-cell">{{ row.host_id || '-' }}</span>
+              <span class="v06-read-cell">{{ hostMap[row.host_id] || row.host_id || '-' }}</span>
             </template>
           </el-table-column>
           <el-table-column :label="t('project.architecture.componentTable.colCpu')" :label-class-name="'v06-col-group-read'" width="100" :class-name="'v06-td-read'">
             <template #default="{ row }">
-              <span v-if="row.runtime" class="v06-read-cell">{{ row.runtime.cpu }}核</span>
+              <span v-if="row.runtime" class="v06-read-cell">{{ t('project.architecture.componentTable.runtimeCore', { count: row.runtime.cpu }) }}</span>
             </template>
           </el-table-column>
           <el-table-column :label="t('project.architecture.componentTable.colMem')" :label-class-name="'v06-col-group-read'" width="100" :class-name="'v06-td-read'">
             <template #default="{ row }">
-              <span v-if="row.runtime" class="v06-read-cell">{{ row.runtime.mem }}MB</span>
+              <span v-if="row.runtime" class="v06-read-cell">{{ t('project.architecture.componentTable.runtimeMem', { count: row.runtime.mem }) }}</span>
+            </template>
+          </el-table-column>
+          <el-table-column :label="t('project.architecture.componentTable.colActions')" width="80" align="center" fixed="right">
+            <template #default="{ row }">
+              <el-popconfirm
+                :title="t('project.architecture.confirmDelete', { name: row.name })"
+                @confirm="handleDeleteUnit(row.id, row.name)"
+              >
+                <template #reference>
+                  <el-button type="danger" link size="small">
+                    {{ t('project.architecture.componentTable.btnDelete') }}
+                  </el-button>
+                </template>
+              </el-popconfirm>
             </template>
           </el-table-column>
         </el-table>
@@ -277,6 +471,89 @@ onMounted(loadData)
         </div>
       </div>
     </div>
+
+    <!-- Add Consuming Unit Dialog -->
+    <el-dialog v-model="showAddUnitDialog" :title="t('project.architecture.addUnit.title')" width="560px" :close-on-click-modal="false">
+      <!-- Step indicator -->
+      <el-steps :active="addUnitStep" finish-status="success" style="margin-bottom: 24px">
+        <el-step :title="t('project.architecture.addUnit.stepBasic')" />
+        <el-step :title="t('project.architecture.addUnit.stepDeploy')" />
+      </el-steps>
+
+      <!-- Step 0: Basic Info -->
+      <el-form v-if="addUnitStep === 0" label-position="top">
+        <el-form-item :label="t('project.architecture.addUnit.name')" required>
+          <el-input v-model="addUnitForm.name" :placeholder="t('project.architecture.addUnit.namePlaceholder')" />
+        </el-form-item>
+        <el-form-item :label="t('project.architecture.addUnit.type')" required>
+          <el-select v-model="addUnitForm.type" style="width: 100%">
+            <el-option :label="t('project.architecture.typeK8s')" value="k8s_workload" />
+            <el-option :label="t('project.architecture.typeDocker')" value="docker" />
+            <el-option :label="t('project.architecture.typeVmApp')" value="vm_app" />
+            <el-option :label="t('project.architecture.typeHostProcess')" value="host_process" />
+          </el-select>
+        </el-form-item>
+        <el-form-item :label="t('project.architecture.addUnit.owner')">
+          <el-input v-model="addUnitForm.owner" :placeholder="t('project.architecture.addUnit.ownerPlaceholder')" />
+        </el-form-item>
+        <el-form-item :label="t('project.architecture.addUnit.environment')">
+          <el-select v-model="addUnitForm.environment" style="width: 100%">
+            <el-option :label="t('project.architecture.envProd')" value="prod" />
+            <el-option :label="t('project.architecture.envStaging')" value="staging" />
+            <el-option :label="t('project.architecture.envDev')" value="dev" />
+          </el-select>
+        </el-form-item>
+      </el-form>
+
+      <!-- Step 1: Deployment Config -->
+      <el-form v-if="addUnitStep === 1" label-position="top">
+        <el-form-item :label="t('project.architecture.addUnit.hostIp')">
+          <el-select
+            v-model="addDeployForm.host_id"
+            filterable
+            remote
+            :remote-method="onHostSearch"
+            :loading="hostSearching"
+            :placeholder="t('project.architecture.addUnit.hostIpPlaceholder')"
+            style="width: 100%"
+            @change="(val: string) => { selectedHost = hostSearchResults.find(h => h.id === val) || null }"
+          >
+            <el-option
+              v-for="h in hostSearchResults"
+              :key="h.id"
+              :label="`${h.name} (${h.ip_address || '-'})`"
+              :value="h.id"
+            />
+          </el-select>
+          <div v-if="selectedHost" class="v06-host-hint">
+            {{ t('project.architecture.addUnit.hostHint', { cpu: selectedHost.cpu_total, mem: selectedHost.mem_total }) }}
+          </div>
+          <div v-if="hostSearchQuery && hostSearchResults.length === 0 && !hostSearching" class="v06-host-hint" style="color: var(--color-danger)">
+            {{ t('project.architecture.addUnit.noHost') }}
+          </div>
+        </el-form-item>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
+          <el-form-item :label="t('project.architecture.addUnit.cpuRequest')">
+            <el-input-number v-model="addDeployForm.cpu_request" :min="0.1" :step="0.5" style="width:100%" />
+          </el-form-item>
+          <el-form-item :label="t('project.architecture.addUnit.memRequest')">
+            <el-input-number v-model="addDeployForm.mem_request" :min="64" :step="64" style="width:100%" />
+          </el-form-item>
+          <el-form-item :label="t('project.architecture.addUnit.instances')">
+            <el-input-number v-model="addDeployForm.instances" :min="1" :max="1000" style="width:100%" />
+          </el-form-item>
+        </div>
+      </el-form>
+
+      <template #footer>
+        <el-button v-if="addUnitStep === 1" @click="addUnitStep = 0">上一步</el-button>
+        <el-button @click="showAddUnitDialog = false">{{ t('project.architecture.addUnit.cancel') }}</el-button>
+        <el-button v-if="addUnitStep === 0" type="primary" :disabled="!addUnitForm.name.trim()" @click="addUnitStep = 1">下一步</el-button>
+        <el-button v-if="addUnitStep === 1" type="primary" :loading="addUnitSaving" @click="handleAddUnit">
+          {{ t('project.architecture.addUnit.submit') }}
+        </el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -297,6 +574,13 @@ onMounted(loadData)
 .v06-proj-sep { width: 1px; height: 28px; background: var(--neutral-200); }
 .v06-proj-field .lbl { font-size: 11px; color: var(--neutral-400); font-family: var(--font-mono); text-transform: uppercase; letter-spacing: 0.06em; }
 .v06-proj-field .val { color: var(--neutral-900); font-size: 14px; }
+.v06-proj-input {
+  width: 120px; border: 1px solid transparent; border-radius: 4px;
+  padding: 4px 8px; font-size: 13px; background: transparent;
+  outline: none; transition: border-color 0.15s, background 0.15s;
+}
+.v06-proj-input:hover { border-color: var(--neutral-300); background: var(--neutral-50); }
+.v06-proj-input:focus { border-color: var(--color-primary-500); background: white; box-shadow: 0 0 0 2px rgba(59,130,246,0.15); }
 .v06-billing-on {
   background: var(--color-success-soft); color: #166534; font-size: 12px; font-weight: 600;
   padding: 3px 10px; border-radius: 4px; display: inline-flex; align-items: center; gap: 5px;
@@ -342,6 +626,7 @@ onMounted(loadData)
 .v06-host-group.shared { border-color: #F59E0B; background: #FFFBEB; }
 .v06-host-label { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
 .v06-host-name { font-weight: 700; font-family: var(--font-mono); font-size: 14px; color: var(--neutral-900); }
+.v06-host-ip { font-family: var(--font-mono); font-size: 12px; color: var(--neutral-500); }
 .v06-host-cost { font-family: var(--font-mono); color: var(--color-primary-700); font-size: 13px; }
 .v06-host-units { display: flex; gap: 8px; flex-wrap: wrap; }
 .v06-unit-node {
@@ -378,4 +663,7 @@ onMounted(loadData)
   border: 1px solid var(--neutral-200); border-radius: 8px; color: var(--neutral-400);
 }
 .v06-empty-billing-icon { width: 48px; height: 48px; background: var(--neutral-100); border-radius: 50%; color: var(--neutral-400); margin: 0 auto 16px; display: flex; align-items: center; justify-content: center; font-size: 24px; }
+
+/* ── Add Unit Dialog ── */
+.v06-host-hint { font-size: 12px; color: var(--neutral-500); margin-top: 6px; }
 </style>

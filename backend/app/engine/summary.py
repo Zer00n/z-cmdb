@@ -2,13 +2,14 @@
 V0.6 AI project summary generator
 
 Generates a natural language summary + risk alert from topology data.
-Result is ephemeral — never stored in the database.
+Cached in the project table (summary_overview / summary_risk / summary_lang).
 Must be clearly labeled as "AI generated draft" on the frontend.
 """
 from __future__ import annotations
 
 import json
 import logging
+from datetime import datetime, timezone
 from typing import Any
 
 from sqlalchemy.orm import Session
@@ -17,7 +18,7 @@ from app.engine.topology import generate_topology
 
 logger = logging.getLogger(__name__)
 
-SYSTEM_PROMPT = """You are a project architecture analyst for an IT operations team.
+_SYSTEM_PROMPT_BASE = """You are a project architecture analyst for an IT operations team.
 Given the topology data of a project, provide:
 1. A 2-3 sentence overview of the project architecture (what components exist, how they connect, where they run).
 2. A single key risk or observation (e.g., single point of failure, high resource usage, missing redundancy).
@@ -27,8 +28,12 @@ CRITICAL CONSTRAINTS:
 - Do NOT invent components, dependencies, or numbers not present in the data.
 - Do NOT make recommendations — only state observations.
 - Keep the overview factual and concise.
-- The risk should be directly derivable from the data (e.g., "mysql has only 1 instance on 1 host" → single point of failure).
-"""
+- The risk should be directly derivable from the data (e.g., "mysql has only 1 instance on 1 host" → single point of failure)."""
+
+_LANG_INSTRUCTIONS = {
+    "zh": "\n\nIMPORTANT: Respond entirely in Chinese (简体中文). The output will be displayed in a Chinese-language UI.",
+    "en": "\n\nIMPORTANT: Respond entirely in English.",
+}
 
 SUMMARY_TEMPLATE = """## Topology Data
 
@@ -70,16 +75,23 @@ def _format_topology_for_prompt(topo: dict[str, Any]) -> str:
     )
 
 
-def generate_project_summary(db: Session, project_id: str) -> dict[str, Any]:
+def generate_project_summary(
+    db: Session,
+    project_id: str,
+    lang: str = "zh",
+) -> dict[str, Any]:
     """
     Generate AI project summary from topology data.
 
+    Args:
+        lang: Output language — "zh" for Chinese, "en" for English.
+
     Returns:
         {
-            "overview": str,       # 2-3 sentence architecture overview
-            "risk": str,           # Key risk or observation
-            "draft": True,         # Always marked as draft
-            "disclaimer": str,     # Standard disclaimer text
+            "overview": str,
+            "risk": str,
+            "draft": True,
+            "lang": str,
         }
 
     Raises:
@@ -91,29 +103,45 @@ def generate_project_summary(db: Session, project_id: str) -> dict[str, Any]:
     # Format for LLM
     user_prompt = _format_topology_for_prompt(topo)
 
+    # Build system prompt with language instruction
+    system_prompt = _SYSTEM_PROMPT_BASE + _LANG_INSTRUCTIONS.get(lang, _LANG_INSTRUCTIONS["zh"])
+
     # Try to call LLM
     try:
-        from app.services.llm_service import get_provider
-        provider = get_provider()
-        if not provider:
+        # Read LLM config from SystemConfig table
+        from app.models.config import SystemConfig
+        from app.core.encryption import decrypt_value
+
+        def _cfg(key: str) -> str:
+            row = db.get(SystemConfig, key)
+            val = row.value if row else ""
+            if key == "llm_api_key" and val:
+                val = decrypt_value(val)
+            return val
+
+        provider_name = _cfg("llm_provider")
+        if not provider_name:
             raise RuntimeError("No LLM provider configured")
 
-        response = provider.chat(
-            system=SYSTEM_PROMPT,
-            user=user_prompt,
-            temperature=0.3,
-            max_tokens=500,
+        from app.services.llm_service import get_provider
+        provider = get_provider(
+            provider_name=provider_name,
+            api_key=_cfg("llm_api_key"),
+            base_url=_cfg("llm_base_url"),
+            model=_cfg("llm_model"),
         )
 
+        # call() signature: call(prompt, system_prompt) -> str
+        text = provider.call(prompt=user_prompt, system_prompt=system_prompt)
+
         # Parse response: try to extract overview and risk
-        text = response.get("content", "")
         overview, risk = _parse_response(text)
 
         return {
             "overview": overview,
             "risk": risk,
             "draft": True,
-            "disclaimer": "AI generated draft. For reference only. Not guaranteed accurate. Please refer to the architecture topology data.",
+            "lang": lang,
         }
 
     except Exception as e:
