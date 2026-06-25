@@ -72,10 +72,6 @@ export interface ConsumingUnitPatch {
   environment?: EnvironmentType | null
 }
 
-export interface ClaimRequest {
-  project_id: string
-}
-
 // ── Placement (read-only) ──────────────────────────────────────
 
 export interface Placement {
@@ -203,44 +199,7 @@ export interface TopologyCycle {
   nodes: string[]
 }
 
-// ── Unclaimed ──────────────────────────────────────────────────
-
-export interface UnclaimedUnit {
-  id: string
-  name: string
-  type: string
-  owner: string | null
-  environment: string | null
-  created_at: string
-  host_name: string | null
-  cpu_request: number | null
-  mem_request: number | null
-  instances: number | null
-  monthly_cost: number | null
-}
-
-export interface ZombieHost {
-  id: string
-  name: string
-  type: string
-  cpu_total: number
-  mem_total: number
-  monthly_cost: number
-  source: string | null
-  created_at: string
-}
-
-export interface UnclaimedResponse {
-  unclaimed_units: UnclaimedUnit[]
-  zombie_hosts: ZombieHost[]
-  summary: {
-    unclaimed_count: number
-    zombie_count: number
-    total_monthly_waste: number
-  }
-}
-
-// ── Project Summary ────────────────────────────────────────────
+// ── Consuming Unit Create ────────────────────────────────────────────
 
 export interface ProjectSummary {
   overview: string | null

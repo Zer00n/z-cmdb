@@ -47,7 +47,6 @@ const navGroups = computed<NavGroup[]>(() => [
     title: t('layout.sidebar.assetManagement'),
     items: [
       { title: t('layout.sidebar.assetList'), route: '/assets', icon: 'Monitor', exact: true },
-      { title: t('layout.sidebar.unclaimedResources'), route: '/assets/unclaimed', icon: 'WarningFilled', exact: true },
     ],
   },
   // V0.6 Project management

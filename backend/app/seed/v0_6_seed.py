@@ -9,9 +9,9 @@ V0.6 seed data — reproduces the screenshot scenario.
   will be idle and unallocated costs.
 
 Seed summary:
-  - 3 hosts (node-1/2/3) + 1 zombie host
+  - 3 hosts (node-1/2/3)
   - 2 projects (A: billing on, B: billing off)
-  - 5 consuming units (4 for Project A, 1 unclaimed)
+  - 5 consuming units (4 for Project A, 1 for Project B)
   - 4 placement records
   - 3 dependency edges (nginx→springboot, springboot→redis, springboot→mysql)
   - Expected Project A bill: ¥10,000 (3000 + 4000 + 3000)
@@ -79,7 +79,6 @@ def seed_v06(db: Session | None = None) -> None:
         # node-1: 1.0 core, 512 MB, ¥3,000 — nginx alone (full capacity)
         # node-2: 8.5 core, 8704 MB, ¥4,000 — springboot + redis (full capacity)
         # node-3: 4.0 core, 6827 MB, ¥5,000 — mysql + project-B component (shared)
-        # zombie-host: has cost but no placements
         host1 = HostResource(
             id="node-1", name="node-1", ip_address="172.16.1.1", type="physical",
             cpu_total=1.0, mem_total=512, monthly_cost=3000,
@@ -95,12 +94,7 @@ def seed_v06(db: Session | None = None) -> None:
             cpu_total=4.0, mem_total=6827, monthly_cost=5000,
             source="cmdb", created_at=now, updated_at=now,
         )
-        zombie = HostResource(
-            id="zombie-host", name="zombie-host", ip_address="172.16.1.99", type="physical",
-            cpu_total=2.0, mem_total=4096, monthly_cost=520,
-            source="cmdb", created_at=now, updated_at=now,
-        )
-        db.add_all([host1, host2, host3, zombie])
+        db.add_all([host1, host2, host3])
         db.flush()
 
         # ── Consuming Units ─────────────────────────────────────
@@ -131,13 +125,7 @@ def seed_v06(db: Session | None = None) -> None:
             type="k8s_workload", owner="开发 陈", environment="prod",
             created_at=now, updated_at=now,
         )
-        # Unclaimed unit (no project)
-        u_unclaimed = ConsumingUnit(
-            id="u-orphan", project_id=None, name="orphan-batch-processor",
-            type="docker", owner=None, environment="dev",
-            created_at=now, updated_at=now,
-        )
-        db.add_all([u_nginx, u_spring, u_redis, u_mysql, u_b_comp, u_unclaimed])
+        db.add_all([u_nginx, u_spring, u_redis, u_mysql, u_b_comp])
         db.flush()
 
         # ── Placements ──────────────────────────────────────────
@@ -192,8 +180,8 @@ def seed_v06(db: Session | None = None) -> None:
         db.commit()
         print("[seed] v0.6 data seeded successfully.")
         print("  - 2 projects (A: billing on, B: billing off)")
-        print("  - 4 hosts (3 real + 1 zombie)")
-        print("  - 6 consuming units (4 project-A + 1 project-B + 1 unclaimed)")
+        print("  - 3 hosts")
+        print("  - 5 consuming units (4 project-A + 1 project-B)")
         print("  - 5 placements")
         print("  - 3 dependency edges")
         print("  - Expected Project A bill: CNY 10,000")

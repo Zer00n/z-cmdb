@@ -49,13 +49,3 @@ def patch_unit(
     if updates:
         return unit_repo.update_unit(db, unit, **updates)
     return unit
-
-
-def claim_unit(db: Session, unit_id: str, project_id: str):
-    """Assign a unit to a project (claim from unclaimed)."""
-    unit = unit_repo.get_by_id(db, unit_id)
-    # Verify target project exists
-    project = db.get(Project, project_id)
-    if not project:
-        raise ProjectNotFoundError(f"Project {project_id} not found")
-    return unit_repo.claim_unit(db, unit, project_id)

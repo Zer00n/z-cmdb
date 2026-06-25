@@ -11,7 +11,6 @@ from app.core.exceptions import NotFoundError, ValidationError
 from app.models.host_resource import HostResource
 from app.repositories import host_repo, placement_repo, unit_repo
 from app.schemas.consuming_unit import (
-    ClaimRequest,
     ConsumingUnitCreate,
     ConsumingUnitPatch,
     ConsumingUnitRead,
@@ -79,17 +78,6 @@ def delete_unit(
     db.delete(unit)
     db.commit()
     return {"status": "deleted"}
-
-
-@router.post("/api/units/{unit_id}/claim", response_model=ConsumingUnitRead)
-def claim_unit(
-    db: Annotated[Session, Depends(get_db)],
-    _user: AnyUser,
-    unit_id: str,
-    data: ClaimRequest,
-):
-    """Claim an unclaimed unit by assigning it to a project."""
-    return unit_service.claim_unit(db, unit_id, data.project_id)
 
 
 # ── Placement endpoints ─────────────────────────────────────────────

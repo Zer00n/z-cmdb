@@ -10,14 +10,12 @@ import type {
   ConsumingUnit,
   ConsumingUnitCreate,
   ConsumingUnitPatch,
-  ClaimRequest,
   PlacementCreate,
   HostSearchResult,
   BillingPolicy,
   BillingPolicyUpdate,
   BillSnapshot,
   TopologyResponse,
-  UnclaimedResponse,
   ProjectSummary,
   UnitRelation,
 } from '@/types/project'
@@ -76,10 +74,6 @@ export function patchUnit(id: string, data: ConsumingUnitPatch): Promise<Consumi
   return request.patch(`/api/units/${id}`, data)
 }
 
-export function claimUnit(id: string, data: ClaimRequest): Promise<ConsumingUnit> {
-  return request.post(`/api/units/${id}/claim`, data)
-}
-
 export function deleteUnit(id: string): Promise<void> {
   return request.delete(`/api/units/${id}`)
 }
@@ -92,12 +86,6 @@ export function createPlacement(unitId: string, data: PlacementCreate): Promise<
 
 export function searchHosts(query: string): Promise<HostSearchResult[]> {
   return request.get('/api/hosts/search', { params: { q: query } })
-}
-
-// ── Unclaimed ──────────────────────────────────────────────────
-
-export function fetchUnclaimed(): Promise<UnclaimedResponse> {
-  return request.get('/api/unclaimed')
 }
 
 // ── Billing Policy ─────────────────────────────────────────────

@@ -32,7 +32,6 @@ from app.routers.import_presets import router as import_presets_router
 # V0.6 project-perspective routers
 from app.routers.projects import router as projects_router
 from app.routers.units import router as units_router
-from app.routers.unclaimed import router as unclaimed_router
 from app.routers.billing_policy import router as billing_policy_router
 from app.routers.relations import router as relations_router
 
@@ -136,7 +135,6 @@ app.include_router(import_presets_router)
 # V0.6 project-perspective routers
 app.include_router(projects_router)
 app.include_router(units_router)
-app.include_router(unclaimed_router)
 app.include_router(billing_policy_router)
 app.include_router(relations_router)
 

@@ -18,6 +18,5 @@ export default {
   importPresets: '录入设置',
   projectList: '项目列表',
   projectArchitecture: '项目架构',
-  unclaimedResources: '待认领资源',
   billingPolicy: '计费策略',
 }

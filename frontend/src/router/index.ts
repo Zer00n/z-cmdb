@@ -139,12 +139,6 @@ const router = createRouter({
           meta: { title: 'router.projectArchitecture' },
         },
         {
-          path: 'assets/unclaimed',
-          name: 'UnclaimedResources',
-          component: () => import('@/views/asset/UnclaimedResources.vue'),
-          meta: { title: 'router.unclaimedResources' },
-        },
-        {
           path: 'settings/billing-policy',
           name: 'BillingPolicy',
           component: () => import('@/views/settings/BillingPolicy.vue'),

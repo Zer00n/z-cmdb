@@ -42,10 +42,6 @@ class ConsumingUnitCreate(BaseModel):
     project_id: str = Field(..., min_length=1, description="Target project ID")
 
 
-class ClaimRequest(BaseModel):
-    project_id: str = Field(..., min_length=1, description="Target project ID")
-
-
 # ── Placement (read-only) ────────────────────────────────────────
 
 class PlacementRead(BaseModel):

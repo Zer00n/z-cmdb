@@ -34,7 +34,6 @@ export default {
     importPresets: '录入设置',
     projectManagement: '项目管理',
     projectList: '项目列表',
-    unclaimedResources: '待认领资源',
     billingPolicy: '计费策略',
   },
 }

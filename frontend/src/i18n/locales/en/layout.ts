@@ -34,7 +34,6 @@ export default {
     importPresets: 'Import Presets',
     projectManagement: 'Project Management',
     projectList: 'Project List',
-    unclaimedResources: 'Unclaimed Resources',
     billingPolicy: 'Billing Policy',
   },
 }
