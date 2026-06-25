@@ -26,7 +26,7 @@ export default {
     userManagement: 'User Management',
     systemConfig: 'System Config',
     help: 'Help',
-    footer: 'v0.5.1 · For small teams · Accuracy first',
+    footer: 'v0.6 · For small teams · Accuracy first',
     costAccounting: 'Cost Accounting',
     costOverview: 'Cost Overview',
     deptBilling: 'Dept Billing',

@@ -26,7 +26,7 @@ export default {
     userManagement: '用户管理',
     systemConfig: '系统配置',
     help: '帮助',
-    footer: 'v0.5.1 · 中小团队 · 准确性优先',
+    footer: 'v0.6 · 中小团队 · 准确性优先',
     costAccounting: '费用核算',
     costOverview: '成本总览',
     deptBilling: '部门账单',
