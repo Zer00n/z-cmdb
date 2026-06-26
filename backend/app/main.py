@@ -83,6 +83,11 @@ async def add_security_headers(request: Request, call_next):
 @app.exception_handler(CMDBException)
 async def cmdb_exception_handler(request: Request, exc: CMDBException) -> JSONResponse:
     """Unified handler for all business exceptions; routers don't need to write try/except"""
+    # ExcelParseError carries detailed row-level errors
+    content: dict = {"error_code": exc.error_code, "message": exc.message}
+    if hasattr(exc, "errors") and exc.errors:
+        content["errors"] = exc.errors
+
     logger.warning(
         "business exception: %s",
         exc.message,
@@ -94,7 +99,7 @@ async def cmdb_exception_handler(request: Request, exc: CMDBException) -> JSONRe
     )
     return JSONResponse(
         status_code=exc.status_code,
-        content={"error_code": exc.error_code, "message": exc.message},
+        content=content,
     )
 
 

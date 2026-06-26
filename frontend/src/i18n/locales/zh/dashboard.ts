@@ -11,12 +11,19 @@ export default {
     shadowAssets: '影子资产',
     monthlyChanges: '本月变更',
     scanCoverage: '扫描覆盖',
+    projectCount: '项目总数',
+    consumingUnitCount: '消费单元',
+    attributionCoverage: '归属覆盖',
+    projectCost: '本月项目总成本',
+    globalIdleBucket: '全局未分摊桶',
+    projectGroup: '项目维度',
   },
   tabs: {
     byZone: '网络区域',
     byType: '资产类型',
     byImportance: '重要性',
     byOs: '操作系统',
+    byProject: '按项目',
   },
   charts: {
     topo: '网络区域拓扑',
@@ -41,5 +48,10 @@ export default {
     openCount: '开放数：',
     danger: '危险',
     orgNetwork: '组织网络',
+  },
+  project: {
+    idleOk: '全部已认领，无空闲浪费',
+    hasIdle: '含空闲待认领',
+    units: '个消费单元',
   },
 }

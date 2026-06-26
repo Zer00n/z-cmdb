@@ -30,7 +30,7 @@ NetworkZone = Literal[
     "aliyun", "tencent", "huawei", "aws", "azure", "gcp", "other_cloud",
 ]
 AssetStatus = Literal["online", "offline", "decommissioned"]
-AssetSource = Literal["scan", "manual"]
+AssetSource = Literal["scan", "manual", "excel"]
 
 
 class AssetCreate(BaseModel):

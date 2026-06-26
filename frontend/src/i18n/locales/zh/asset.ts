@@ -144,6 +144,7 @@ export default {
     sourceLabels: {
       scan: '扫描导入',
       manual: '手动录入',
+      excel: 'Excel 导入',
     },
     tabs: {
       basic: '基本信息',

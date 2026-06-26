@@ -2,7 +2,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, Integer, String, Text
+from sqlalchemy import DateTime, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base, utc_now
@@ -14,13 +14,9 @@ class Project(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     name: Mapped[str] = mapped_column(String(200), nullable=False)
     business_unit: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    department: Mapped[str | None] = mapped_column(String(100), nullable=True)
     owner: Mapped[str | None] = mapped_column(String(100), nullable=True)
     billing_enabled: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    # AI summary cache
-    summary_overview: Mapped[str | None] = mapped_column(Text, nullable=True)
-    summary_risk: Mapped[str | None] = mapped_column(Text, nullable=True)
-    summary_lang: Mapped[str | None] = mapped_column(String(5), nullable=True)  # "zh" or "en"
-    summary_generated_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=utc_now)
     updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=utc_now, onupdate=utc_now)
 

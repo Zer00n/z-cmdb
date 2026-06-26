@@ -13,7 +13,7 @@ import { GraphChart, PieChart, BarChart } from 'echarts/charts'
 import { TooltipComponent, LegendComponent, GridComponent } from 'echarts/components'
 import { CanvasRenderer } from 'echarts/renderers'
 import type { DashboardSummary, KpiData } from '@/types/dashboard'
-import { ZONE_COLORS, TYPE_COLORS, IMP_COLORS, OS_COLORS, DANGEROUS_PORTS } from '@/constants/dashboard'
+import { ZONE_COLORS, TYPE_COLORS, IMP_COLORS, OS_COLORS, PROJECT_COLORS, DANGEROUS_PORTS } from '@/constants/dashboard'
 import { useTranslatedLabels } from '@/composables/useTranslatedLabels'
 import KpiIcon from '@/components/dashboard/KpiIcon.vue'
 
@@ -26,6 +26,7 @@ const { formatTime } = useTimeFormat()
 const { zoneLabel } = useTranslatedLabels()
 const summary = computed(() => store.summary)
 const kpi = computed(() => summary.value?.kpi)
+const projectSummary = computed(() => summary.value?.project_summary)
 
 const reducedMotion = usePreferredReducedMotion() // 'no-preference' | 'reduce'
 
@@ -49,6 +50,10 @@ const KPI_DEFS = computed<KpiDef[]>(() => [
   { key: 'shadow', label: t('dashboard.kpi.shadowAssets'), cssClass: 'kpi-alert', getVal: k => k.shadow_assets, suffix: '' },
   { key: 'changes', label: t('dashboard.kpi.monthlyChanges'), cssClass: 'kpi-purple', getVal: k => k.changes_this_month, suffix: '' },
   { key: 'coverage', label: t('dashboard.kpi.scanCoverage'), cssClass: 'kpi-cyan', getVal: k => k.scan_coverage.total > 0 ? Math.round((k.scan_coverage.covered / k.scan_coverage.total) * 100) : 0, suffix: '%' },
+  // Project dimension KPIs
+  { key: 'projCount', label: t('dashboard.kpi.projectCount'), cssClass: 'kpi-indigo', getVal: k => k.project_count, suffix: '' },
+  { key: 'unitCount', label: t('dashboard.kpi.consumingUnitCount'), cssClass: 'kpi-teal', getVal: k => k.consuming_unit_count, suffix: '' },
+  { key: 'attrCoverage', label: t('dashboard.kpi.attributionCoverage'), cssClass: 'kpi-emerald', getVal: k => k.attribution_coverage, suffix: '%' },
 ])
 
 // KPI flip animation
@@ -81,12 +86,13 @@ function handleKpiClick(def: KpiDef) {
 }
 
 // ── Asset distribution tab ───────────────────────────────────────────
-const distTab = ref<'by_zone' | 'by_type' | 'by_importance' | 'by_os'>('by_zone')
+const distTab = ref<'by_zone' | 'by_type' | 'by_importance' | 'by_os' | 'by_project'>('by_zone')
 const distTabs = computed(() => [
   { key: 'by_zone' as const, label: t('dashboard.tabs.byZone') },
   { key: 'by_type' as const, label: t('dashboard.tabs.byType') },
   { key: 'by_importance' as const, label: t('dashboard.tabs.byImportance') },
   { key: 'by_os' as const, label: t('dashboard.tabs.byOs') },
+  { key: 'by_project' as const, label: t('dashboard.tabs.byProject') },
 ])
 
 // ── Dangerous ports ───────────────────────────────────────────────
@@ -137,20 +143,44 @@ function renderTopo() {
 function renderDist() {
   if (!chartDistEl.value || !summary.value) return
   if (!chartDist.value) chartDist.value = echarts.init(chartDistEl.value)
-  const raw = summary.value.asset_distribution[distTab.value] || []
-  const palette = distTab.value === 'by_zone' ? [] : distTab.value === 'by_type' ? TYPE_COLORS : distTab.value === 'by_importance' ? IMP_COLORS : OS_COLORS
-  const data = raw.map((item, i) => ({
-    value: item.count, name: item.label,
-    itemStyle: { color: distTab.value === 'by_zone' ? (ZONE_COLORS[item.label] || '#94A3B8') : palette[i % palette.length] },
-  }))
-  const total = data.reduce((s, d) => s + d.value, 0)
+
+  let data: { value: number; name: string; itemStyle?: any }[] = []
+  let total = 0
+  let centerLabel = t('dashboard.alert.assets')
+
+  if (distTab.value === 'by_project' && projectSummary.value) {
+    // Project dimension: from project_summary.by_project
+    const raw = projectSummary.value.by_project || []
+    data = raw.map((item, i) => ({
+      value: item.unit_count, name: item.name,
+      itemStyle: { color: PROJECT_COLORS[i % PROJECT_COLORS.length] },
+    }))
+    total = data.reduce((s, d) => s + d.value, 0)
+    centerLabel = t('dashboard.project.units')
+  } else {
+    // Asset dimensions: from asset_distribution
+    const assetTab = distTab.value as 'by_zone' | 'by_type' | 'by_importance' | 'by_os'
+    const raw = summary.value.asset_distribution[assetTab] || []
+    const palette = assetTab === 'by_zone' ? [] : assetTab === 'by_type' ? TYPE_COLORS : assetTab === 'by_importance' ? IMP_COLORS : OS_COLORS
+    data = raw.map((item: { label: string; count: number }, i: number) => ({
+      value: item.count, name: item.label,
+      itemStyle: { color: assetTab === 'by_zone' ? (ZONE_COLORS[item.label] || '#94A3B8') : palette[i % palette.length] },
+    }))
+    total = data.reduce((s, d) => s + d.value, 0)
+  }
   chartDist.value.setOption({
     backgroundColor: 'transparent', animation: true, animationDuration: 700,
     tooltip: { ...TOOLTIP, trigger: 'item', formatter: '{b}：{c} ({d}%)' },
-    legend: { orient: 'vertical', right: 24, top: 'center', itemWidth: 10, itemHeight: 10, icon: 'roundRect', textStyle: { color: '#334155', fontSize: 12 }, itemGap: 10 },
+    legend: {
+      type: 'scroll', orient: 'vertical', right: 8, top: 24, bottom: 24,
+      itemWidth: 10, itemHeight: 10, icon: 'roundRect',
+      textStyle: { color: '#334155', fontSize: 11, width: 90, overflow: 'truncate', ellipsis: '…' },
+      itemGap: 8, pageIconSize: 10, pageTextStyle: { color: '#94A3B8', fontSize: 11 },
+      tooltip: { show: true, ...TOOLTIP, trigger: 'item', formatter: (p: any) => p.name || '' },
+    },
     series: [{
       type: 'pie', radius: ['46%', '68%'], center: ['36%', '50%'], data,
-      label: { show: true, position: 'center', formatter: `{total|${total}}\n{sub|${t('dashboard.alert.assets')}}`, rich: { total: { fontSize: 26, fontWeight: 700, color: '#334155', fontFamily: '"JetBrains Mono", monospace', lineHeight: 34 }, sub: { fontSize: 12, color: '#94A3B8', lineHeight: 18 } } },
+      label: { show: true, position: 'center', formatter: `{total|${total}}\n{sub|${centerLabel}}`, rich: { total: { fontSize: 26, fontWeight: 700, color: '#334155', fontFamily: '"JetBrains Mono", monospace', lineHeight: 34 }, sub: { fontSize: 12, color: '#94A3B8', lineHeight: 18 } } },
       emphasis: { itemStyle: { shadowBlur: 12, shadowColor: 'rgba(0,0,0,0.1)' } },
       labelLine: { show: false },
     }],
@@ -179,7 +209,13 @@ function renderPortZone() {
   chartPortZone.value.setOption({
     backgroundColor: 'transparent', animation: true, animationDuration: 900,
     tooltip: { ...TOOLTIP, trigger: 'item', formatter: '{b}：{d}%' },
-    legend: { orient: 'vertical', right: 16, top: 'center', itemWidth: 8, itemHeight: 8, icon: 'roundRect', textStyle: { color: '#334155', fontSize: 11 }, itemGap: 8 },
+    legend: {
+      type: 'scroll', orient: 'vertical', right: 8, top: 24, bottom: 24,
+      itemWidth: 8, itemHeight: 8, icon: 'roundRect',
+      textStyle: { color: '#334155', fontSize: 11, width: 80, overflow: 'truncate', ellipsis: '…' },
+      itemGap: 6, pageIconSize: 10, pageTextStyle: { color: '#94A3B8', fontSize: 11 },
+      tooltip: { show: true, ...TOOLTIP, trigger: 'item', formatter: (p: any) => p.name || '' },
+    },
     series: [{
       type: 'pie', radius: ['40%', '62%'], center: ['38%', '50%'], data,
       emphasis: { itemStyle: { shadowBlur: 12, shadowColor: 'rgba(0,0,0,0.1)' }, label: { show: true, formatter: (p: any) => `{v|${p.percent.toFixed(0)}%}\n{n|${p.name}}`, rich: { v: { fontSize: 20, fontWeight: 700, color: '#334155', fontFamily: '"JetBrains Mono", monospace', lineHeight: 26 }, n: { fontSize: 11, color: '#94A3B8', lineHeight: 16 } } } },
@@ -258,8 +294,10 @@ onUnmounted(() => {
 
     <!-- Loading skeleton (summary not ready) -->
     <template v-if="!summary">
-      <div class="kpi-row">
-        <div v-for="i in 8" :key="i" class="kpi kpi-sk"><div class="sk sk-icon" /><div class="sk sk-num" /><div class="sk sk-lbl" /></div>
+      <div class="kpi-section">
+        <div class="kpi-row">
+          <div v-for="i in 8" :key="i" class="kpi kpi-sk"><div class="sk sk-icon" /><div class="sk sk-num" /><div class="sk sk-lbl" /></div>
+        </div>
       </div>
       <div class="grid-2"><div class="card card-sk" /><div class="card card-sk" /></div>
       <div class="grid-2"><div class="card card-sk" /><div class="card card-sk" /></div>
@@ -267,17 +305,47 @@ onUnmounted(() => {
 
     <!-- Content -->
     <template v-else>
-      <!-- KPI row -->
-      <div class="kpi-row" v-if="kpi">
-        <div
-          v-for="(def, i) in KPI_DEFS"
-          :key="def.key"
-          :class="['kpi', def.cssClass, { clickable: def.route }]"
-          @click="handleKpiClick(def)"
-        >
-          <div class="kpi-icon"><KpiIcon :name="def.key" /></div>
-          <div class="kpi-num" :ref="(el) => setKpiRef(el, i)">0{{ def.suffix }}</div>
-          <div class="kpi-label">{{ def.label }}</div>
+      <!-- KPI row (unified grid: 8 asset + separator + 5 project) -->
+      <div class="kpi-section" v-if="kpi">
+        <div class="kpi-row">
+          <div
+            v-for="(def, i) in KPI_DEFS.slice(0, 8)"
+            :key="def.key"
+            :class="['kpi', def.cssClass, { clickable: def.route }]"
+            @click="handleKpiClick(def)"
+          >
+            <div class="kpi-icon"><KpiIcon :name="def.key" /></div>
+            <div class="kpi-num" :ref="(el) => setKpiRef(el, i)">0{{ def.suffix }}</div>
+            <div class="kpi-label">{{ def.label }}</div>
+          </div>
+        </div>
+
+        <div class="kpi-divider">
+          <span>{{ t('dashboard.kpi.projectGroup') }}</span>
+        </div>
+
+        <div class="kpi-row">
+          <div
+            v-for="(def, i) in KPI_DEFS.slice(8)"
+            :key="def.key"
+            :class="['kpi', def.cssClass]"
+          >
+            <div class="kpi-icon"><KpiIcon :name="def.key" /></div>
+            <div class="kpi-num" :ref="(el) => setKpiRef(el, i + 8)">0{{ def.suffix }}</div>
+            <div class="kpi-label">{{ def.label }}</div>
+          </div>
+          <!-- Project cost card (from bill data) -->
+          <div class="kpi kpi-indigo" v-if="projectSummary">
+            <div class="kpi-icon"><KpiIcon name="projCount" /></div>
+            <div class="kpi-num">¥{{ (projectSummary.total_project_cost || 0).toLocaleString(undefined, { maximumFractionDigits: 0 }) }}</div>
+            <div class="kpi-label">{{ t('dashboard.kpi.projectCost') }}</div>
+          </div>
+          <div class="kpi kpi-teal" v-if="projectSummary">
+            <div class="kpi-icon"><KpiIcon name="unitCount" /></div>
+            <div class="kpi-num">¥{{ (projectSummary.global_idle_bucket || 0).toLocaleString(undefined, { maximumFractionDigits: 0 }) }}</div>
+            <div class="kpi-label">{{ t('dashboard.kpi.globalIdleBucket') }}</div>
+            <div class="kpi-hint">{{ projectSummary.global_idle_bucket > 0 ? t('dashboard.project.hasIdle') : t('dashboard.project.idleOk') }}</div>
+          </div>
         </div>
       </div>
 
@@ -402,17 +470,25 @@ onUnmounted(() => {
 .btn-refresh:hover { background: var(--color-primary-600, #1D4ED8); }
 .btn-refresh:disabled { opacity: .6; cursor: not-allowed; }
 
-/* KPI row */
-.kpi-row { display: grid; grid-template-columns: repeat(8, 1fr); gap: var(--space-3, 12px); margin-bottom: var(--space-5, 20px); }
+/* KPI section */
+.kpi-section { margin-bottom: var(--space-5, 20px); }
+.kpi-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(136px, 1fr)); gap: var(--space-3, 12px); }
 .kpi {
   background: var(--neutral-0, #fff); border: 1px solid var(--neutral-200, #E2E8F0); border-radius: var(--radius-lg, 10px);
   padding: var(--space-4, 16px) var(--space-4, 16px) var(--space-3, 12px); display: flex; flex-direction: column; gap: 6px;
-  position: relative; overflow: hidden; cursor: default;
+  position: relative; overflow: hidden; cursor: default; min-height: 88px;
 }
 .kpi::after { content: ""; position: absolute; top: 0; left: 0; right: 0; height: 2px; border-radius: 10px 10px 0 0; background: var(--kpi-accent, #E2E8F0); opacity: .7; }
-.kpi .kpi-icon { width: 30px; height: 30px; border-radius: var(--radius-md, 6px); background: var(--kpi-icon-bg, #F1F5F9); color: var(--kpi-accent, #64748B); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-.kpi .kpi-num { font-family: var(--font-mono, monospace); font-weight: 700; font-size: 28px; line-height: 1; letter-spacing: -0.03em; color: var(--kpi-accent, #0F172A); margin-top: 4px; }
-.kpi .kpi-label { font-size: 12px; color: var(--neutral-500, #64748B); font-weight: 500; white-space: nowrap; }
+.kpi .kpi-icon { width: 28px; height: 28px; border-radius: var(--radius-md, 6px); background: var(--kpi-icon-bg, #F1F5F9); color: var(--kpi-accent, #64748B); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.kpi .kpi-num { font-family: var(--font-mono, monospace); font-weight: 700; font-size: 24px; line-height: 1; letter-spacing: -0.03em; color: var(--kpi-accent, #0F172A); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.kpi .kpi-label { font-size: 11px; color: var(--neutral-500, #64748B); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.kpi .kpi-hint { font-size: 10px; color: var(--neutral-400, #94A3B8); line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.kpi-divider {
+  grid-column: 1 / -1; display: flex; align-items: center; gap: 10px;
+  padding: 6px 0; margin: 4px 0 0; font-size: 11px; font-weight: 600;
+  color: var(--neutral-400, #94A3B8); text-transform: uppercase; letter-spacing: 0.06em;
+}
+.kpi-divider::before, .kpi-divider::after { content: ""; flex: 1; height: 1px; background: var(--neutral-100, #F1F5F9); }
 /* Clickable KPI: pointer + hover feedback */
 .kpi.clickable { cursor: pointer; transition: border-color 0.15s, transform 0.15s, box-shadow 0.15s; }
 .kpi.clickable:hover { border-color: var(--kpi-accent, #2563EB); transform: translateY(-2px); box-shadow: 0 8px 18px -10px rgba(15, 23, 42, 0.22); }
@@ -424,6 +500,9 @@ onUnmounted(() => {
 .kpi.kpi-alert    { --kpi-accent: #EA580C; --kpi-icon-bg: rgba(234,88,12,0.06); }
 .kpi.kpi-purple   { --kpi-accent: #7C3AED; --kpi-icon-bg: #EDE9FE; }
 .kpi.kpi-cyan     { --kpi-accent: #0891B2; --kpi-icon-bg: rgba(8,145,178,0.06); }
+.kpi.kpi-indigo   { --kpi-accent: #4F46E5; --kpi-icon-bg: rgba(79,70,229,0.06); }
+.kpi.kpi-teal     { --kpi-accent: #0D9488; --kpi-icon-bg: rgba(13,148,136,0.06); }
+.kpi.kpi-emerald  { --kpi-accent: #059669; --kpi-icon-bg: rgba(5,150,105,0.06); }
 
 /* Two-column grid */
 .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4, 16px); margin-bottom: var(--space-4, 16px); align-items: start; }
@@ -484,9 +563,6 @@ onUnmounted(() => {
 .card-sk { height: 380px; border: 1px solid var(--neutral-200, #E2E8F0); border-radius: var(--radius-lg, 10px); }
 
 /* Responsive breakpoints */
-@media (max-width: 1280px) {
-  .kpi-row { grid-template-columns: repeat(4, 1fr); }
-}
 @media (max-width: 768px) {
   .kpi-row { grid-template-columns: repeat(2, 1fr); }
   .grid-2, .port-split { grid-template-columns: 1fr; }

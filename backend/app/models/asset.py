@@ -110,7 +110,7 @@ class Asset(Base):
             name="ck_assets_status",
         ),
         CheckConstraint(
-            "source IN ('scan', 'manual')",
+            "source IN ('scan', 'manual', 'excel')",
             name="ck_assets_source",
         ),
         Index("idx_assets_ip", "ip_address"),

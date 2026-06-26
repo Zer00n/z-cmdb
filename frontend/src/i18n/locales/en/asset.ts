@@ -144,6 +144,7 @@ export default {
     sourceLabels: {
       scan: 'Scan Import',
       manual: 'Manual Entry',
+      excel: 'Excel Import',
     },
     tabs: {
       basic: 'Basic Info',

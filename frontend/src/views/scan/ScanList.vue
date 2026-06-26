@@ -6,7 +6,7 @@
 import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { fetchScanBatches, uploadScanWithProgress, rejectBatch } from '@/api/scan'
+import { fetchScanBatches, uploadScanWithProgress, rejectBatch, uploadExcelWithProgress, downloadExcelTemplate } from '@/api/scan'
 import type { ScanBatch } from '@/types/scan'
 import { useTimeFormat } from '@/composables/useTimeFormat'
 import { useI18n } from 'vue-i18n'
@@ -61,6 +61,40 @@ function goConfirm(row: ScanBatch) {
   router.push(`/scans/${row.id}/confirm`)
 }
 
+async function handleExcelUpload(file: File) {
+  uploading.value = true
+  uploadPercent.value = 0
+  uploadPhase.value = 'uploading'
+  try {
+    await uploadExcelWithProgress(file, ({ phase, percent }) => {
+      uploadPhase.value = phase
+      uploadPercent.value = percent
+    })
+    uploadPhase.value = 'idle'
+    ElMessage.success(t('scan.list.excelUploadSuccess'))
+    loadData()
+  } catch (err: any) {
+    uploadPhase.value = 'idle'
+    const data = err?.response?.data
+    if (data?.errors && data.errors.length > 0) {
+      // Show first few validation errors
+      const msgs = data.errors.slice(0, 5).map((e: any) => `Row ${e.row} [${e.column}]: ${e.message}`)
+      const suffix = data.errors.length > 5 ? `\n... +${data.errors.length - 5} more` : ''
+      ElMessage.error({ message: msgs.join('\n') + suffix, duration: 8000 })
+    } else {
+      const msg = data?.message || err?.message || t('common.error')
+      ElMessage.error(msg)
+    }
+  } finally {
+    uploading.value = false
+  }
+  return false
+}
+
+function handleDownloadTemplate() {
+  downloadExcelTemplate()
+}
+
 async function handleReject(row: ScanBatch) {
   await ElMessageBox.confirm(
     t('scan.list.rejectConfirm', { name: row.batch_name }),
@@ -110,6 +144,21 @@ onMounted(loadData)
           <el-icon><Document /></el-icon>
           {{ t('scan.list.nmapGuide') }}
         </router-link>
+        <el-button @click="handleDownloadTemplate" plain>
+          <el-icon><Download /></el-icon>
+          {{ t('scan.list.downloadTemplate') }}
+        </el-button>
+        <el-upload
+          :show-file-list="false"
+          accept=".xlsx,.xls"
+          :before-upload="handleExcelUpload"
+          :disabled="uploading"
+        >
+          <el-button :loading="uploading" plain>
+            <el-icon><Document /></el-icon>
+            {{ t('scan.list.uploadExcel') }}
+          </el-button>
+        </el-upload>
         <el-upload
           :show-file-list="false"
           accept=".xml"

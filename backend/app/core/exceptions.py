@@ -131,6 +131,15 @@ class NmapParseError(CMDBException):
         super().__init__(message)
 
 
+class ExcelParseError(CMDBException):
+    status_code = 422
+    error_code = "EXCEL_PARSE_ERROR"
+
+    def __init__(self, message: str = "Excel parse failed", errors: list[dict] | None = None):
+        self.errors = errors or []
+        super().__init__(message)
+
+
 # ── LLM exceptions ──────────────────────────────────────────────
 
 

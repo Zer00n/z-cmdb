@@ -10,6 +10,7 @@ from pathlib import Path
 from sqlalchemy.orm import Session
 
 from app.core.exceptions import (
+    ExcelParseError,
     FileTooLargeError,
     InvalidFileTypeError,
     NmapParseError,
@@ -128,6 +129,131 @@ def upload_and_parse(
     return batch
 
 
+def upload_and_parse_excel(
+    db: Session,
+    file_content: bytes,
+    filename: str,
+    user_id: int,
+) -> ScanBatch:
+    """
+    Upload an .xlsx file, parse it, and create a scan batch.
+    Returns a ScanBatch with status=pending and source="excel".
+    """
+    import re
+    from app.utils.excel_parser import parse_excel
+
+    # File size validation
+    from app.services.config_service import get_upload_max_size_mb
+    max_mb = get_upload_max_size_mb(db)
+    max_bytes = max_mb * 1024 * 1024
+    if len(file_content) > max_bytes:
+        raise FileTooLargeError(
+            f"File size {len(file_content) / 1024 / 1024:.1f}MB exceeds the {max_mb}MB limit"
+        )
+
+    # File type validation
+    if not filename.lower().endswith((".xlsx", ".xls")):
+        raise InvalidFileTypeError("Only .xlsx format Excel files are supported")
+
+    # Parse Excel
+    parse_result = parse_excel(file_content)
+    if parse_result.has_errors:
+        error_dicts = [
+            {"row": e.row_number, "column": e.column, "message": e.message}
+            for e in parse_result.errors
+        ]
+        raise ExcelParseError(
+            message=f"Excel 校验失败，共 {len(error_dicts)} 个错误",
+            errors=error_dicts,
+        )
+
+    if not parse_result.hosts:
+        raise ValidationError("Excel 文件中无有效数据行")
+
+    # Sanitize filename
+    _raw_name = Path(filename).name
+    _safe_batch_name = re.sub(r'[<>"\'&\x00-\x1f]', "", _raw_name)[:200] or "import.xlsx"
+
+    # Save file
+    upload_dir = Path(__file__).parent.parent.parent / "uploads"
+    upload_dir.mkdir(parents=True, exist_ok=True)
+    safe_name = f"{uuid.uuid4().hex}.xlsx"
+    file_path = upload_dir / safe_name
+    file_path.write_bytes(file_content)
+
+    # Create batch record
+    batch = ScanBatch(
+        batch_name=_safe_batch_name,
+        uploaded_by=user_id,
+        uploaded_at=datetime.now(timezone.utc),
+        scan_started_at=None,
+        scan_finished_at=None,
+        file_path=str(file_path),
+        file_size_bytes=len(file_content),
+        total_hosts=len(parse_result.hosts),
+        status="pending",
+        source="excel",
+    )
+    db.add(batch)
+    db.flush()
+
+    # Compute diff -- same pipeline as scan
+    diff_summary = compute_diff(db, parse_result.hosts)
+    batch.new_count = diff_summary.new_count
+    batch.changed_count = diff_summary.changed_count
+    batch.missing_count = diff_summary.missing_count
+
+    # Save snapshot items -- same pipeline as scan
+    for host in parse_result.hosts:
+        for port in host.ports:
+            item = ScanSnapshotItem(
+                scan_batch_id=batch.id,
+                ip_address=host.ip_address,
+                mac_address=host.mac_address,
+                hostname=host.hostname,
+                os_info=host.os_info,
+                port_number=port.port_number,
+                protocol=port.protocol,
+                service_name=port.service_name,
+                service_version=port.service_version,
+                state=port.state,
+                diff_type=_get_host_diff_type(host, diff_summary),
+            )
+            db.add(item)
+        if not host.ports:
+            item = ScanSnapshotItem(
+                scan_batch_id=batch.id,
+                ip_address=host.ip_address,
+                mac_address=host.mac_address,
+                hostname=host.hostname,
+                os_info=host.os_info,
+                diff_type=_get_host_diff_type(host, diff_summary),
+            )
+            db.add(item)
+
+    db.commit()
+    logger.info(
+        "excel batch created",
+        extra={
+            "batch_id": batch.id,
+            "total_hosts": batch.total_hosts,
+            "new": batch.new_count,
+            "changed": batch.changed_count,
+            "missing": batch.missing_count,
+        },
+    )
+
+    # Store extra_fields for later use during confirmation
+    # We store them in a sidecar file alongside the uploaded Excel
+    import json
+    meta_path = upload_dir / f"{uuid.UUID(safe_name.replace('.xlsx', '')).hex}.json"
+    # Actually, use the same UUID as the file
+    meta_path = file_path.with_suffix(".json")
+    meta_path.write_text(json.dumps(parse_result.extra_fields, ensure_ascii=False), encoding="utf-8")
+
+    return batch
+
+
 def _get_host_diff_type(host: ParsedHost, diff_summary) -> str:
     """Get the diff type for a host"""
     for r in diff_summary.new_hosts:
@@ -167,6 +293,17 @@ def get_batch_diff(db: Session, batch_id: int):
 
     batch = get_batch(db, batch_id)
 
+    # Load extra_fields sidecar for Excel batches
+    extra_fields_map: dict[str, dict] = {}
+    if batch.source == "excel" and batch.file_path:
+        import json
+        meta_path = Path(batch.file_path).with_suffix(".json")
+        if meta_path.exists():
+            try:
+                extra_fields_map = json.loads(meta_path.read_text(encoding="utf-8"))
+            except Exception:
+                pass
+
     # Get all snapshot items
     items = list(db.scalars(
         sa_select(ScanSnapshotItem).where(ScanSnapshotItem.scan_batch_id == batch_id)
@@ -203,6 +340,7 @@ def get_batch_diff(db: Session, batch_id: int):
                 hostname=first.hostname,
                 os_info=first.os_info,
                 ports=ports,
+                extra_fields=extra_fields_map.get(ip),
             ))
 
         elif diff_type in ("changed", "restored"):
@@ -317,6 +455,7 @@ def get_batch_diff(db: Session, batch_id: int):
         batch_id=batch.id,
         batch_name=batch.batch_name,
         status=batch.status,
+        source=batch.source or "scan",
         total_hosts=batch.total_hosts or 0,
         new_count=len(new_hosts),
         changed_count=len(changed_hosts),
@@ -411,7 +550,7 @@ def confirm_batch(
                     (d for d in new_assets_data if d.get("ip_address") == ip), None
                 )
                 if asset_data:
-                    asset = asset_repo.create_asset(db, **asset_data, source="scan")
+                    asset = asset_repo.create_asset(db, **asset_data, source=batch.source or "scan")
                     _sync_ports_and_apps(asset, host_items)
                     asset.last_seen_at = now
                     asset.last_scan_batch_id = batch.id

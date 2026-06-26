@@ -10,6 +10,7 @@ export default {
   reports: 'Security Reports',
   audit: 'Audit Log',
   users: 'User Management',
+  departmentManage: 'Department Manage',
   settings: 'System Config',
   help: 'Help',
   costOverview: 'Cost Overview',
@@ -18,5 +19,6 @@ export default {
   importPresets: 'Import Presets',
   projectList: 'Project List',
   projectArchitecture: 'Project Architecture',
+  deptCostSummary: 'Project Cost Summary',
   billingPolicy: 'Billing Policy',
 }

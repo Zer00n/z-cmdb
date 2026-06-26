@@ -13,10 +13,11 @@ def list_projects(
     search: str | None = None,
     business_unit: str | None = None,
     owner: str | None = None,
+    department: str | None = None,
     page: int = 1,
     page_size: int = 20,
 ) -> dict:
-    projects, total = project_repo.list_projects(db, search, business_unit, owner, page, page_size)
+    projects, total = project_repo.list_projects(db, search, business_unit, owner, department, page, page_size)
     total_pages = max(1, (total + page_size - 1) // page_size)
 
     now = datetime.now(timezone.utc)
@@ -38,6 +39,7 @@ def list_projects(
             "id": p.id,
             "name": p.name,
             "business_unit": p.business_unit,
+            "department": p.department,
             "owner": p.owner,
             "billing_enabled": p.billing_enabled,
             "unit_count": unit_count,
@@ -60,13 +62,18 @@ def get_project(db: Session, project_id: str) -> Project:
 
 
 def create_project(db: Session, name: str, owner: str | None = None,
-                   business_unit: str | None = None) -> Project:
-    return project_repo.create_project(db, name=name, owner=owner, business_unit=business_unit)
+                   business_unit: str | None = None, department: str | None = None) -> Project:
+    return project_repo.create_project(db, name=name, owner=owner, business_unit=business_unit, department=department)
 
 
 def update_project(db: Session, project_id: str, **kwargs) -> Project:
     project = project_repo.get_by_id(db, project_id)
     return project_repo.update_project(db, project, **kwargs)
+
+
+def delete_project(db: Session, project_id: str) -> None:
+    project = project_repo.get_by_id(db, project_id)
+    project_repo.delete_project(db, project)
 
 
 def get_project_units(db: Session, project_id: str) -> list[dict]:

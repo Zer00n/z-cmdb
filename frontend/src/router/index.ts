@@ -120,6 +120,12 @@ const router = createRouter({
           meta: { title: 'router.settings', roles: ['super_admin'] },
         },
         {
+          path: 'departments',
+          name: 'DepartmentManage',
+          component: () => import('@/views/settings/DepartmentManage.vue'),
+          meta: { title: 'router.departmentManage', roles: ['super_admin'] },
+        },
+        {
           path: 'help',
           name: 'Help',
           component: () => import('@/views/Help.vue'),
@@ -131,6 +137,12 @@ const router = createRouter({
           name: 'ProjectList',
           component: () => import('@/views/project/ProjectList.vue'),
           meta: { title: 'router.projectList' },
+        },
+        {
+          path: 'projects/billing/departments',
+          name: 'DeptCostSummary',
+          component: () => import('@/views/project/DeptCostSummary.vue'),
+          meta: { title: 'router.deptCostSummary' },
         },
         {
           path: 'projects/:id',

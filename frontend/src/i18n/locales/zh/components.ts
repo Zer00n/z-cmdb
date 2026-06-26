@@ -61,6 +61,7 @@ export default {
       sourceLabels: {
         manual: '手动',
         scan: '扫描',
+        excel: 'Excel',
       },
     },
   },

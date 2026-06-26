@@ -29,6 +29,7 @@ class ScanBatch(Base):
     changed_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     missing_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="pending")
+    source: Mapped[str] = mapped_column(String(20), nullable=False, default="scan")
 
     # Associated snapshot items
     items: Mapped[list["ScanSnapshotItem"]] = relationship(

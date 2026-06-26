@@ -21,6 +21,7 @@ def list_projects(
     search: str | None = None,
     business_unit: str | None = None,
     owner: str | None = None,
+    department: str | None = None,
     page: int = 1,
     page_size: int = 20,
 ) -> tuple[list[Project], int]:
@@ -31,6 +32,8 @@ def list_projects(
         stmt = stmt.where(Project.business_unit == business_unit)
     if owner:
         stmt = stmt.where(Project.owner == owner)
+    if department:
+        stmt = stmt.where(Project.department == department)
 
     # Get total count
     count_stmt = select(func.count()).select_from(stmt.subquery())
@@ -74,3 +77,20 @@ def update_project(db: Session, project: Project, **kwargs) -> Project:
     db.commit()
     db.refresh(project)
     return project
+
+
+def delete_project(db: Session, project: Project) -> None:
+    db.delete(project)
+    db.commit()
+
+
+def list_distinct_departments(db: Session) -> list[str]:
+    """Return sorted list of distinct non-empty department values."""
+    return list(
+        db.scalars(
+            select(Project.department)
+            .where(Project.department.isnot(None), Project.department != "")
+            .distinct()
+            .order_by(Project.department)
+        ).all()
+    )

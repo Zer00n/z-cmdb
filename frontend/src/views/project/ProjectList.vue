@@ -7,7 +7,9 @@ import { ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { fetchProjectList, createProject, updateProject } from '@/api/project'
+import { fetchProjectList, createProject, updateProject, deleteProject } from '@/api/project'
+import { fetchDepartments } from '@/api/cost'
+import type { Department } from '@/api/cost'
 import type { ProjectListItem, ProjectCreateRequest } from '@/types/project'
 
 const { t } = useI18n()
@@ -23,11 +25,19 @@ const pageSize = ref(20)
 const search = ref('')
 const filterBusinessUnit = ref('')
 const filterOwner = ref('')
+const filterDepartment = ref('')
 const filterBillingMode = ref('')
 
 const showCreateDialog = ref(false)
-const createForm = ref<ProjectCreateRequest>({ name: '', owner: '', business_unit: '' })
+const createForm = ref<ProjectCreateRequest>({ name: '', owner: '', business_unit: '', department: '' })
 const creating = ref(false)
+const departmentOptions = ref<Department[]>([])
+
+// ── Delete dialog state ───────────────────────────────────
+const showDeleteDialog = ref(false)
+const deleteTarget = ref<ProjectListItem | null>(null)
+const deleteConfirmName = ref('')
+const deleting = ref(false)
 
 async function loadData() {
   loading.value = true
@@ -36,6 +46,7 @@ async function loadData() {
       search: search.value || undefined,
       business_unit: filterBusinessUnit.value || undefined,
       owner: filterOwner.value || undefined,
+      department: filterDepartment.value || undefined,
       page: page.value,
       page_size: pageSize.value,
     })
@@ -53,6 +64,7 @@ function resetFilters() {
   search.value = ''
   filterBusinessUnit.value = ''
   filterOwner.value = ''
+  filterDepartment.value = ''
   filterBillingMode.value = ''
   page.value = 1
   loadData()
@@ -91,7 +103,7 @@ async function handleCreate() {
     await createProject(createForm.value)
     ElMessage.success(t('project.list.createSuccess'))
     showCreateDialog.value = false
-    createForm.value = { name: '', owner: '', business_unit: '' }
+    createForm.value = { name: '', owner: '', business_unit: '', department: '' }
     loadData()
   } catch (e: any) {
     ElMessage.error(e?.message || t('project.list.createError'))
@@ -118,7 +130,37 @@ function goToDetail(id: string) {
   router.push(`/projects/${id}`)
 }
 
-onMounted(loadData)
+function openDeleteDialog(row: ProjectListItem) {
+  deleteTarget.value = row
+  deleteConfirmName.value = ''
+  showDeleteDialog.value = true
+}
+
+async function handleDelete() {
+  if (!deleteTarget.value) return
+  if (deleteConfirmName.value.trim() !== deleteTarget.value.name) {
+    ElMessage.warning(t('project.list.deleteNameMismatch'))
+    return
+  }
+  deleting.value = true
+  try {
+    await deleteProject(deleteTarget.value.id)
+    ElMessage.success(t('project.list.deleteSuccess'))
+    showDeleteDialog.value = false
+    deleteTarget.value = null
+    deleteConfirmName.value = ''
+    loadData()
+  } catch (e: any) {
+    ElMessage.error(e?.message || t('project.list.deleteError'))
+  } finally {
+    deleting.value = false
+  }
+}
+
+onMounted(async () => {
+  loadData()
+  try { departmentOptions.value = await fetchDepartments() } catch { /* ignore */ }
+})
 </script>
 
 <template>
@@ -151,6 +193,7 @@ onMounted(loadData)
       />
       <span class="v06-filter-sep"></span>
       <el-input v-model="filterBusinessUnit" :placeholder="t('project.list.filterBusinessUnit')" clearable size="default" @keyup.enter="loadData" />
+      <el-input v-model="filterDepartment" :placeholder="t('project.list.filterDepartment')" clearable size="default" @keyup.enter="loadData" />
       <el-input v-model="filterOwner" :placeholder="t('project.list.filterOwner')" clearable size="default" @keyup.enter="loadData" />
       <el-link type="info" :underline="false" @click="resetFilters">{{ t('project.list.resetFilters') }}</el-link>
     </div>
@@ -188,6 +231,11 @@ onMounted(loadData)
             <span v-if="row.business_unit" class="v06-tag v06-tag-info">{{ row.business_unit }}</span>
           </template>
         </el-table-column>
+        <el-table-column :label="t('project.list.colDepartment')" width="130">
+          <template #default="{ row }">
+            <span v-if="row.department" class="v06-tag v06-tag-dept">{{ row.department }}</span>
+          </template>
+        </el-table-column>
         <el-table-column :label="t('project.list.colUnits')" prop="unit_count" width="90" align="center">
           <template #default="{ row }">
             <span class="v06-mono">{{ row.unit_count }}</span>
@@ -216,9 +264,11 @@ onMounted(loadData)
             <span class="v06-mono v06-time">{{ new Date(row.updated_at).toLocaleDateString() }}</span>
           </template>
         </el-table-column>
-        <el-table-column :label="t('project.list.colActions')" width="70" align="center">
+        <el-table-column :label="t('project.list.colActions')" width="130" align="center">
           <template #default="{ row }">
             <el-link type="primary" :underline="false" @click.stop="goToDetail(row.id)">{{ t('project.list.details') }}</el-link>
+            <span class="v06-action-sep">|</span>
+            <el-link type="danger" :underline="false" @click.stop="openDeleteDialog(row)">{{ t('project.list.delete') }}</el-link>
           </template>
         </el-table-column>
       </el-table>
@@ -249,10 +299,36 @@ onMounted(loadData)
         <el-form-item :label="t('project.list.createBusinessUnit')">
           <el-input v-model="createForm.business_unit" />
         </el-form-item>
+        <el-form-item :label="t('project.list.createDepartment')">
+          <el-select v-model="createForm.department" clearable filterable :placeholder="t('project.list.selectDepartment')" style="width: 100%">
+            <el-option v-for="dept in departmentOptions" :key="dept.id" :label="dept.name" :value="dept.name" />
+          </el-select>
+        </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="showCreateDialog = false">{{ t('project.cancel') }}</el-button>
         <el-button type="primary" :loading="creating" @click="handleCreate">{{ t('project.confirm') }}</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- Delete Confirmation Dialog -->
+    <el-dialog v-model="showDeleteDialog" :title="t('project.list.deleteTitle')" width="480px">
+      <div class="delete-dialog-body">
+        <p class="delete-warning">{{ t('project.list.deleteWarning') }}</p>
+        <p class="delete-hint" v-if="deleteTarget">
+          {{ t('project.list.deleteConfirmHint', { name: deleteTarget.name }) }}
+        </p>
+        <el-input
+          v-model="deleteConfirmName"
+          :placeholder="t('project.list.deleteConfirmPlaceholder')"
+          @keyup.enter="handleDelete"
+        />
+      </div>
+      <template #footer>
+        <el-button @click="showDeleteDialog = false">{{ t('project.cancel') }}</el-button>
+        <el-button type="danger" :loading="deleting" :disabled="deleteConfirmName.trim() !== (deleteTarget?.name || '')" @click="handleDelete">
+          {{ t('project.list.deleteConfirm') }}
+        </el-button>
       </template>
     </el-dialog>
   </div>
@@ -297,6 +373,7 @@ onMounted(loadData)
 /* ── Tags ── */
 .v06-tag { padding: 2px 8px; border-radius: 4px; font-size: 12px; }
 .v06-tag-info { background: var(--color-info-soft); color: #0E7490; }
+.v06-tag-dept { background: #EDE9FE; color: #5B21B6; }
 
 /* ── Cost ── */
 .v06-cost { font-family: var(--font-mono); font-size: 13px; font-weight: 600; color: var(--color-primary-700); }
@@ -327,4 +404,13 @@ onMounted(loadData)
 }
 .v06-inline-input:hover { border-color: var(--neutral-300); background: var(--neutral-50); }
 .v06-inline-input:focus { border-color: var(--color-primary-500); background: white; box-shadow: 0 0 0 2px rgba(59,130,246,0.15); }
+
+/* ── Action separator ── */
+.v06-action-sep { margin: 0 6px; color: var(--neutral-300); }
+
+/* ── Delete dialog ── */
+.delete-dialog-body { display: flex; flex-direction: column; gap: 12px; }
+.delete-warning { color: var(--color-danger, #F56C6C); font-weight: 600; font-size: 14px; margin: 0; }
+.delete-hint { color: var(--neutral-600); font-size: 13px; margin: 0; }
+.delete-hint strong { color: var(--neutral-900); font-family: var(--font-mono); }
 </style>

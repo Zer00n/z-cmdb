@@ -46,6 +46,77 @@ Z-CMDB Lite is designed for IT operations and security engineers in **small-to-m
 
 ---
 
+## V0.6 — Project Perspective & Consumption-Driven Billing
+
+V0.6 introduces a **project perspective** alongside the existing asset view, upgrading Z-CMDB from "record resources" to "let configuration data be continuously consumed by operations scenarios." It adds deterministic cost apportionment, interactive topology visualization, and project-aware dashboards.
+
+### Project Management (`/projects`)
+
+- **Project list**: create, search, filter by business unit / owner / **department**, billing mode toggle per project, **delete with name confirmation**
+- **Project architecture page**: interactive Vue Flow topology graph with deterministic template layout
+  - Hosts arranged left-to-right by dependency topology order; units stacked vertically within each host group
+  - Dependency edges (HTTP / SQL / cache / mq) with smoothstep arrows and type labels
+  - Shared hosts highlighted in orange with per-project allocation percentages
+  - Component cards with colored left bars by type (K8S / Docker / VM / Process)
+  - "Manage Dependencies" dialog in the component table for declaring unit-to-unit relations
+- **Project billing tab**: frozen bill snapshots per period, 7-column cost breakdown table, shared host allocation explanation with full arithmetic formulas and conservation checks
+
+### Department Management (`/departments`)
+
+- **Full CRUD**: create, edit, delete departments (super_admin only)
+- **Project association**: projects can be linked to a department via dropdown selection (data sourced from the department registry)
+- **Department filter**: project list supports filtering by department
+- Reuses the existing `departments` table from V0.4 cost accounting module
+
+### Project Cost Summary (`/projects/billing/departments`)
+
+- Aggregates project billing costs grouped by department
+- KPI cards: total cost, department count, total projects
+- Pie chart showing cost distribution by department
+- Summary table: department / project count / billing-enabled count / total cost
+
+### Excel Asset Import
+
+- **Template download**: standard .xlsx template with 19 columns (IP, MAC, hostname, OS, asset type, network zone, location, owner, business system, importance, CPU, memory, disk, purchase date, warranty expiry, port, protocol, service name, remark), headers include field descriptions
+- **Upload & parse**: Excel files are parsed into the same `ParsedHost` structure as nmap scans, reusing the entire scan batch pipeline (diff computation → confirmation page → asset creation)
+- **Row/column-level validation**: errors are collected with precise row number and column name (IP format, enum values, port range, numeric fields)
+- **Confirmation page reuse**: Excel imports go through the same scan batch confirmation page, with data source marked as "Excel Import"; supplementary fields (CPU, memory, disk, etc.) are pre-populated from the Excel data
+- **IP-based dedup**: existing assets matched by IP are flagged as duplicates; new assets are created with `source="excel"`
+- **Remark preservation**: all three remark mapping scenarios (structured → corresponding field, free text → remark field, multi-line → merged text) are supported
+
+### Deterministic Apportion Engine
+
+- Pure function: host monthly cost × memory share = allocated amount per unit
+- Supports `allocatable` or `sum_requests` denominator, `mem` / `cpu` / `weighted` / `max` weight modes
+- Conservation assertion (tolerance 1e-6) — shares on every host sum to exactly 1.0
+- Idle / unallocated costs go to a separate bucket (not forced onto projects)
+
+### Data Model
+
+- 6 new tables: `project`, `consuming_unit`, `placement`, `unit_relation`, `billing_policy`, `bill_snapshot`
+- `host_resource` extended with `ip_address` column
+- `project` extended with `department` column
+- `scan_batches` extended with `source` column (`scan` / `excel`)
+- `assets.source` CHECK constraint extended to include `excel`
+- Bill snapshots are frozen after generation — changing the billing policy does not alter historical periods
+
+### Dashboard Enhancements
+
+- KPI row expanded with 5 project-dimension cards: Projects, Consuming Units, Attribution Coverage, Monthly Project Cost, Global Unallocated Bucket
+- Asset distribution donut chart gains a 5th tab: "By Project"
+- Project summary module aggregated from `bill_snapshot` data, served through the existing dashboard cache
+
+### Removed
+
+- **AI project summary**: removed the LLM-generated summary panel from the architecture page, the `/api/projects/{id}/summary` endpoints, and `engine/summary.py`. Topology is now fully deterministic.
+
+### Migration
+
+- New Alembic migrations: `a2b3c4d5e6f7` (v0.6 project tables), `b7c8d9e0f1a2` (summary cache columns — later removed), `c8d9e0f1a2b3` (host ip_address), `d1e2f3a4b5c6` (remove summary columns), `e2f3a4b5c6d7` (project department), `f1a2b3c4d5e6` (excel source support)
+- **Version bumped to V0.6.0**
+
+---
+
 ## V0.5.1 — Security Hardening & Bug Fixes
 
 V0.5.1 is a security-focused patch that addresses findings from a full codebase audit. No new features; all changes improve security posture, robustness, and data integrity.
@@ -552,6 +623,67 @@ If your use case involves concurrent writes from multiple users (>50 people), hi
 ---
 
 ## Changelog
+
+### V0.6 (2026-06-25)
+
+> **Upgrade note**: After pulling V0.6, run `alembic upgrade head` in the `backend/` directory. This applies 6 migrations: project tables, host ip_address, summary columns (added then removed), project department, and Excel source support.
+
+**Project Management**
+- New `/projects` route with project list, per-project architecture page (Vue Flow topology), and billing tab
+- 6 new database tables: `project`, `consuming_unit`, `placement`, `unit_relation`, `billing_policy`, `bill_snapshot`
+- `host_resource` extended with `ip_address`
+- **Project delete**: delete button with name-confirmation dialog (type exact project name to confirm)
+- **Department field**: `project` table extended with `department` column; project list supports department filter; project create/edit uses department dropdown
+
+**Department Management (`/departments`)**
+- New admin page for full CRUD of departments (create / edit / delete)
+- Reuses existing `departments` table from V0.4 cost module
+- Sidebar entry under "System Admin" group
+
+**Project Cost Summary (`/projects/billing/departments`)**
+- New page aggregating project billing costs grouped by department
+- KPI cards (total cost, department count, total projects) + pie chart + summary table
+- API endpoint: `GET /api/projects/billing/department-summary?period=YYYY-MM`
+
+**Excel Asset Import**
+- Template download: `GET /api/scans/template/excel` — standard .xlsx with 19 columns, headers include field descriptions
+- Upload endpoint: `POST /api/scans/upload-excel` — parses Excel into `ParsedHost`, reuses entire scan batch pipeline
+- Row/column-level validation with precise error location (row number + column name)
+- Confirmation page reuses scan batch confirmation; supplementary fields (CPU, memory, disk, etc.) pre-populated from Excel
+- IP-based dedup: existing assets flagged as duplicates, new assets created with `source="excel"`
+- `scan_batches` table extended with `source` column (`scan` / `excel`)
+- `assets.source` CHECK constraint extended to include `'excel'`
+- New dependency: `openpyxl>=3.1.0`
+
+**Topology (Vue Flow)**
+- Replaced HTML/CSS topology with Vue Flow interactive canvas
+- Deterministic template layout: hosts sorted by dependency topology order, units stacked vertically per host
+- Custom node components: `HostGroupNode` (shared host orange highlight), `UnitNode` (type-colored left bar)
+- Dependency edges: smoothstep arrows with rel_type labels, cycle detection (dashed orange)
+- "Manage Dependencies" dialog in component table (create / delete `unit_relation`)
+
+**Billing**
+- On-read freeze pattern: bill generated from apportion engine on first read, then frozen
+- Enriched bill response: unit/host names, host monthly cost, memory ratio (absolute + percentage), host details, previous period comparison
+- 7-column cost breakdown table, shared host allocation explanation module with conservation checks
+- Root cause fix: populated `monthly_cost` / `cpu_total` / `mem_total` on all `host_resource` records
+
+**Dashboard**
+- 5 new project-dimension KPI cards (Projects, Consuming Units, Attribution Coverage, Monthly Project Cost, Global Unallocated)
+- New `_build_project_summary()` aggregation in dashboard service (reads from `bill_snapshot`, same TTL cache)
+- Asset distribution pie chart gains "By Project" tab (5th dimension)
+- Unified KPI grid with separator, scrollable legend with text truncation
+
+**Removed**
+- AI project summary: deleted `engine/summary.py`, `/api/projects/{id}/summary` endpoints, `Project` model summary cache columns, related i18n keys and PRD sections
+
+**Migrations**
+- `a2b3c4d5e6f7` — v0.6 project tables
+- `b7c8d9e0f1a2` — summary cache columns (added then removed in same release)
+- `c8d9e0f1a2b3` — host ip_address
+- `d1e2f3a4b5c6` — remove summary columns
+- `e2f3a4b5c6d7` — project department column
+- `f1a2b3c4d5e6` — Excel source support (scan_batches.source + assets CHECK)
 
 ### V0.5 (2026-06-23)
 

@@ -24,6 +24,7 @@ export const ZONE_COLORS: Record<string, string> = {
 export const TYPE_COLORS = ['#2563EB', '#0E7490', '#EA580C', '#6D28D9', '#94A3B8']
 export const IMP_COLORS = ['#DC2626', '#D97706', '#94A3B8']
 export const OS_COLORS = ['#2563EB', '#0E7490', '#94A3B8']
+export const PROJECT_COLORS = ['#2563EB', '#0E7490', '#EA580C', '#6D28D9', '#DC2626', '#D97706', '#0891B2', '#94A3B8']
 
 /** Dangerous port set (created once at module level) */
 export const DANGEROUS_PORTS = new Set<number>([

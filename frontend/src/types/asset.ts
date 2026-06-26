@@ -8,7 +8,7 @@ export type NetworkZone =
   | 'dmz' | 'intranet' | 'office' | 'management' | 'other'
   | 'aliyun' | 'tencent' | 'huawei' | 'aws' | 'azure' | 'gcp' | 'other_cloud'
 export type AssetStatus = 'online' | 'offline' | 'decommissioned'
-export type AssetSource = 'scan' | 'manual'
+export type AssetSource = 'scan' | 'manual' | 'excel'
 
 export interface AssetPort {
   id: number

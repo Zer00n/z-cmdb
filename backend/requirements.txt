@@ -15,3 +15,4 @@ anthropic>=0.25
 gunicorn>=21.2
 cryptography>=42.0
 fpdf2>=2.8
+openpyxl>=3.1.0

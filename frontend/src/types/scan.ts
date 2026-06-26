@@ -35,6 +35,12 @@ export interface ScanConfirmRequest {
     mac_address?: string
     hostname?: string
     os_info?: string
+    cpu?: string
+    memory_gb?: number
+    disk_gb?: number
+    purchase_date?: string
+    warranty_expiry?: string
+    remark?: string
   }>
 }
 
@@ -66,6 +72,7 @@ export interface DiffNewHost {
   hostname: string | null
   os_info: string | null
   ports: DiffPort[]
+  extra_fields?: Record<string, any> | null
 }
 
 export interface DiffChangedHost {

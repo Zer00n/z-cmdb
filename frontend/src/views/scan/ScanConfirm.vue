@@ -33,12 +33,19 @@ interface NewAssetForm {
   ip_address: string
   hostname: string | null
   os_info: string | null
+  mac_address: string | null
   asset_type: string
   location: string
   owner: string
   business_system: string
   importance: string
   network_zone: string
+  cpu: string
+  memory_gb: number | null
+  disk_gb: number | null
+  purchase_date: string
+  warranty_expiry: string
+  remark: string
   selected: boolean
 }
 
@@ -55,18 +62,28 @@ async function loadDiff() {
     const defaultLocation = presetStore.defaultValue('location')
     const defaultOwner = presetStore.defaultValue('owner')
     const defaultBusinessSystem = presetStore.defaultValue('business_system')
-    newAssetForms.value = (diffData.value.new_hosts || []).map((h: DiffNewHost) => ({
-      ip_address: h.ip_address,
-      hostname: h.hostname,
-      os_info: h.os_info,
-      asset_type: 'virtual',
-      location: defaultLocation,
-      owner: defaultOwner,
-      business_system: defaultBusinessSystem,
-      importance: 'normal',
-      network_zone: 'intranet',
-      selected: true,
-    }))
+    newAssetForms.value = (diffData.value.new_hosts || []).map((h: DiffNewHost) => {
+      const ef = h.extra_fields || {}
+      return {
+        ip_address: h.ip_address,
+        hostname: h.hostname,
+        os_info: h.os_info,
+        mac_address: h.mac_address,
+        asset_type: ef.asset_type || 'virtual',
+        location: ef.location || defaultLocation,
+        owner: ef.owner || defaultOwner,
+        business_system: ef.business_system || defaultBusinessSystem,
+        importance: ef.importance || 'normal',
+        network_zone: ef.network_zone || 'intranet',
+        cpu: ef.cpu || '',
+        memory_gb: ef.memory_gb ?? null,
+        disk_gb: ef.disk_gb ?? null,
+        purchase_date: ef.purchase_date || '',
+        warranty_expiry: ef.warranty_expiry || '',
+        remark: ef.remark || '',
+        selected: true,
+      }
+    })
   } finally {
     loading.value = false
   }
@@ -105,6 +122,13 @@ async function handleConfirm() {
         network_zone: f.network_zone,
         hostname: f.hostname || undefined,
         os_info: f.os_info || undefined,
+        mac_address: f.mac_address || undefined,
+        cpu: f.cpu || undefined,
+        memory_gb: f.memory_gb ?? undefined,
+        disk_gb: f.disk_gb ?? undefined,
+        purchase_date: f.purchase_date || undefined,
+        warranty_expiry: f.warranty_expiry || undefined,
+        remark: f.remark || undefined,
       })),
     }
     await confirmBatch(batchId.value, req)

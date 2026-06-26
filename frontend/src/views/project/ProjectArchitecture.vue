@@ -1,25 +1,39 @@
 <script setup lang="ts">
 /**
  * Project Architecture page — /projects/:id
- * Contains: topology graph, AI summary, component table, and billing tab.
+ * Contains: Vue Flow topology graph, component table, and billing tab.
  */
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, markRaw } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import { VueFlow, useVueFlow } from '@vue-flow/core'
+import { Background } from '@vue-flow/background'
+import { Controls } from '@vue-flow/controls'
+import '@vue-flow/core/dist/style.css'
+import '@vue-flow/core/dist/theme-default.css'
+import '@vue-flow/controls/dist/style.css'
+
+import HostGroupNode from '@/components/topology/HostGroupNode.vue'
+import UnitNode from '@/components/topology/UnitNode.vue'
+import { computeTopologyLayout } from '@/utils/topologyLayout'
+
 import {
-  fetchProject, fetchProjectTopology, fetchProjectUnits, fetchProjectBill, fetchProjectSummary,
-  regenerateProjectSummary,
+  fetchProject, fetchProjectTopology, fetchProjectUnits, fetchProjectBill,
   createUnit, createPlacement, searchHosts,
   patchUnit, deleteUnit,
   updateProject,
+  createRelation, deleteRelation,
 } from '@/api/project'
+import { fetchDepartments } from '@/api/cost'
+import type { Department } from '@/api/cost'
 import type {
-  Project, TopologyResponse, ConsumingUnit, BillSnapshot, ProjectSummary,
+  Project, TopologyResponse, ConsumingUnit, BillSnapshot,
   ConsumingUnitPatch, ConsumingUnitCreate, HostSearchResult,
+  TopologyDependency, RelType,
 } from '@/types/project'
 
-const { t, locale } = useI18n()
+const { t } = useI18n()
 const route = useRoute()
 const projectId = computed(() => route.params.id as string)
 
@@ -28,9 +42,22 @@ const project = ref<Project | null>(null)
 const topology = ref<TopologyResponse | null>(null)
 const units = ref<ConsumingUnit[]>([])
 const bill = ref<BillSnapshot | null>(null)
-const summary = ref<ProjectSummary | null>(null)
-const summaryLoading = ref(false)
 const activeTab = ref('overview')
+const departmentOptions = ref<Department[]>([])
+
+// ── Vue Flow layout ────────────────────────────────────────────
+
+const { fitView } = useVueFlow()
+
+const nodeTypes: Record<string, any> = {
+  hostGroup: markRaw(HostGroupNode),
+  unit: markRaw(UnitNode),
+}
+
+const layoutResult = computed(() => {
+  if (!topology.value) return { nodes: [], edges: [] }
+  return computeTopologyLayout(topology.value)
+})
 
 // ── Add Consuming Unit dialog state ──
 const showAddUnitDialog = ref(false)
@@ -53,6 +80,12 @@ const hostSearchResults = ref<HostSearchResult[]>([])
 const hostSearching = ref(false)
 const selectedHost = ref<HostSearchResult | null>(null)
 
+// ── Manage Dependencies dialog state ──
+const showDepsDialog = ref(false)
+const depsDialogUnit = ref<ConsumingUnit | null>(null)
+const depsForm = ref<{ target_unit_id: string; rel_type: RelType }>({ target_unit_id: '', rel_type: 'HTTP' })
+const depsSaving = ref(false)
+
 // Current period for billing
 const currentPeriod = computed(() => {
   const now = new Date()
@@ -70,6 +103,92 @@ const hostMap = computed(() => {
   return map
 })
 
+// Dependencies for the unit currently being edited
+const currentUnitDeps = computed<TopologyDependency[]>(() => {
+  if (!depsDialogUnit.value || !topology.value) return []
+  return topology.value.dependencies.filter(d => d.source === depsDialogUnit.value!.id)
+})
+
+// Units available as dependency targets (exclude current unit)
+const availableTargets = computed(() => {
+  if (!depsDialogUnit.value) return []
+  return units.value.filter(u => u.id !== depsDialogUnit.value!.id)
+})
+
+// Unit name lookup
+const unitNameMap = computed(() => {
+  const map: Record<string, string> = {}
+  for (const u of units.value) {
+    map[u.id] = u.name
+  }
+  return map
+})
+
+// ── Billing helpers ────────────────────────────────────────────
+
+const billDetail = computed(() => bill.value?.detail as any || null)
+
+const billHostCostTotal = computed(() => {
+  if (!billDetail.value?.host_details) return 0
+  return billDetail.value.host_details.reduce((sum: number, h: any) => sum + h.monthly_cost, 0)
+})
+
+const costChangePercent = computed(() => {
+  if (!billDetail.value?.previous_total_cost || !bill.value?.total_cost) return null
+  const prev = billDetail.value.previous_total_cost
+  const curr = bill.value.total_cost
+  if (prev === 0) return null
+  return ((curr - prev) / prev) * 100
+})
+
+const periodRange = computed(() => {
+  if (!bill.value?.period) return ''
+  const [y, m] = bill.value.period.split('-')
+  const lastDay = new Date(parseInt(y), parseInt(m), 0).getDate()
+  return `${y}-${m}-01 ~ ${m}-${String(lastDay).padStart(2, '0')}`
+})
+
+function policyModeLabel(mode: string): string {
+  const map: Record<string, string> = {
+    mem: t('project.billing.memMode'),
+    cpu: t('project.billing.cpuMode'),
+    weighted: t('project.billing.weightedMode'),
+    max: t('project.billing.maxMode'),
+  }
+  return map[mode] || mode
+}
+
+function denomLabel(denom: string): string {
+  return denom === 'allocatable'
+    ? t('project.billing.denomAllocatable')
+    : t('project.billing.denomSumRequests')
+}
+
+function formatMem(mb: number): string {
+  if (mb >= 1024) return `${(mb / 1024).toFixed(1)}G`
+  return `${Math.round(mb)}MB`
+}
+
+// Shared hosts for the explanation module
+const sharedHosts = computed(() => {
+  if (!topology.value || !billDetail.value?.host_details) return []
+  const sharedIds = new Set(
+    topology.value.hosts.filter(h => h.shared).map(h => h.id)
+  )
+  return billDetail.value.host_details.filter((h: any) => sharedIds.has(h.host_id))
+})
+
+function isHostShared(hostId: string): boolean {
+  if (!topology.value) return false
+  const host = topology.value.hosts.find(h => h.id === hostId)
+  return host?.shared || false
+}
+
+function getHostLines(hostId: string): any[] {
+  if (!billDetail.value?.lines) return []
+  return billDetail.value.lines.filter((l: any) => l.host_id === hostId)
+}
+
 async function loadData() {
   loading.value = true
   try {
@@ -79,7 +198,7 @@ async function loadData() {
       fetchProjectUnits(projectId.value),
     ])
     project.value = proj
-    origProjectFields.value = { owner: proj.owner || '', business_unit: proj.business_unit || '' }
+    origProjectFields.value = { owner: proj.owner || '', business_unit: proj.business_unit || '', department: proj.department || '' }
     topology.value = topo
     units.value = unitList
 
@@ -89,14 +208,6 @@ async function loadData() {
         bill.value = await fetchProjectBill(projectId.value, currentPeriod.value)
       } catch { /* ignore */ }
     }
-
-    // Load AI summary (cached in DB; passes current locale)
-    try {
-      const s = await fetchProjectSummary(projectId.value, locale.value)
-      if (s && !s.degraded) {
-        summary.value = s
-      }
-    } catch { /* ignore */ }
   } catch (e: any) {
     ElMessage.error(e?.message || t('project.architecture.loadError'))
   } finally {
@@ -104,12 +215,17 @@ async function loadData() {
   }
 }
 
+async function reloadTopology() {
+  try {
+    topology.value = await fetchProjectTopology(projectId.value)
+  } catch { /* ignore */ }
+}
+
 async function handlePatchUnit(unitId: string, field: string, value: any) {
   try {
     const patch: ConsumingUnitPatch = { [field]: value }
     await patchUnit(unitId, patch)
     ElMessage.success(t('project.architecture.updated'))
-    // Reload units
     units.value = await fetchProjectUnits(projectId.value)
   } catch (e: any) {
     ElMessage.error(e?.message || t('project.architecture.updateError'))
@@ -141,7 +257,6 @@ async function handleToggleBilling(val: boolean) {
     project.value.billing_enabled = val ? 1 : 0
     ElMessage.success(t('project.architecture.updated'))
     if (val) {
-      // Reload bill data after enabling billing
       try {
         bill.value = await fetchProjectBill(projectId.value, currentPeriod.value)
       } catch { /* ignore */ }
@@ -156,24 +271,46 @@ async function handleDeleteUnit(unitId: string, unitName: string) {
     await deleteUnit(unitId)
     ElMessage.success(t('project.architecture.deleted'))
     units.value = await fetchProjectUnits(projectId.value)
+    await reloadTopology()
   } catch (e: any) {
     ElMessage.error(e?.message || t('project.architecture.deleteError'))
   }
 }
 
-async function handleRegenerate() {
-  summaryLoading.value = true
+// ── Manage Dependencies logic ──
+
+function openDepsDialog(unit: ConsumingUnit) {
+  depsDialogUnit.value = unit
+  depsForm.value = { target_unit_id: '', rel_type: 'HTTP' }
+  showDepsDialog.value = true
+}
+
+async function handleAddDep() {
+  if (!depsDialogUnit.value || !depsForm.value.target_unit_id) return
+  depsSaving.value = true
   try {
-    const s = await regenerateProjectSummary(projectId.value, locale.value)
-    if (s && !s.degraded) {
-      summary.value = s
-    } else {
-      summary.value = null
-    }
+    await createRelation({
+      source_unit_id: depsDialogUnit.value.id,
+      target_unit_id: depsForm.value.target_unit_id,
+      rel_type: depsForm.value.rel_type,
+    })
+    ElMessage.success(t('project.architecture.depAdded'))
+    depsForm.value.target_unit_id = ''
+    await reloadTopology()
   } catch (e: any) {
     ElMessage.error(e?.message || t('project.architecture.updateError'))
   } finally {
-    summaryLoading.value = false
+    depsSaving.value = false
+  }
+}
+
+async function handleDeleteDep(depId: string) {
+  try {
+    await deleteRelation(depId)
+    ElMessage.success(t('project.architecture.depDeleted'))
+    await reloadTopology()
+  } catch (e: any) {
+    ElMessage.error(e?.message || t('project.architecture.updateError'))
   }
 }
 
@@ -203,15 +340,9 @@ async function onHostSearch(query: string) {
   }, 300)
 }
 
-function onSelectHost(host: HostSearchResult) {
-  selectedHost.value = host
-  addDeployForm.value.host_id = host.id
-}
-
 async function handleAddUnit() {
   addUnitSaving.value = true
   try {
-    // Step 1: Create consuming unit
     const unitData: ConsumingUnitCreate = {
       name: addUnitForm.value.name,
       type: addUnitForm.value.type as any,
@@ -221,7 +352,6 @@ async function handleAddUnit() {
     }
     const unit = await createUnit(unitData)
 
-    // Step 2: Create placement (if host selected)
     if (addDeployForm.value.host_id) {
       await createPlacement(unit.id, {
         host_id: addDeployForm.value.host_id,
@@ -234,8 +364,8 @@ async function handleAddUnit() {
 
     ElMessage.success(t('project.architecture.addUnit.success'))
     showAddUnitDialog.value = false
-    // Reload units
     units.value = await fetchProjectUnits(projectId.value)
+    await reloadTopology()
   } catch (e: any) {
     ElMessage.error(e?.message || t('project.architecture.addUnit.error'))
   } finally {
@@ -243,7 +373,10 @@ async function handleAddUnit() {
   }
 }
 
-onMounted(loadData)
+onMounted(async () => {
+  loadData()
+  try { departmentOptions.value = await fetchDepartments() } catch { /* ignore */ }
+})
 </script>
 
 <template>
@@ -262,6 +395,19 @@ onMounted(loadData)
       <div class="v06-proj-field"><div class="lbl">{{ t('project.list.colOwner') }}</div><div class="val"><input class="v06-proj-input" :value="project.owner || ''" @input="project.owner = ($event.target as HTMLInputElement).value || null" @blur="handleProjectFieldBlur('owner')" @keyup.enter="($event.target as HTMLInputElement).blur()" /></div></div>
       <span class="v06-proj-sep"></span>
       <div class="v06-proj-field"><div class="lbl">{{ t('project.list.colBusinessUnit') }}</div><div class="val">{{ project.business_unit || '-' }}</div></div>
+      <span class="v06-proj-sep"></span>
+      <div class="v06-proj-field"><div class="lbl">{{ t('project.list.colDepartment') }}</div>
+        <div class="val">
+          <el-select
+            :model-value="project.department || ''"
+            clearable filterable size="small"
+            :placeholder="t('project.list.selectDepartment')"
+            @update:model-value="(val: string) => { project!.department = val || null; handleProjectFieldBlur('department') }"
+          >
+            <el-option v-for="dept in departmentOptions" :key="dept.id" :label="dept.name" :value="dept.name" />
+          </el-select>
+        </div>
+      </div>
       <span class="v06-proj-sep"></span>
       <div class="v06-proj-field"><div class="lbl">{{ t('project.list.colUnits') }}</div><div class="val">{{ units.length }}</div></div>
       <span class="v06-proj-sep"></span>
@@ -285,73 +431,36 @@ onMounted(loadData)
 
     <!-- Tab 1: Architecture Overview -->
     <div v-if="activeTab === 'overview' && project">
-      <div class="v06-arch-grid">
-        <!-- Topology Card -->
-        <div class="v06-card">
-          <div class="v06-card-head">
-            <h3>{{ t('project.architecture.topologyTitle') }}</h3>
-          </div>
-          <div class="v06-card-body" v-if="topology">
-            <div v-for="host in topology.hosts" :key="host.id" class="v06-host-group" :class="{ shared: host.shared }">
-              <div class="v06-host-label">
-                <span class="v06-host-name">{{ host.name }}</span>
-                <span v-if="host.ip_address" class="v06-host-ip">{{ host.ip_address }}</span>
-                <span class="v06-host-cost">¥{{ host.monthly_cost.toLocaleString() }}</span>
-                <el-tag v-if="host.shared" size="small" type="warning">{{ t('project.architecture.shared') }}</el-tag>
-              </div>
-              <div class="v06-host-units">
-                <div v-for="unit in topology.units.filter(u => u.host_id === host.id)" :key="unit.id" class="v06-unit-node">
-                  <div class="v06-unit-name">{{ unit.name }}</div>
-                  <div class="v06-unit-info">
-                    <el-tag size="small">{{ unit.type }}</el-tag>
-                    <span v-if="unit.runtime">{{ unit.runtime.instances }}x</span>
-                    <span class="v06-unit-owner">{{ unit.owner }}</span>
-                  </div>
-                </div>
-              </div>
-              <div v-if="host.shared" class="v06-host-shares">
-                <div v-for="share in host.shares" :key="share.project_id">
-                  {{ share.project_id }}: {{ Math.round(share.ratio * 100) }}%
-                </div>
-              </div>
-            </div>
-            <div v-if="topology.dependencies.length" class="v06-deps-list">
-              <h4>{{ t('project.architecture.dependencies') }}</h4>
-              <div v-for="dep in topology.dependencies" :key="dep.id" class="v06-dep-item" :class="{ cycle: dep.in_cycle }">
-                {{ dep.source }} → {{ dep.target }} ({{ dep.type }})
-                <el-tag v-if="dep.in_cycle" size="small" type="warning">{{ t('project.architecture.cycle') }}</el-tag>
-              </div>
-            </div>
-          </div>
-          <div class="v06-card-foot">
-            <span>{{ t('project.architecture.dataSource') }}</span>
-            <span>{{ t('project.architecture.deterministic') }}</span>
+      <!-- Topology Card (full width, Vue Flow) -->
+      <div class="v06-card v06-topology-card">
+        <div class="v06-card-head">
+          <h3>{{ t('project.architecture.topologyTitle') }}</h3>
+        </div>
+        <div class="v06-topology-canvas-wrap">
+          <VueFlow
+            v-if="topology && layoutResult.nodes.length > 0"
+            :nodes="layoutResult.nodes"
+            :edges="layoutResult.edges"
+            :node-types="nodeTypes"
+            :default-edge-options="{ type: 'smoothstep', markerEnd: 'arrowclosed' }"
+            :nodes-draggable="false"
+            :nodes-connectable="false"
+            :edges-updatable="false"
+            :min-zoom="0.2"
+            :max-zoom="2"
+            :fit-view-on-init="true"
+            class="v06-topology-canvas"
+          >
+            <Background :gap="20" :size="1" pattern-color="#E2E8F0" />
+            <Controls position="bottom-right" />
+          </VueFlow>
+          <div v-else-if="topology" class="v06-topo-empty">
+            <p>{{ t('project.architecture.noTopologyData') }}</p>
           </div>
         </div>
-
-        <!-- AI Summary Card -->
-        <div class="v06-ai-card">
-          <div class="v06-card-head">
-            <h3>{{ t('project.architecture.ai.title') }}</h3>
-            <div style="display:flex;align-items:center;gap:8px">
-              <span class="v06-ai-badge">{{ t('project.architecture.ai.draft') }}</span>
-              <el-button size="small" :loading="summaryLoading" @click="handleRegenerate">
-                {{ t('project.architecture.ai.regenerate') }}
-              </el-button>
-            </div>
-          </div>
-          <div class="v06-card-body" style="flex:1">
-            <div v-if="summary">
-              <p class="v06-ai-text">{{ summary.overview }}</p>
-              <div v-if="summary.risk" class="v06-ai-risk">
-                <strong>{{ t('project.architecture.ai.risk') }}:</strong> {{ summary.risk }}
-              </div>
-            </div>
-            <div v-else class="v06-ai-empty">
-              <p>{{ t('project.architecture.ai.unavailable') }}</p>
-            </div>
-          </div>
-          <div class="v06-ai-disclaimer">{{ t('project.architecture.ai.disclaimer') }}</div>
+        <div class="v06-card-foot">
+          <span>{{ t('project.architecture.dataSource') }}</span>
+          <span>{{ t('project.architecture.deterministic') }}</span>
         </div>
       </div>
 
@@ -416,18 +525,23 @@ onMounted(loadData)
               <span v-if="row.runtime" class="v06-read-cell">{{ t('project.architecture.componentTable.runtimeMem', { count: row.runtime.mem }) }}</span>
             </template>
           </el-table-column>
-          <el-table-column :label="t('project.architecture.componentTable.colActions')" width="80" align="center" fixed="right">
+          <el-table-column :label="t('project.architecture.componentTable.colActions')" width="160" align="center" fixed="right">
             <template #default="{ row }">
-              <el-popconfirm
-                :title="t('project.architecture.confirmDelete', { name: row.name })"
-                @confirm="handleDeleteUnit(row.id, row.name)"
-              >
-                <template #reference>
-                  <el-button type="danger" link size="small">
-                    {{ t('project.architecture.componentTable.btnDelete') }}
-                  </el-button>
-                </template>
-              </el-popconfirm>
+              <div class="v06-action-btns">
+                <el-button type="primary" link size="small" @click="openDepsDialog(row)">
+                  {{ t('project.architecture.manageDeps') }}
+                </el-button>
+                <el-popconfirm
+                  :title="t('project.architecture.confirmDelete', { name: row.name })"
+                  @confirm="handleDeleteUnit(row.id, row.name)"
+                >
+                  <template #reference>
+                    <el-button type="danger" link size="small">
+                      {{ t('project.architecture.componentTable.btnDelete') }}
+                    </el-button>
+                  </template>
+                </el-popconfirm>
+              </div>
             </template>
           </el-table-column>
         </el-table>
@@ -436,41 +550,268 @@ onMounted(loadData)
 
     <!-- Tab 2: Project Billing -->
     <div v-if="activeTab === 'billing' && project">
+      <!-- Empty state: billing not enabled -->
       <div v-if="!project.billing_enabled" class="v06-empty-billing">
         <div class="v06-empty-billing-icon">💰</div>
         <h3 style="margin: 0 0 8px; color: var(--neutral-700)">{{ t('project.billing.noBilling') }}</h3>
         <p style="margin: 0; color: var(--neutral-500)">{{ t('project.billing.noBillingDesc') }}</p>
       </div>
-      <div v-else-if="bill">
+
+      <!-- Billing data loaded -->
+      <div v-else-if="bill && billDetail">
+        <!-- Status bar -->
+        <div class="v06-billing-status">
+          <span class="v06-status-item">
+            <span class="v06-status-dot"></span>
+            {{ t('project.billing.billingMode') }}: {{ t('project.billing.enabled') }}
+          </span>
+          <span class="v06-status-sep">|</span>
+          <span class="v06-status-item">
+            {{ t('project.billing.activePolicy') }}:
+            <router-link to="/settings/billing-policy" class="v06-policy-link">
+              {{ t('project.billing.policyVersion', { version: bill.policy_version }) }}
+              ({{ policyModeLabel(billDetail.policy_weight_mode || 'mem') }})
+            </router-link>
+          </span>
+          <span class="v06-status-sep">|</span>
+          <span class="v06-status-item">
+            {{ t('project.billing.periodRange') }}: {{ periodRange }}
+          </span>
+        </div>
+
+        <!-- Three summary cards -->
         <div class="v06-metrics">
-          <div class="v06-metric-card">
+          <!-- Card 1: Monthly total -->
+          <div class="v06-metric-card v06-metric-primary">
             <div class="v06-metric-label">{{ t('project.billing.totalCost') }}</div>
-            <div class="v06-metric-value">¥{{ (bill.total_cost || 0).toLocaleString() }}</div>
+            <div class="v06-metric-value">¥{{ (bill.total_cost || 0).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 }) }}</div>
+            <div v-if="costChangePercent !== null" class="v06-metric-change" :class="{ up: costChangePercent > 0, down: costChangePercent < 0 }">
+              {{ costChangePercent > 0 ? t('project.billing.up') : t('project.billing.down') }}
+              {{ Math.abs(costChangePercent).toFixed(1) }}% {{ t('project.billing.vsLastMonth') }}
+            </div>
+            <div v-else class="v06-metric-change neutral">{{ t('project.billing.noPrevious') }}</div>
           </div>
+
+          <!-- Card 2: Host cost total -->
+          <div class="v06-metric-card">
+            <div class="v06-metric-label">{{ t('project.billing.hostCost') }}</div>
+            <div class="v06-metric-value">¥{{ billHostCostTotal.toLocaleString() }}</div>
+            <div class="v06-metric-hosts">
+              <span v-for="h in billDetail.host_details" :key="h.host_id" class="v06-host-chip">
+                {{ h.name }}
+                <span class="v06-host-chip-cost">¥{{ h.monthly_cost.toLocaleString() }}</span>
+              </span>
+            </div>
+          </div>
+
+          <!-- Card 3: Unallocated bucket -->
           <div class="v06-metric-card">
             <div class="v06-metric-label">{{ t('project.billing.unallocated') }}</div>
-            <div class="v06-metric-value">¥{{ ((bill.detail as any)?.bucket_idle || 0).toLocaleString() }}</div>
+            <div class="v06-metric-value">¥{{ (billDetail.bucket_idle || 0).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 }) }}</div>
+            <div class="v06-metric-desc">
+              {{ billDetail.bucket_idle > 0
+                ? t('project.billing.hasIdle', { amount: billDetail.bucket_idle.toLocaleString(undefined, { maximumFractionDigits: 2 }) })
+                : t('project.billing.noIdle')
+              }}
+            </div>
           </div>
         </div>
-        <div class="v06-card">
+
+        <!-- Cost breakdown table -->
+        <div class="v06-card v06-billing-table-card">
           <div class="v06-card-head"><h3>{{ t('project.billing.costBreakdown') }}</h3></div>
-          <el-table :data="(bill.detail as any)?.lines || []" :header-cell-style="{ background: '#F8FAFC', color: '#334155', fontWeight: 600, fontSize: '13px' }">
-            <el-table-column :label="t('project.billing.colUnit')" prop="unit_id" width="150" />
-            <el-table-column :label="t('project.billing.colHost')" prop="host_id" width="120" />
-            <el-table-column :label="t('project.billing.colAmount')" width="140" align="right">
+          <el-table
+            :data="billDetail.lines || []"
+            :header-cell-style="{ background: '#F8FAFC', color: '#334155', fontWeight: 600, fontSize: '13px' }"
+            show-summary
+            :summary-method="() => []"
+            border
+          >
+            <!-- Consuming Unit -->
+            <el-table-column :label="t('project.billing.colUnit')" min-width="140">
               <template #default="{ row }">
-                <span style="font-family: var(--font-mono); font-weight: 600; color: var(--color-primary-700)">¥{{ row.amount.toLocaleString() }}</span>
+                <span class="v06-bill-unit-name">{{ row.unit_name || unitNameMap[row.unit_id] || row.unit_id }}</span>
               </template>
             </el-table-column>
-            <el-table-column :label="t('project.billing.colMemShare')" width="120" align="center">
+
+            <!-- Host -->
+            <el-table-column :label="t('project.billing.colHost')" min-width="160">
               <template #default="{ row }">
-                <span style="font-family: var(--font-mono)">{{ Math.round(row.share * 100) }}%</span>
+                <div class="v06-bill-host-cell">
+                  <span>{{ row.host_name || hostMap[row.host_id] || '-' }}</span>
+                  <el-tag v-if="isHostShared(row.host_id)" size="small" type="warning" class="v06-shared-badge">
+                    {{ t('project.billing.sharedNode') }}
+                  </el-tag>
+                </div>
+              </template>
+            </el-table-column>
+
+            <!-- Host monthly cost -->
+            <el-table-column :label="t('project.billing.colHostCost')" width="130" align="right">
+              <template #default="{ row }">
+                <span class="v06-mono">¥{{ (row.host_monthly_cost || 0).toLocaleString() }}</span>
+              </template>
+            </el-table-column>
+
+            <!-- Memory share -->
+            <el-table-column :label="t('project.billing.colMemShare')" width="180" align="center">
+              <template #default="{ row }">
+                <div class="v06-mem-cell">
+                  <span class="v06-mono">{{ formatMem(row.mem_request_total || 0) }} / {{ formatMem(row.mem_total || 0) }}</span>
+                  <el-progress
+                    :percentage="Math.round((row.share || 0) * 100)"
+                    :stroke-width="6"
+                    :show-text="false"
+                    style="width: 80px; margin-top: 2px;"
+                  />
+                  <span class="v06-mono v06-mem-pct">{{ Math.round((row.share || 0) * 100) }}%</span>
+                </div>
+              </template>
+            </el-table-column>
+
+            <!-- Monthly allocated cost -->
+            <el-table-column :label="t('project.billing.colAmount')" width="140" align="right">
+              <template #default="{ row }">
+                <span class="v06-mono v06-amount">¥{{ (row.amount || 0).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 }) }}</span>
+              </template>
+            </el-table-column>
+
+            <!-- % of project total -->
+            <el-table-column :label="t('project.billing.colPercent')" width="160">
+              <template #default="{ row }">
+                <div class="v06-pct-cell">
+                  <el-progress
+                    :percentage="bill.total_cost > 0 ? Math.round((row.amount / bill.total_cost) * 100) : 0"
+                    :stroke-width="8"
+                    :color="bill.total_cost > 0 && row.amount / bill.total_cost > 0.5 ? '#F59E0B' : '#3B82F6'"
+                    style="width: 80px;"
+                  />
+                </div>
               </template>
             </el-table-column>
           </el-table>
+
+          <!-- Table footer: project total -->
+          <div class="v06-billing-table-footer">
+            <span class="v06-footer-label">{{ t('project.billing.tableTotal') }}</span>
+            <span class="v06-footer-value">¥{{ (bill.total_cost || 0).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 }) }}</span>
+          </div>
+        </div>
+
+        <!-- Shared host explanation module -->
+        <div v-if="sharedHosts.length > 0" class="v06-card v06-share-explain-card">
+          <div class="v06-card-head">
+            <h3>{{ t('project.billing.shareExplanation') }}</h3>
+          </div>
+          <div class="v06-card-body">
+            <div v-for="sh in sharedHosts" :key="sh.host_id" class="v06-share-block">
+              <div class="v06-share-header">
+                <strong>{{ sh.name }}</strong>
+                <span class="v06-share-cost">{{ t('project.billing.shareFormula', { host: sh.name, cost: sh.monthly_cost.toLocaleString() }) }}</span>
+              </div>
+              <div class="v06-share-dimension">
+                {{ t('project.billing.shareDimension', { dimension: denomLabel(billDetail.policy_denominator || 'allocatable') }) }}
+              </div>
+              <div class="v06-share-lines">
+                <div v-for="line in getHostLines(sh.host_id)" :key="line.unit_id" class="v06-share-line">
+                  {{ t('project.billing.shareLine', {
+                    unit: line.unit_name,
+                    used: formatMem(line.mem_request_total || 0),
+                    total: formatMem(line.mem_total || 0),
+                    pct: Math.round((line.share || 0) * 100),
+                    amount: (line.amount || 0).toLocaleString(undefined, { maximumFractionDigits: 2 }),
+                    target: t('project.billing.thisProject'),
+                  }) }}
+                </div>
+              </div>
+              <div class="v06-share-conservation">
+                {{ sh.idle_share > 0
+                  ? t('project.billing.shareIdleAmount', { amount: (sh.monthly_cost * sh.idle_share).toLocaleString(undefined, { maximumFractionDigits: 2 }) })
+                  : t('project.billing.shareIdleOk')
+                }}
+              </div>
+            </div>
+          </div>
         </div>
       </div>
+
+      <!-- No data state -->
+      <div v-else-if="project.billing_enabled" class="v06-empty-billing">
+        <div class="v06-empty-billing-icon">📊</div>
+        <h3 style="margin: 0 0 8px; color: var(--neutral-700)">{{ t('project.billing.noData') }}</h3>
+      </div>
     </div>
+
+    <!-- Manage Dependencies Dialog -->
+    <el-dialog
+      v-model="showDepsDialog"
+      :title="t('project.architecture.manageDeps') + (depsDialogUnit ? ` — ${depsDialogUnit.name}` : '')"
+      width="520px"
+      :close-on-click-modal="false"
+    >
+      <div v-if="depsDialogUnit" class="v06-deps-dialog">
+        <!-- Existing dependencies -->
+        <div class="v06-deps-section">
+          <h4>{{ t('project.architecture.existingDeps') }}</h4>
+          <div v-if="currentUnitDeps.length === 0" class="v06-deps-empty">
+            {{ t('project.architecture.noDeps') }}
+          </div>
+          <div v-for="dep in currentUnitDeps" :key="dep.id" class="v06-dep-row">
+            <span class="v06-dep-arrow">
+              {{ depsDialogUnit.name }} → {{ unitNameMap[dep.target] || dep.target }}
+            </span>
+            <el-tag size="small" class="v06-dep-type-tag">{{ dep.type }}</el-tag>
+            <el-button type="danger" link size="small" @click="handleDeleteDep(dep.id)">
+              {{ t('project.architecture.componentTable.btnDelete') }}
+            </el-button>
+          </div>
+        </div>
+
+        <el-divider />
+
+        <!-- Add new dependency -->
+        <div class="v06-deps-section">
+          <h4>{{ t('project.architecture.addDep') }}</h4>
+          <el-form label-position="top" :inline="false">
+            <el-form-item :label="t('project.architecture.depTarget')">
+              <el-select
+                v-model="depsForm.target_unit_id"
+                :placeholder="t('project.architecture.selectTarget')"
+                filterable
+                style="width: 100%"
+              >
+                <el-option
+                  v-for="u in availableTargets"
+                  :key="u.id"
+                  :label="u.name"
+                  :value="u.id"
+                />
+              </el-select>
+            </el-form-item>
+            <el-form-item :label="t('project.architecture.depType')">
+              <el-select v-model="depsForm.rel_type" style="width: 100%">
+                <el-option label="HTTP" value="HTTP" />
+                <el-option label="SQL" value="SQL" />
+                <el-option label="cache" value="cache" />
+                <el-option label="mq" value="mq" />
+                <el-option label="depends" value="depends" />
+              </el-select>
+            </el-form-item>
+          </el-form>
+        </div>
+      </div>
+      <template #footer>
+        <el-button @click="showDepsDialog = false">{{ t('project.architecture.addUnit.cancel') }}</el-button>
+        <el-button
+          type="primary"
+          :loading="depsSaving"
+          :disabled="!depsForm.target_unit_id"
+          @click="handleAddDep"
+        >
+          {{ t('project.architecture.addDep') }}
+        </el-button>
+      </template>
+    </el-dialog>
 
     <!-- Add Consuming Unit Dialog -->
     <el-dialog v-model="showAddUnitDialog" :title="t('project.architecture.addUnit.title')" width="560px" :close-on-click-modal="false">
@@ -599,7 +940,8 @@ onMounted(loadData)
 .v06-tab-item.active { color: var(--color-primary-500); border-bottom-color: var(--color-primary-500); font-weight: 500; }
 
 /* ── Architecture Grid ── */
-.v06-arch-grid { display: grid; grid-template-columns: 3fr 2fr; gap: 16px; margin-bottom: 24px; align-items: start; }
+.v06-arch-grid { margin-bottom: 24px; }
+.v06-topology-card { width: 100%; margin-bottom: 24px; }
 
 /* ── Card (generic) ── */
 .v06-card { background: white; border: 1px solid var(--neutral-200); border-radius: 8px; overflow: hidden; }
@@ -611,53 +953,106 @@ onMounted(loadData)
 .v06-card-body { padding: 16px; }
 .v06-card-foot { padding: 9px 16px; border-top: 1px solid var(--neutral-100); background: var(--neutral-50); font-size: 11px; color: var(--neutral-400); font-family: var(--font-mono); display: flex; gap: 16px; }
 
-/* ── AI Card (purple) ── */
-.v06-ai-card { background: #FAF8FF; border: 1px solid #DDD6FE; border-radius: 8px; overflow: hidden; display: flex; flex-direction: column; }
-.v06-ai-card .v06-card-head { background: #F5F2FF; border-bottom-color: #EDE9FE; }
-.v06-ai-badge { background: #EDE9FE; color: #6D28D9; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 3px; }
-.v06-ai-text { font-size: 13px; color: var(--neutral-700); line-height: 1.7; }
-.v06-ai-risk { background: #FFFBEB; border: 1px solid #FDE68A; border-radius: 6px; padding: 9px 12px; font-size: 12px; color: #92400E; line-height: 1.5; margin-top: 10px; }
-.v06-ai-risk strong { color: #78350F; }
-.v06-ai-disclaimer { padding: 8px 16px; background: #EDE9FE; border-top: 1px solid #DDD6FE; font-size: 11px; color: #7C3AED; }
-.v06-ai-empty { color: var(--neutral-400); text-align: center; padding: 24px; }
-
-/* ── Topology ── */
-.v06-host-group { border: 2px dashed var(--neutral-300); border-radius: 8px; padding: 12px; margin-bottom: 12px; background: #EFF6FF; }
-.v06-host-group.shared { border-color: #F59E0B; background: #FFFBEB; }
-.v06-host-label { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
-.v06-host-name { font-weight: 700; font-family: var(--font-mono); font-size: 14px; color: var(--neutral-900); }
-.v06-host-ip { font-family: var(--font-mono); font-size: 12px; color: var(--neutral-500); }
-.v06-host-cost { font-family: var(--font-mono); color: var(--color-primary-700); font-size: 13px; }
-.v06-host-units { display: flex; gap: 8px; flex-wrap: wrap; }
-.v06-unit-node {
-  border: 1px solid var(--neutral-200); border-radius: 6px; padding: 8px 12px;
-  background: white; min-width: 140px; box-shadow: var(--shadow-subtle);
+/* ── Vue Flow Topology ── */
+.v06-topology-canvas-wrap {
+  height: 420px;
+  background: #FAFBFC;
 }
-.v06-unit-name { font-weight: 600; font-size: 13px; color: var(--neutral-900); }
-.v06-unit-info { display: flex; align-items: center; gap: 6px; margin-top: 4px; font-size: 11px; }
-.v06-unit-owner { color: var(--neutral-500); }
-.v06-host-shares { margin-top: 8px; font-size: 12px; color: #92400E; }
-.v06-deps-list { margin-top: 16px; border-top: 1px solid var(--neutral-200); padding-top: 12px; }
-.v06-deps-list h4 { margin: 0 0 8px; font-size: 13px; color: var(--neutral-700); }
-.v06-dep-item { font-size: 13px; font-family: var(--font-mono); padding: 4px 0; color: var(--neutral-700); }
-.v06-dep-item.cycle { color: #F59E0B; }
+.v06-topology-canvas {
+  width: 100%;
+  height: 100%;
+}
+.v06-topo-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--neutral-400);
+  font-size: 14px;
+}
 
 /* ── Component Table ── */
-.v06-comp-card { margin-top: 20px; }
+.v06-comp-card { margin-top: 0; }
 .v06-comp-card .v06-card-head h3 { font-size: 15px; }
 .v06-col-group-edit { background: var(--color-primary-50) !important; color: var(--color-primary-600) !important; font-size: 11px !important; font-weight: 700 !important; letter-spacing: 0.05em; text-transform: uppercase; border-bottom: 1px solid var(--color-primary-200) !important; }
 .v06-col-group-read { background: var(--neutral-100) !important; color: var(--neutral-500) !important; font-size: 11px !important; font-weight: 600 !important; letter-spacing: 0.05em; text-transform: uppercase; border-bottom: 1px solid var(--neutral-200) !important; border-left: 2px solid var(--color-primary-200) !important; }
 .v06-read-cell { color: var(--neutral-500); display: flex; align-items: center; gap: 4px; font-family: var(--font-mono); font-size: 12px; }
+.v06-action-btns { display: flex; gap: 4px; justify-content: center; }
+
+/* ── Manage Dependencies Dialog ── */
+.v06-deps-dialog { }
+.v06-deps-section h4 { margin: 0 0 10px; font-size: 13px; font-weight: 600; color: var(--neutral-700); }
+.v06-deps-empty { color: var(--neutral-400); font-size: 13px; padding: 8px 0; }
+.v06-dep-row {
+  display: flex; align-items: center; gap: 8px; padding: 6px 0;
+  border-bottom: 1px solid var(--neutral-100);
+}
+.v06-dep-row:last-child { border-bottom: none; }
+.v06-dep-arrow { font-size: 13px; font-family: var(--font-mono); color: var(--neutral-700); flex: 1; }
+.v06-dep-type-tag { font-size: 11px; }
 
 /* ── Billing Tab ── */
-.v06-billing-toggle {
-  display: flex; align-items: center; gap: 10px; margin-bottom: 16px;
-  padding: 10px 14px; background: var(--neutral-50); border: 1px solid var(--neutral-200); border-radius: 6px; font-size: 13px; color: var(--neutral-500);
+.v06-billing-status {
+  display: flex; align-items: center; gap: 12px; padding: 10px 16px;
+  background: white; border: 1px solid var(--neutral-200); border-radius: 8px;
+  margin-bottom: 20px; font-size: 13px; color: var(--neutral-600); flex-wrap: wrap;
 }
+.v06-status-item { display: flex; align-items: center; gap: 6px; }
+.v06-status-dot { width: 8px; height: 8px; border-radius: 50%; background: #10B981; }
+.v06-status-sep { color: var(--neutral-300); }
+.v06-policy-link { color: var(--color-primary-600); text-decoration: none; font-weight: 500; }
+.v06-policy-link:hover { text-decoration: underline; }
+
 .v06-metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px; }
 .v06-metric-card { background: white; border: 1px solid var(--neutral-200); border-radius: 8px; padding: 16px 20px; }
-.v06-metric-label { font-size: 12px; color: var(--neutral-500); margin-bottom: 8px; }
+.v06-metric-card.v06-metric-primary { border-left: 3px solid var(--color-primary-500); }
+.v06-metric-label { font-size: 12px; color: var(--neutral-500); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.04em; }
 .v06-metric-value { font-size: 26px; font-weight: 700; color: var(--neutral-900); font-family: var(--font-mono); line-height: 1; }
+.v06-metric-change { font-size: 12px; margin-top: 6px; font-weight: 500; }
+.v06-metric-change.up { color: #EF4444; }
+.v06-metric-change.down { color: #10B981; }
+.v06-metric-change.neutral { color: var(--neutral-400); }
+.v06-metric-hosts { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+.v06-host-chip {
+  display: inline-flex; align-items: center; gap: 4px; font-size: 11px;
+  background: var(--neutral-100); border-radius: 4px; padding: 2px 8px; color: var(--neutral-700);
+}
+.v06-host-chip-cost { font-family: var(--font-mono); color: var(--color-primary-700); font-weight: 600; }
+.v06-metric-desc { font-size: 11px; color: var(--neutral-500); margin-top: 6px; }
+
+/* Billing table */
+.v06-billing-table-card { margin-bottom: 20px; }
+.v06-bill-unit-name { font-weight: 600; color: var(--neutral-900); }
+.v06-bill-host-cell { display: flex; align-items: center; gap: 6px; }
+.v06-shared-badge { font-size: 10px !important; }
+.v06-mono { font-family: var(--font-mono); font-size: 12px; }
+.v06-amount { font-weight: 600; color: var(--color-primary-700); }
+.v06-mem-cell { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.v06-mem-pct { color: var(--neutral-500); font-size: 11px; }
+.v06-pct-cell { display: flex; align-items: center; justify-content: center; }
+
+.v06-billing-table-footer {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 12px 16px; background: var(--neutral-50); border-top: 2px solid var(--neutral-200);
+  border-radius: 0 0 8px 8px;
+}
+.v06-footer-label { font-weight: 700; font-size: 13px; color: var(--neutral-900); }
+.v06-footer-value { font-family: var(--font-mono); font-weight: 700; font-size: 18px; color: var(--color-primary-700); }
+
+/* Shared host explanation */
+.v06-share-explain-card { margin-bottom: 20px; }
+.v06-share-block {
+  padding: 14px 0; border-bottom: 1px solid var(--neutral-100);
+}
+.v06-share-block:last-child { border-bottom: none; }
+.v06-share-header { display: flex; align-items: center; gap: 12px; margin-bottom: 6px; }
+.v06-share-header strong { font-family: var(--font-mono); font-size: 14px; color: var(--neutral-900); }
+.v06-share-cost { font-size: 12px; color: var(--neutral-600); }
+.v06-share-dimension { font-size: 12px; color: var(--neutral-500); margin-bottom: 8px; }
+.v06-share-lines { display: flex; flex-direction: column; gap: 4px; margin-bottom: 8px; }
+.v06-share-line { font-size: 12px; font-family: var(--font-mono); color: var(--neutral-700); padding-left: 16px; }
+.v06-share-conservation { font-size: 11px; color: #10B981; font-weight: 500; padding-left: 16px; }
+
 .v06-empty-billing {
   text-align: center; padding: 56px 32px; background: white;
   border: 1px solid var(--neutral-200); border-radius: 8px; color: var(--neutral-400);

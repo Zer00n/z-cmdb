@@ -10,6 +10,7 @@ export default {
   reports: '安全报表',
   audit: '审计日志',
   users: '用户管理',
+  departmentManage: '部门管理',
   settings: '系统配置',
   help: '帮助',
   costOverview: '成本总览',
@@ -18,5 +19,6 @@ export default {
   importPresets: '录入设置',
   projectList: '项目列表',
   projectArchitecture: '项目架构',
+  deptCostSummary: '项目成本核算',
   billingPolicy: '计费策略',
 }

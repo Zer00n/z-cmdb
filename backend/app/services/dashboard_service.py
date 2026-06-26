@@ -13,7 +13,9 @@ from sqlalchemy.orm import Session
 
 from app.models.asset import Asset, AssetPort
 from app.models.audit import AuditLog
+from app.models.consuming_unit import ConsumingUnit
 from app.models.llm_log import LlmCallLog
+from app.models.project import Project
 from app.models.scan import ScanBatch, ScanSnapshotItem
 from app.services import config_service
 
@@ -62,6 +64,7 @@ def get_summary(db: Session, force: bool = False) -> dict:
         "asset_changes": _build_asset_changes(db, limit),
         "zone_topology": _build_zone_topology(db),
         "activity": _build_activity(db, limit),
+        "project_summary": _build_project_summary(db),
     }
 
     with _cache_lock:
@@ -128,6 +131,15 @@ def _build_kpi(db: Session, dangerous_ports: set[int], dangerous_zones: set[str]
     ) or 0
     total_active = total - status_map.get("decommissioned", 0)
 
+    # Project dimension KPIs
+    project_count = db.scalar(select(func.count()).select_from(Project)) or 0
+    unit_count = db.scalar(select(func.count()).select_from(ConsumingUnit)) or 0
+    attributed_count = db.scalar(
+        select(func.count()).select_from(ConsumingUnit)
+        .where(ConsumingUnit.project_id.is_not(None))
+    ) or 0
+    attribution_coverage = round(attributed_count / unit_count * 100) if unit_count > 0 else 0
+
     return {
         "total_assets": total,
         "online": status_map.get("online", 0),
@@ -141,6 +153,9 @@ def _build_kpi(db: Session, dangerous_ports: set[int], dangerous_zones: set[str]
             "covered": covered,
             "total": total_active,
         },
+        "project_count": project_count,
+        "consuming_unit_count": unit_count,
+        "attribution_coverage": attribution_coverage,
     }
 
 
@@ -343,3 +358,70 @@ def _build_activity(db: Session, limit: int) -> list[dict]:
 
     combined.sort(key=lambda x: x["timestamp"], reverse=True)
     return combined[:limit]
+
+
+# ── Project Summary ──────────────────────────────────────────────
+
+def _build_project_summary(db: Session) -> dict:
+    """
+    Project dimension aggregation for the dashboard.
+    Reads from bill_snapshot (frozen) — does NOT recalculate.
+    """
+    from app.models.bill_snapshot import BillSnapshot
+
+    # Current period (YYYY-MM)
+    now = datetime.now(timezone.utc)
+    current_period = f"{now.year}-{now.month:02d}"
+
+    # All billing-enabled projects
+    billing_projects = list(db.scalars(
+        select(Project).where(Project.billing_enabled == 1)
+    ).all())
+    billing_project_ids = {p.id for p in billing_projects}
+
+    # Fetch current-period bill snapshots for billing-enabled projects
+    snapshots = list(db.scalars(
+        select(BillSnapshot).where(
+            BillSnapshot.period == current_period,
+            BillSnapshot.project_id.in_(billing_project_ids),
+        )
+    ).all()) if billing_project_ids else []
+
+    total_project_cost = sum(s.total_cost for s in snapshots)
+
+    # Global idle bucket: sum bucket_idle from detail_json across all snapshots
+    import json
+    global_idle_bucket = 0.0
+    for s in snapshots:
+        try:
+            detail = json.loads(s.detail_json)
+            global_idle_bucket += detail.get("bucket_idle", 0.0)
+        except (json.JSONDecodeError, TypeError):
+            pass
+
+    # Per-project distribution: unit_count + optional cost
+    all_projects = list(db.scalars(select(Project)).all())
+    by_project = []
+    for p in all_projects:
+        unit_count = db.scalar(
+            select(func.count()).select_from(ConsumingUnit)
+            .where(ConsumingUnit.project_id == p.id)
+        ) or 0
+        cost = None
+        snap = next((s for s in snapshots if s.project_id == p.id), None)
+        if snap:
+            cost = snap.total_cost
+        by_project.append({
+            "name": p.name,
+            "unit_count": unit_count,
+            "cost": cost,
+        })
+
+    # Sort by unit_count descending
+    by_project.sort(key=lambda x: x["unit_count"], reverse=True)
+
+    return {
+        "total_project_cost": round(total_project_cost, 2),
+        "global_idle_bucket": round(global_idle_bucket, 2),
+        "by_project": by_project,
+    }

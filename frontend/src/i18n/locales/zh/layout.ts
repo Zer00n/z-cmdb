@@ -24,6 +24,7 @@ export default {
     auditLog: '审计日志',
     systemAdmin: '系统管理',
     userManagement: '用户管理',
+    departmentManage: '部门管理',
     systemConfig: '系统配置',
     help: '帮助',
     footer: 'v0.6 · 中小团队 · 准确性优先',
@@ -34,6 +35,7 @@ export default {
     importPresets: '录入设置',
     projectManagement: '项目管理',
     projectList: '项目列表',
+    deptCostSummary: '项目成本核算',
     billingPolicy: '计费策略',
   },
 }

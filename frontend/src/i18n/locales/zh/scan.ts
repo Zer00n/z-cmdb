@@ -7,6 +7,9 @@ export default {
     nmapGuide: 'nmap 扫描指南',
     uploadNmap: '上传 nmap XML',
     uploadSuccess: '扫描报告上传成功，请在列表中确认导入',
+    downloadTemplate: '下载模板',
+    uploadExcel: '导入 Excel',
+    excelUploadSuccess: 'Excel 文件上传成功，请在列表中确认导入',
     columns: {
       id: 'ID',
       filename: '文件名',

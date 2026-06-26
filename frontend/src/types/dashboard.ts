@@ -17,6 +17,9 @@ export interface KpiData {
     covered: number
     total: number
   }
+  project_count: number
+  consuming_unit_count: number
+  attribution_coverage: number
 }
 
 /** Distribution item */
@@ -102,6 +105,13 @@ export interface ActivityItem {
   source: 'audit' | 'llm'
 }
 
+/** Project summary for dashboard */
+export interface ProjectSummaryData {
+  total_project_cost: number
+  global_idle_bucket: number
+  by_project: { name: string; unit_count: number; cost: number | null }[]
+}
+
 /** Dashboard aggregated data (full response) */
 export interface DashboardSummary {
   generated_at: string
@@ -114,4 +124,5 @@ export interface DashboardSummary {
   asset_changes: AssetChangeItem[]
   zone_topology: ZoneTopologyData
   activity: ActivityItem[]
+  project_summary: ProjectSummaryData
 }

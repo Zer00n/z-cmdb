@@ -21,6 +21,7 @@ class ScanBatchRead(BaseModel):
     changed_count: int
     missing_count: int
     status: str
+    source: str = "scan"
 
 
 class ScanBatchListResponse(BaseModel):
@@ -65,6 +66,7 @@ class DiffNewHost(BaseModel):
     hostname: str | None = None
     os_info: str | None = None
     ports: list[DiffPortRead] = []
+    extra_fields: dict | None = None  # Supplementary fields from Excel import
 
 
 class DiffChangedHost(BaseModel):
@@ -95,6 +97,7 @@ class ScanDiffResponse(BaseModel):
     batch_id: int
     batch_name: str | None = None
     status: str
+    source: str = "scan"
     total_hosts: int
     new_count: int
     changed_count: int

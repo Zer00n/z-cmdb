@@ -61,6 +61,7 @@ export default {
       sourceLabels: {
         manual: 'Manual',
         scan: 'Scan',
+        excel: 'Excel',
       },
     },
   },

@@ -24,6 +24,7 @@ export default {
     auditLog: 'Audit Log',
     systemAdmin: 'System Admin',
     userManagement: 'User Management',
+    departmentManage: 'Department Manage',
     systemConfig: 'System Config',
     help: 'Help',
     footer: 'v0.6 · For small teams · Accuracy first',
@@ -34,6 +35,7 @@ export default {
     importPresets: 'Import Presets',
     projectManagement: 'Project Management',
     projectList: 'Project List',
+    deptCostSummary: 'Project Cost Summary',
     billingPolicy: 'Billing Policy',
   },
 }

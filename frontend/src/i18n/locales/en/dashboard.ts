@@ -11,12 +11,19 @@ export default {
     shadowAssets: 'Shadow Assets',
     monthlyChanges: 'Monthly Changes',
     scanCoverage: 'Scan Coverage',
+    projectCount: 'Projects',
+    consumingUnitCount: 'Consuming Units',
+    attributionCoverage: 'Attribution',
+    projectCost: 'Monthly Project Cost',
+    globalIdleBucket: 'Global Unallocated',
+    projectGroup: 'Projects',
   },
   tabs: {
     byZone: 'Network Zone',
     byType: 'Asset Type',
     byImportance: 'Importance',
     byOs: 'OS',
+    byProject: 'By Project',
   },
   charts: {
     topo: 'Network Zone Topology',
@@ -41,5 +48,10 @@ export default {
     openCount: 'Open count',
     danger: 'Dangerous',
     orgNetwork: 'Org Network',
+  },
+  project: {
+    idleOk: 'Fully claimed, no idle waste',
+    hasIdle: 'Contains idle/unclaimed cost',
+    units: 'consuming units',
   },
 }

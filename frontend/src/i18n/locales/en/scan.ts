@@ -7,6 +7,9 @@ export default {
     nmapGuide: 'nmap Scan Guide',
     uploadNmap: 'Upload nmap XML',
     uploadSuccess: 'Scan report uploaded successfully, please confirm import in the list',
+    downloadTemplate: 'Download Template',
+    uploadExcel: 'Import Excel',
+    excelUploadSuccess: 'Excel file uploaded successfully, please confirm import in the list',
     columns: {
       id: 'ID',
       filename: 'Filename',

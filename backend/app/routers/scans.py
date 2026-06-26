@@ -1,15 +1,18 @@
 """
 Scan batch routes
-POST   /api/scans/upload       Upload XML file
-GET    /api/scans              Batch list
-GET    /api/scans/{id}         Batch detail
-POST   /api/scans/{id}/confirm Confirm import
-DELETE /api/scans/{id}         Reject and delete batch
+POST   /api/scans/upload          Upload XML file
+POST   /api/scans/upload-excel    Upload Excel file
+GET    /api/scans/template/excel  Download Excel template
+GET    /api/scans                 Batch list
+GET    /api/scans/{id}            Batch detail
+POST   /api/scans/{id}/confirm    Confirm import
+DELETE /api/scans/{id}            Reject and delete batch
 """
 import logging
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, File, Query, UploadFile
+from fastapi.responses import Response
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -25,6 +28,59 @@ from app.services import scan_service
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/scans", tags=["scans"])
+
+
+@router.post("/upload", response_model=ScanBatchRead, status_code=201)
+async def upload_scan(
+    file: UploadFile = File(...),
+    current_user: AdminUser = None,
+    db: Session = Depends(get_db),
+) -> ScanBatchRead:
+    """Upload nmap XML file, parse it, and create a scan batch"""
+    content = await file.read()
+    batch = scan_service.upload_and_parse(
+        db=db,
+        file_content=content,
+        filename=file.filename or "unknown.xml",
+        user_id=current_user.id,  # type: ignore[union-attr]
+    )
+    return batch  # type: ignore[return-value]
+
+
+# ── Excel import (must be before /{batch_id} routes) ─────────────
+
+@router.post("/upload-excel", response_model=ScanBatchRead, status_code=201)
+async def upload_excel(
+    file: UploadFile = File(...),
+    current_user: AdminUser = None,
+    db: Session = Depends(get_db),
+) -> ScanBatchRead:
+    """Upload Excel file for asset import"""
+    content = await file.read()
+    batch = scan_service.upload_and_parse_excel(
+        db=db,
+        file_content=content,
+        filename=file.filename or "unknown.xlsx",
+        user_id=current_user.id,  # type: ignore[union-attr]
+    )
+    return batch  # type: ignore[return-value]
+
+
+@router.get("/template/excel")
+async def download_excel_template() -> Response:
+    """Download Excel import template"""
+    from app.utils.excel_parser import generate_template
+    template_bytes = generate_template()
+    return Response(
+        content=template_bytes,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={
+            "Content-Disposition": 'attachment; filename="asset_import_template.xlsx"'
+        },
+    )
+
+
+# ── Batch CRUD ───────────────────────────────────────────────────
 
 
 @router.post("/upload", response_model=ScanBatchRead, status_code=201)

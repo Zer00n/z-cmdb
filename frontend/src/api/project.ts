@@ -16,8 +16,8 @@ import type {
   BillingPolicyUpdate,
   BillSnapshot,
   TopologyResponse,
-  ProjectSummary,
   UnitRelation,
+  DepartmentBillingResponse,
 } from '@/types/project'
 
 // ── Projects ───────────────────────────────────────────────────
@@ -26,6 +26,7 @@ export function fetchProjectList(params?: {
   search?: string
   business_unit?: string
   owner?: string
+  department?: string
   page?: number
   page_size?: number
 }): Promise<ProjectListResponse> {
@@ -44,6 +45,10 @@ export function updateProject(id: string, data: ProjectUpdateRequest): Promise<P
   return request.patch(`/api/projects/${id}`, data)
 }
 
+export function deleteProject(id: string): Promise<void> {
+  return request.delete(`/api/projects/${id}`)
+}
+
 export function fetchProjectTopology(id: string): Promise<TopologyResponse> {
   return request.get(`/api/projects/${id}/topology`)
 }
@@ -54,14 +59,6 @@ export function fetchProjectUnits(id: string): Promise<ConsumingUnit[]> {
 
 export function fetchProjectBill(id: string, period: string): Promise<BillSnapshot> {
   return request.get(`/api/projects/${id}/bill`, { params: { period } })
-}
-
-export function fetchProjectSummary(id: string, lang: string = 'zh'): Promise<ProjectSummary> {
-  return request.get(`/api/projects/${id}/summary`, { params: { lang } })
-}
-
-export function regenerateProjectSummary(id: string, lang: string = 'zh'): Promise<ProjectSummary> {
-  return request.post(`/api/projects/${id}/summary/regenerate`, null, { params: { lang } })
 }
 
 // ── Units ──────────────────────────────────────────────────────
@@ -110,4 +107,10 @@ export function createRelation(data: {
 
 export function deleteRelation(id: string): Promise<void> {
   return request.delete(`/api/relations/${id}`)
+}
+
+// ── Department Billing ───────────────────────────────────────────
+
+export function fetchDepartmentBilling(period: string): Promise<DepartmentBillingResponse> {
+  return request.get('/api/projects/billing/department-summary', { params: { period } })
 }
