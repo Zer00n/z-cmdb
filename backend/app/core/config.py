@@ -78,7 +78,7 @@ def validate_runtime_secrets() -> None:
     import logging
     _logger = logging.getLogger(__name__)
     is_prod = settings.APP_ENV.lower() in ("production", "prod")
-    weak = settings.jwt_secret in ("", "change-me-in-production") or len(settings.jwt_secret) < 16
+    weak = settings.jwt_secret in ("", "change-me-in-production") or len(settings.jwt_secret) < 32
 
     if weak:
         msg = (

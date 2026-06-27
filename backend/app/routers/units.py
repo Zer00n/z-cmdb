@@ -49,13 +49,8 @@ def patch_unit(
     data: ConsumingUnitPatch,
 ):
     """Patch only stable fields of a consuming unit."""
-    return unit_service.patch_unit(
-        db, unit_id,
-        name=data.name,
-        type=data.type,
-        owner=data.owner,
-        environment=data.environment,
-    )
+    updates = data.model_dump(exclude_unset=True)
+    return unit_service.patch_unit(db, unit_id, **updates)
 
 
 @router.delete("/api/units/{unit_id}")

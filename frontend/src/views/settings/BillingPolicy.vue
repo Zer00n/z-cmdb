@@ -36,7 +36,12 @@ async function loadPolicy() {
       sampling: policy.value.sampling,
     }
   } catch (e: any) {
-    ElMessage.error(e?.message || t('project.policy.loadError'))
+    // 404 = no active policy yet — show defaults so user can create one
+    if (e?.response?.status === 404) {
+      policy.value = null
+    } else {
+      ElMessage.error(e?.message || t('project.policy.loadError'))
+    }
   } finally {
     loading.value = false
   }

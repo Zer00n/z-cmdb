@@ -3,7 +3,7 @@ FastAPI application entry point
 """
 import logging
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
@@ -142,6 +142,29 @@ app.include_router(projects_router)
 app.include_router(units_router)
 app.include_router(billing_policy_router)
 app.include_router(relations_router)
+
+
+# ── Static hosting + SPA fallback (production single-port) ──────
+from pathlib import Path
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+
+STATIC_DIR = (Path(__file__).resolve().parent.parent / "static")
+
+if STATIC_DIR.exists():
+    app.mount("/assets", StaticFiles(directory=STATIC_DIR / "assets"), name="assets")
+
+    @app.get("/{full_path:path}", include_in_schema=False)
+    async def spa_fallback(full_path: str):
+        # API paths must NOT be swallowed — return JSON 404
+        if full_path.startswith("api/"):
+            raise HTTPException(status_code=404, detail="Not Found")
+        # Serve real static files directly
+        candidate = (STATIC_DIR / full_path).resolve()
+        if STATIC_DIR in candidate.parents and candidate.is_file():
+            return FileResponse(candidate)
+        # All other paths → index.html (Vue Router history mode)
+        return FileResponse(STATIC_DIR / "index.html")
 
 
 # ── Startup event ─────────────────────────────────────────────

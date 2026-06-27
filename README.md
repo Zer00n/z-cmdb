@@ -22,6 +22,18 @@ Z-CMDB Lite is designed for IT operations and security engineers in **small-to-m
 
 **Core design principles**: SQLite single-file, zero middleware dependency, all write operations are auditable, sensitive data stays on-premises.
 
+### Deployment
+
+Z-CMDB supports three deployment methods: **Windows double-click launcher** (zero-install, embedded Python), **Linux bare-metal** (venv + systemd), and **Docker** (layered images, bind-mounted database). All methods use single-port FastAPI hosting with auto-generated JWT secrets.
+
+| Method | Best For | Docs |
+|---|---|---|
+| 🪟 Windows Launcher | End users, air-gapped machines | [`deploy/DEPLOY_EN.md §1`](deploy/DEPLOY_EN.md#1-windows-double-click-launcher) |
+| 🐧 Linux Bare-Metal | Small servers, VMs | [`deploy/DEPLOY_EN.md §2`](deploy/DEPLOY_EN.md#2-linux-bare-metal) |
+| 🐳 Docker | CI/CD, containerized environments | [`deploy/DEPLOY_EN.md §3`](deploy/DEPLOY_EN.md#3-linux-docker) |
+
+> **Full deployment guide**: [deploy/DEPLOY_EN.md](deploy/DEPLOY_EN.md) (English) | [deploy/DEPLOY.md](deploy/DEPLOY.md) (中文)
+
 ---
 
 ## ⚠️ Upgrade Notice

@@ -15,6 +15,13 @@ import type { ProjectListItem, ProjectCreateRequest } from '@/types/project'
 const { t } = useI18n()
 const router = useRouter()
 
+// ── Debounced search ──────────────────────────────────────
+let searchTimer: ReturnType<typeof setTimeout> | null = null
+function debouncedLoad() {
+  if (searchTimer) clearTimeout(searchTimer)
+  searchTimer = setTimeout(() => { page.value = 1; loadData() }, 300)
+}
+
 const loading = ref(true)
 const projects = ref<ProjectListItem[]>([])
 const origOwnerMap = ref<Record<string, string>>({})
@@ -188,14 +195,16 @@ onMounted(async () => {
         :placeholder="t('project.list.search')"
         prefix-icon="Search"
         clearable
-        class="v06-filter-search"
+        @input="debouncedLoad"
         @keyup.enter="loadData"
+        @clear="loadData"
       />
-      <span class="v06-filter-sep"></span>
-      <el-input v-model="filterBusinessUnit" :placeholder="t('project.list.filterBusinessUnit')" clearable size="default" @keyup.enter="loadData" />
-      <el-input v-model="filterDepartment" :placeholder="t('project.list.filterDepartment')" clearable size="default" @keyup.enter="loadData" />
-      <el-input v-model="filterOwner" :placeholder="t('project.list.filterOwner')" clearable size="default" @keyup.enter="loadData" />
-      <el-link type="info" :underline="false" @click="resetFilters">{{ t('project.list.resetFilters') }}</el-link>
+      <el-input v-model="filterBusinessUnit" :placeholder="t('project.list.filterBusinessUnit')" clearable @input="debouncedLoad" @keyup.enter="loadData" @clear="loadData" />
+      <el-input v-model="filterDepartment" :placeholder="t('project.list.filterDepartment')" clearable @input="debouncedLoad" @keyup.enter="loadData" @clear="loadData" />
+      <el-input v-model="filterOwner" :placeholder="t('project.list.filterOwner')" clearable @input="debouncedLoad" @keyup.enter="loadData" @clear="loadData" />
+    </div>
+    <div class="v06-filter-actions">
+      <el-button size="small" @click="resetFilters">{{ t('project.list.resetFilters') }}</el-button>
     </div>
 
     <!-- Data Table -->
@@ -337,14 +346,17 @@ onMounted(async () => {
 <style scoped>
 /* ── Filter bar ── */
 .v06-filters {
-  display: flex;
-  align-items: center;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
   gap: 12px;
-  padding: 10px 16px !important;
-  flex-wrap: wrap;
+  padding: 16px !important;
 }
-.v06-filter-search { width: 240px; }
-.v06-filter-sep { width: 1px; height: 20px; background: var(--neutral-200); flex-shrink: 0; }
+.v06-filter-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: -4px;
+  margin-bottom: 4px;
+}
 
 /* ── Table ── */
 .v06-table-wrap { overflow: hidden; }

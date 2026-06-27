@@ -30,6 +30,7 @@ from app.models.host_resource import HostResource
 from app.models.consuming_unit import ConsumingUnit
 from app.models.placement import Placement
 from app.models.unit_relation import UnitRelation
+from app.models.billing_policy import BillingPolicy
 
 
 def _now_iso() -> str:
@@ -73,6 +74,17 @@ def seed_v06(db: Session | None = None) -> None:
             owner="PM 刘", billing_enabled=0, created_at=now, updated_at=now,
         )
         db.add_all([proj_a, proj_b])
+        db.flush()
+
+        # ── Billing Policy (default v1) ──────────────────────────
+        policy = BillingPolicy(
+            id="policy-v1", version=1,
+            denominator="allocatable", weight_mode="mem",
+            weight_cpu=0.5, weight_mem=0.5,
+            idle_cost="unallocated_bucket", sampling="daily",
+            freeze=1, is_active=1, created_at=now,
+        )
+        db.add(policy)
         db.flush()
 
         # ── Host Resources ──────────────────────────────────────

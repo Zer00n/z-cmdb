@@ -22,27 +22,30 @@ def upgrade() -> None:
     op.add_column("host_resource", sa.Column("ip_address", sa.String(45), nullable=True))
 
     # Backfill: copy ip_address from asset where hostname = host_resource.name
+    # Skip if asset table doesn't exist (fresh deployment without V0.1-V0.4 data)
     conn = op.get_bind()
-    conn.execute(
-        sa.text(
-            """
-            UPDATE host_resource
-            SET ip_address = (
-                SELECT a.ip_address
-                FROM asset a
-                WHERE a.hostname = host_resource.name
-                  AND a.ip_address IS NOT NULL
-                  AND a.ip_address != ''
-                LIMIT 1
+    inspector = sa.inspect(conn)
+    if "asset" in inspector.get_table_names():
+        conn.execute(
+            sa.text(
+                """
+                UPDATE host_resource
+                SET ip_address = (
+                    SELECT a.ip_address
+                    FROM asset a
+                    WHERE a.hostname = host_resource.name
+                      AND a.ip_address IS NOT NULL
+                      AND a.ip_address != ''
+                    LIMIT 1
+                )
+                WHERE ip_address IS NULL
+                  AND EXISTS (
+                    SELECT 1 FROM asset a
+                    WHERE a.hostname = host_resource.name
+                  )
+                """
             )
-            WHERE ip_address IS NULL
-              AND EXISTS (
-                SELECT 1 FROM asset a
-                WHERE a.hostname = host_resource.name
-              )
-            """
         )
-    )
 
 
 def downgrade() -> None:

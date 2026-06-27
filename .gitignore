@@ -84,6 +84,15 @@ logs/
 *.temp
 .cache/
 
+# ── Deployment artifacts（部署产物，不提交）───────────────────
+deploy/
+docker/
+
+# ── Agent tools（开发工具，不提交）────────────────────────────
+.agents/
+.claude/
+skills-lock.json
+
 # ── OS ───────────────────────────────────────────────────────
 .DS_Store
 .DS_Store?
