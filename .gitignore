@@ -86,7 +86,7 @@ logs/
 
 # ── Deployment artifacts（部署产物，不提交）───────────────────
 dist/
-docker/
+/docker/
 
 # ── Agent tools（开发工具，不提交）────────────────────────────
 .agents/

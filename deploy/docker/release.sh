@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+# ============================================================
+# Z-CMDB Docker Release Script
+# ============================================================
+set -euo pipefail
+cd "$(dirname "$0")"
+
+APP_VERSION="${APP_VERSION:-0.6}"
+BASE_IMAGE="z-cmdb-base:${APP_VERSION}"
+APP_IMAGE="z-cmdb-app:${APP_VERSION}"
+
+# ── Pre-flight: JWT_SECRET must be set ───────────────────────
+if [ -z "${JWT_SECRET:-}" ]; then
+    echo "[ERROR] JWT_SECRET environment variable is not set."
+    echo "  Usage: JWT_SECRET=<your-secret> ./release.sh"
+    exit 1
+fi
+
+# ── Build base image (only when deps change) ─────────────────
+echo "[1/4] Building base image ${BASE_IMAGE} ..."
+docker build -f Dockerfile.base -t "${BASE_IMAGE}" ../..
+
+# ── Optional: save for offline distribution ──────────────────
+if [ "${OFFLINE:-0}" = "1" ]; then
+    echo "[2/4] Saving base image for offline distribution ..."
+    docker save "${BASE_IMAGE}" | gzip > "z-cmdb-base-${APP_VERSION}.tar.gz"
+    echo "  Saved: z-cmdb-base-${APP_VERSION}.tar.gz"
+    echo "  To load on target: docker load < z-cmdb-base-${APP_VERSION}.tar.gz"
+else
+    echo "[2/4] Skipping offline save (set OFFLINE=1 to enable)"
+fi
+
+# ── Build app image ──────────────────────────────────────────
+echo "[3/4] Building app image ${APP_IMAGE} ..."
+docker compose build
+
+# ── Start ────────────────────────────────────────────────────
+echo "[4/4] Starting containers ..."
+mkdir -p data
+docker compose up -d
+
+echo ""
+echo "============================================================"
+echo " Z-CMDB ${APP_VERSION} is running at http://localhost:8000"
+echo " Data volume: ./data → /app/backend/data"
+echo "============================================================"

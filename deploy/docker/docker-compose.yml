@@ -1,0 +1,16 @@
+services:
+  cmdb:
+    image: z-cmdb-app:0.6
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/app/backend/data
+    environment:
+      - APP_ENV=production
+      - DATABASE_URL=sqlite:////app/backend/data/cmdb.db
+      - JWT_SECRET=${JWT_SECRET:?JWT_SECRET must be set}
+      - CORS_ORIGINS=["http://localhost:8000"]
+    restart: unless-stopped
