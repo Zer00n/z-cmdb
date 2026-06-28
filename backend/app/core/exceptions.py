@@ -216,3 +216,34 @@ class DuplicateSnapshotError(CMDBException):
     def __init__(self, project_id: str, period: str) -> None:
         msg = f"Bill snapshot already exists for project {project_id} period {period}"
         super().__init__(msg)
+
+
+# ── V0.7 SQLite 静态加密 — 解锁/状态机异常 ──────────────────────────
+
+
+class UnlockError(CMDBException):
+    """解锁失败（口令错/恢复码错/记录不存在/防爆破锁定）—— 消息统一，避免枚举。"""
+    status_code = 401
+    error_code = "UNLOCK_FAILED"
+
+    def __init__(self, message: str = "Unlock failed") -> None:
+        super().__init__(message)
+
+
+class UnlockLockedOutError(CMDBException):
+    """解锁尝试过多被临时锁定（防爆破）。"""
+    status_code = 429
+    error_code = "UNLOCK_LOCKED_OUT"
+
+    def __init__(self, retry_after_seconds: int) -> None:
+        self.retry_after = retry_after_seconds
+        super().__init__(f"Too many failed unlock attempts; retry in {retry_after_seconds}s")
+
+
+class LockStateError(CMDBException):
+    """在错误状态下执行操作（如已存在 keystore 时重复 setup）。"""
+    status_code = 409
+    error_code = "LOCK_STATE_ERROR"
+
+    def __init__(self, message: str = "Invalid state for this operation") -> None:
+        super().__init__(message)

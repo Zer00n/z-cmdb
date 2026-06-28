@@ -39,7 +39,13 @@ def create_user(
     current_user: SuperAdminUser = None,
     db: Session = Depends(get_db),
 ) -> UserRead:
-    """Create user (super_admin only)"""
+    """Create user (super_admin only).
+
+    加密模型（PRD §5.4）：新管理员创建后入册 keystore（用其初始口令包裹 DEK），
+    使其具备解锁能力。register_admin 失败则回滚库内用户（get_db 未 commit）。
+    """
+    from app.services import key_service
+
     pwd_hash = hash_password(body.password)
     user = user_repo.create_user(
         db=db,
@@ -54,6 +60,8 @@ def create_user(
         target_type="user", target_id=user.id,
         details={"username": user.username, "role": user.role},
     )
+    # 入册 keystore（用初始口令包裹 DEK）—— 在 commit 前，失败则整体回滚
+    key_service.register_admin(user.username, body.password)
     db.commit()
     return user  # type: ignore[return-value]
 
@@ -94,7 +102,12 @@ def disable_user(
     current_user: SuperAdminUser = None,
     db: Session = Depends(get_db),
 ) -> None:
-    """Disable user (soft delete, super_admin only)"""
+    """Disable user (soft delete, super_admin only).
+
+    加密模型（PRD §5.4）：同步移除 keystore 记录，其口令立即不能再解锁。
+    """
+    from app.services import key_service
+
     user = user_repo.get_by_id(db, user_id)
     user.token_version = (user.token_version or 0) + 1
     user_repo.update_user(db, user, status="disabled")
@@ -104,3 +117,8 @@ def disable_user(
         details={"action": "disabled"},
     )
     db.commit()
+    # 移除 keystore 记录（即使残留，库内 status=disabled 也无法登录，无害）
+    try:
+        key_service.unregister_admin(user.username)
+    except Exception as exc:  # noqa: BLE001 — keystore 异常不应阻断禁用
+        logger.warning("failed to remove keystore record for %s: %s", user.username, exc)

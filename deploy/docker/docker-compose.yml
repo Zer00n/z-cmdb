@@ -13,4 +13,7 @@ services:
       - DATABASE_URL=sqlite:////app/backend/data/cmdb.db
       - JWT_SECRET=${JWT_SECRET:?JWT_SECRET must be set}
       - CORS_ORIGINS=["http://localhost:8000"]
+      # 无人值守自动解锁：启动时注入口令（绝不写入宿主机 .env）：
+      #   CMDB_UNLOCK_PASSWORD: ${CMDB_UNLOCK_PASSWORD:-}
+      # 用法：CMDB_UNLOCK_PASSWORD="xxx" docker compose up -d
     restart: unless-stopped

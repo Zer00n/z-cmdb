@@ -7,6 +7,9 @@ pydantic-settings==2.14.2
 python-multipart==0.0.32
 python-jose[cryptography]==3.5.0
 argon2-cffi==25.1.0
+# SQLite 静态加密：sqlcipher3-binary 无 Windows wheel，改用 apsw + SQLite3 Multiple Ciphers（自包含）
+# 提供 import apsw，PRAGMA key/cipher 走 MC。固定版本，桌面打包用 --only-binary=:all:
+apsw-sqlite3mc==3.53.2.0
 python-libnmap==0.7.3
 defusedxml==0.7.1
 httpx==0.28.1

@@ -236,4 +236,4 @@ A: Yes. Database is bind-mounted to host `./data`. Container deletion does not a
 
 ---
 
-*Z-CMDB v0.6.0 | 2026-06-27*
+*Z-CMDB v0.6.5 | 2026-06-28*

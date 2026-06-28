@@ -15,6 +15,16 @@ call pnpm build || (echo [ERROR] pnpm build failed & exit /b 1)
 popd
 
 echo [2/5] Assembling package ...
+if exist dist\Z-CMDB\data\keystore.json (
+    echo.
+    echo [WARNING] dist\Z-CMDB\data\keystore.json detected — it will be DELETED by this step!
+    echo           If you are upgrading, back up keystore.json and cmdb.db first:
+    echo             copy dist\Z-CMDB\data\keystore.json .\keystore.json.bak
+    echo             copy dist\Z-CMDB\data\cmdb.db .\cmdb.db.bak
+    echo.
+    echo           Press Ctrl+C to abort, or any key to continue ...
+    pause >nul
+)
 if exist dist rmdir /s /q dist
 mkdir "%OUT%"
 xcopy backend\app "%OUT%\app" /e /i /q

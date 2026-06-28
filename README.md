@@ -38,7 +38,31 @@ Z-CMDB supports three deployment methods: **Windows double-click launcher** (zer
 
 ## ⚠️ Upgrade Notice
 
-> **After pulling V0.5.1, you MUST run database migrations before starting the application:**
+> ### V0.6.5 — Database Encryption Upgrade
+>
+> V0.6.5 introduces static encryption. **Existing plaintext databases must be migrated** before starting the new version:
+>
+> ```bash
+> # 1. Stop the service
+> # 2. Back up
+> cp data/cmdb.db data/cmdb.db.bak
+>
+> # 3. Encrypt the database
+> cd backend
+> PYTHONPATH=. python tools/encrypt_existing_db.py \
+>     --password '<your-admin-password>'
+>
+> # 4. Save the recovery code (one-time!)
+> # 5. Restart → unlock via browser
+> ```
+>
+> **Do NOT skip this step.** Starting V0.6.5 without migrating will result in a LOCKED state with no existing data accessible. See the [V0.6.5 section](#v065--database-static-encryption-at-rest) for full details.
+>
+> ---
+>
+> ### V0.5.1 — Migrations
+>
+> After pulling V0.5.1, run database migrations before starting:
 >
 > ```bash
 > # If using a virtual environment, activate it first:
@@ -55,6 +79,67 @@ Z-CMDB supports three deployment methods: **Windows double-click launcher** (zer
 > - `f0a1b2c3d4e5` — adds index on `scan_snapshot_items.ip_address` (performance optimization)
 >
 > **Without running this command, the application will fail to start.**
+
+---
+
+## V0.6.5 — Database Static Encryption (At-Rest)
+
+V0.6.5 adds **at-rest encryption** to Z-CMDB's SQLite database. A stolen `.db` file can no longer be opened by any SQLite tool — it appears as random bytes and requires an admin passphrase or recovery code, entered through the application, to unlock.
+
+### Envelope Encryption Design
+
+| Layer | Role |
+|---|---|
+| **DEK** (Data Encryption Key) | 32-byte random key, the actual SQLCipher/MC key. Never persisted in plaintext; held in memory only after unlock |
+| **KEK** (Key Encryption Key) | Derived from admin passphrase via Argon2id (per-user salt). Used to wrap/unwrap the DEK |
+| **keystore.json** | Stores wrapped DEK + salt + nonce (all ciphertext). Safe to back up; harmless if leaked without the passphrase |
+
+- KDF: Argon2id (`memory=64MB, time=3, parallelism=4`)
+- Wrap: AES-256-GCM (12-byte random nonce per wrap)
+
+### Application State Machine
+
+The application starts in **LOCKED** state (DB engine not initialized). After setup or unlock, it transitions to **UNLOCKED** with the DEK in memory.
+
+| Action | Effect |
+|---|---|
+| **Setup** (first run) | Generate DEK → create admin → generate one-time recovery code → encrypt DB → unlock |
+| **Unlock (passphrase)** | Derive KEK → unwrap DEK → init engine → run migrations → issue JWT (single-passphrase UX) |
+| **Unlock (recovery code)** | Same as above, but does **not** auto-login (requires separate admin login after) |
+| **Change password** | Re-wrap DEK with new KEK; database untouched |
+| **Add admin** | Wrap DEK with new admin's KEK → add keystore record |
+| **Remove admin** | Remove keystore record → passphrase immediately invalidated |
+
+### Deployment Changes
+
+- **Startup scripts no longer run `alembic upgrade head`**. Migrations run automatically after vault unlock/setup (encrypted DB cannot be migrated without the DEK).
+- **Windows/Linux/Docker** all support encryption. Unattended mode via `CMDB_UNLOCK_PASSWORD` environment variable (injected at runtime, never written to `.env`).
+- **One-time migration tool** for existing plaintext databases: `python tools/encrypt_existing_db.py --password '<admin-password>'`
+
+### ⚠️ Important
+
+- **Recovery code**: Generated once during setup, shown only once. It is the **only** way to recover if all admin passwords are lost. **Store it offline immediately** (paper, password manager).
+- **Backup**: Always back up both `cmdb.db` **and** `keystore.json`. Losing the keystore without a recovery code means **permanent data loss**.
+- **Defended**: Stolen `.db` file / stolen `.db` + `keystore.json` (no passphrase) / full disk image (app not running).
+- **Not defended**: Process memory dump while running / compromised host with keylogger (see PRD §1 non-goals).
+
+### Migration
+
+```bash
+# 1. Stop the service
+# 2. Back up
+cp data/cmdb.db data/cmdb.db.bak
+
+# 3. Run one-time encryption migration
+cd backend
+PYTHONPATH=. python tools/encrypt_existing_db.py \
+    --password '<new-admin-password>'
+
+# 4. Save the recovery code printed to console (one-time!)
+# 5. Restart → unlock via browser
+```
+
+The migration encrypts all tables (including views/indexes), verifies row counts, updates the admin password hash, and securely overwrites the plaintext original.
 
 ---
 

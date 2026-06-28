@@ -46,10 +46,16 @@ def login(db: Session, username: str, password: str) -> tuple[str, str]:
     if user.status == "disabled":
         raise AuthenticationError("Account has been disabled")
 
-    # Check lock status
-    if user.locked_until and user.locked_until > datetime.now(timezone.utc):
-        remaining = int((user.locked_until - datetime.now(timezone.utc)).total_seconds() / 60)
-        raise AccountLockedError(f"Account locked, please try again in {remaining} minutes")
+    # Check lock status (SQLite returns naive datetimes; compare as UTC-aware)
+    if user.locked_until:
+        locked_until = (
+            user.locked_until.replace(tzinfo=timezone.utc)
+            if user.locked_until.tzinfo is None
+            else user.locked_until
+        )
+        if locked_until > datetime.now(timezone.utc):
+            remaining = int((locked_until - datetime.now(timezone.utc)).total_seconds() / 60)
+            raise AccountLockedError(f"Account locked, please try again in {remaining} minutes")
 
     # Verify password
     if not verify_password(password, user.password_hash):
@@ -104,17 +110,12 @@ def change_password(
 ) -> None:
     """
     Change password: verify old password then update.
-    Raises AuthenticationError or ValidationError on failure.
+    加密模型（PRD §5.3）：库内 argon2 哈希与 keystore 的 wrapped-DEK 记录原子同步，
+    委托 key_service.change_password_and_rewrap —— keystore 写失败会回滚库内哈希。
+    密码策略由路由层 ChangePasswordRequest 校验；此处只做旧口令校验 + 不相同校验。
     """
-    if not verify_password(old_password, user.password_hash):
-        raise AuthenticationError("Incorrect old password")
-
-    if old_password == new_password:
-        raise ValidationError("New password cannot be the same as the old password")
-
-    new_hash = hash_password(new_password)
-    user_repo.update_password(db, user, new_hash)
-    db.commit()
+    from app.services import key_service
+    key_service.change_password_and_rewrap(db, user, old_password, new_password)
 
     # 改密成功后清除可能残留的初始明文密码文件
     _purge_initial_password_file()

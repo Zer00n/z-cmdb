@@ -8,6 +8,14 @@ User=cmdb
 Group=cmdb
 WorkingDirectory=/opt/z-cmdb/backend
 EnvironmentFile=/opt/z-cmdb/backend/.env
+# 加密模型（PRD §6）：应用以 LOCKED 启动，迁移在解锁/setup 后自动执行。
+# 无人值守自动解锁：临时写口令到 .unlock.env 后重启，用后立即删除：
+#   echo "CMDB_UNLOCK_PASSWORD=<口令或恢复码>" > /opt/z-cmdb/backend/.unlock.env
+#   systemctl restart z-cmdb
+#   rm /opt/z-cmdb/backend/.unlock.env
+# 更安全：ExecStartPre 用 systemd-ask-password 交互输入（口令不落盘）。
+#   ExecStartPre=/bin/bash -c "export CMDB_UNLOCK_PASSWORD=$(systemd-ask-password --id=cmdb 'Unlock password')"
+EnvironmentFile=-/opt/z-cmdb/backend/.unlock.env
 ExecStart=/opt/z-cmdb/backend/.venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 1
 Restart=on-failure
 RestartSec=5
