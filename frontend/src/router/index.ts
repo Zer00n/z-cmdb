@@ -1,9 +1,11 @@
 /**
  * Vue Router configuration
- * /login is public; all other routes require authentication
+ * /login and /unlock are public; all other routes require authentication
+ * When vault is LOCKED, all non-public routes redirect to /unlock
  */
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { getLockStatus } from '@/api/vault'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -12,6 +14,12 @@ const router = createRouter({
       path: '/login',
       name: 'Login',
       component: () => import('@/views/Login.vue'),
+      meta: { public: true },
+    },
+    {
+      path: '/unlock',
+      name: 'VaultUnlock',
+      component: () => import('@/views/Vault.vue'),
       meta: { public: true },
     },
     {
@@ -165,18 +173,42 @@ const router = createRouter({
   ],
 })
 
-// ── Route guard: redirect to /login if not authenticated ──────────────────────────────
-router.beforeEach((to) => {
+// ── Route guard: check vault lock status, then auth ─────────────────────
+router.beforeEach(async (to) => {
   const authStore = useAuthStore()
 
+  // Public routes: /login and /unlock are always accessible
   if (to.meta.public) {
-    // Already logged in visiting /login, redirect to home
     if (authStore.isLoggedIn && to.path === '/login') {
       return { path: '/' }
     }
     return true
   }
 
+  // ── Vault lock-status check (cached in sessionStorage) ──
+  let lockInfo: { state: string; needs_setup: boolean } | null = null
+  const cached = sessionStorage.getItem('lock_status')
+  if (cached) {
+    try {
+      lockInfo = JSON.parse(cached)
+    } catch {
+      sessionStorage.removeItem('lock_status')
+    }
+  }
+  if (!lockInfo) {
+    try {
+      const status = await getLockStatus()
+      lockInfo = status
+      sessionStorage.setItem('lock_status', JSON.stringify(status))
+    } catch {
+      // lock-status unreachable — let through to normal auth flow
+    }
+  }
+  if (lockInfo && (lockInfo.needs_setup || lockInfo.state === 'LOCKED')) {
+    return { path: '/unlock' }
+  }
+
+  // ── Auth check ──
   if (!authStore.isLoggedIn) {
     return { path: '/login', query: { redirect: to.fullPath } }
   }

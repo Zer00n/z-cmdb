@@ -52,7 +52,12 @@ request.interceptors.response.use(
     }
 
     if (status === 423) {
-      ElMessage.error(message)
+      // Vault locked — redirect to unlock page (same pattern as 401 → /login)
+      sessionStorage.removeItem('lock_status')
+      sessionStorage.removeItem('access_token')
+      if (window.location.pathname !== '/unlock') {
+        window.location.href = '/unlock'
+      }
       return Promise.reject(error)
     }
 

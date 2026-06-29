@@ -16,6 +16,7 @@ import constants from './constants'
 import cost from './cost'
 import preset from './preset'
 import project from './project'
+import vault from './vault'
 
 export default {
   common,
@@ -36,4 +37,5 @@ export default {
   cost,
   preset,
   project,
+  vault,
 }
