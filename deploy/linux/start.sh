@@ -14,6 +14,23 @@ command -v "$PY" >/dev/null 2>&1 || { echo "[ERROR] $PY not found. Install Pytho
 
 mkdir -p data
 
+# ── Build frontend if static/index.html missing ──────────────
+if [ ! -f ../frontend/dist/index.html ]; then
+    echo "[INFO] Frontend not built. Building ..."
+    if command -v pnpm >/dev/null 2>&1; then
+        (cd ../frontend && pnpm install --frozen-lockfile && pnpm build)
+    elif command -v npm >/dev/null 2>&1; then
+        (cd ../frontend && npm install && npm run build)
+    else
+        echo "[ERROR] Neither pnpm nor npm found. Install one and retry."
+        exit 1
+    fi
+    echo "[INFO] Frontend built successfully."
+fi
+# Sync static files to backend/static/ (always, in case of rebuild)
+rm -rf static
+cp -r ../frontend/dist static
+
 # ── Create venv if missing or incomplete (idempotent) ────────
 if [ ! -f .venv/.ready ]; then
     echo "[INFO] Creating virtual environment ..."

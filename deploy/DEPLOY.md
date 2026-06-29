@@ -101,7 +101,7 @@ copy C:\backup\cmdb.db  dist\Z-CMDB\data\cmdb.db
 ### 前置条件
 
 - Python 3.12+
-- 前端已 build（`cd frontend && pnpm build`），产物拷贝到 `backend/static/`
+- pnpm 或 npm（用于自动构建前端，如已预编译可跳过）
 
 ### 操作步骤
 
@@ -112,11 +112,12 @@ chmod +x start.sh
 ```
 
 脚本会自动：
-1. 创建 `.venv`（首次）
-2. 安装依赖（使用清华镜像，可通过 `PIP_MIRROR` 环境变量覆盖）
-3. 生成 `.env`（首次，含随机 JWT_SECRET）
-4. 运行数据库迁移
-5. 启动 uvicorn（监听 `0.0.0.0:8000`）
+1. 检测并构建前端（如 `frontend/dist/` 不存在）
+2. 同步静态文件到 `backend/static/`
+3. 创建 `.venv`（首次）
+4. 安装依赖（使用清华镜像，可通过 `PIP_MIRROR` 环境变量覆盖）
+5. 生成 `.env`（首次，含随机 JWT_SECRET）
+6. 启动 uvicorn（监听 `0.0.0.0:8000`）
 
 **二次执行**：不会重装依赖、不会覆盖 `.env`、不会丢失数据。
 
@@ -158,7 +159,7 @@ sudo systemctl start z-cmdb
 
 - Docker 20.10+
 - Docker Compose v2
-- 前端已 build（`cd frontend && pnpm build`）
+- pnpm 或 npm（用于自动构建前端，如已预编译可跳过）
 
 ### 一键部署
 
@@ -169,6 +170,7 @@ export JWT_SECRET=$(python3 -c "import secrets;print(secrets.token_urlsafe(48))"
 ```
 
 脚本会自动：
+0. 检测并构建前端（如 `frontend/dist/` 不存在）
 1. 构建基础镜像 `z-cmdb-base:0.6`（含依赖，偶尔重建）
 2. 构建应用镜像 `z-cmdb-app:0.6`（仅 COPY 代码，秒级）
 3. 创建 `./data` 目录

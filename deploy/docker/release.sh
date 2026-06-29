@@ -16,6 +16,20 @@ if [ -z "${JWT_SECRET:-}" ]; then
     exit 1
 fi
 
+# ── Build frontend if dist/index.html missing ────────────────
+if [ ! -f ../../frontend/dist/index.html ]; then
+    echo "[INFO] Frontend not built. Building ..."
+    if command -v pnpm >/dev/null 2>&1; then
+        (cd ../../frontend && pnpm install --frozen-lockfile && pnpm build)
+    elif command -v npm >/dev/null 2>&1; then
+        (cd ../../frontend && npm install && npm run build)
+    else
+        echo "[ERROR] Neither pnpm nor npm found. Install one and retry."
+        exit 1
+    fi
+    echo "[INFO] Frontend built successfully."
+fi
+
 # ── Build base image (only when deps change) ─────────────────
 echo "[1/4] Building base image ${BASE_IMAGE} ..."
 docker build -f Dockerfile.base -t "${BASE_IMAGE}" ../..
