@@ -16,6 +16,7 @@ import { getOsFieldMode, filterVisibleOsGroups } from './os-policy'
 import { useFeatureStore } from '@/stores/feature'
 import { useImportPresetStore } from '@/stores/importPreset'
 import PresetSelect from '@/components/PresetSelect.vue'
+import NetworkInterfaceTable from '@/components/asset/NetworkInterfaceTable.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -40,11 +41,28 @@ const form = reactive<AssetCreateRequest>({
   hostname: '',
   asset_type: 'virtual',
   os_info: '',
+  // P0 hardware identity
+  serial_number: '',
+  vendor: '',
+  hardware_model: '',
+  asset_tag: '',
   location: '',
+  // P0 structured location
+  datacenter: '',
+  rack: '',
+  rack_u_start: undefined,
+  rack_u_height: undefined,
   owner: '',
   business_system: '',
   importance: 'normal',
   network_zone: 'intranet',
+  // P0 out-of-band / cloud identity
+  mgmt_ip: '',
+  cloud_instance_id: '',
+  cloud_region: '',
+  cloud_zone: '',
+  cloud_spec: '',
+  hypervisor: '',
   cpu: '',
   memory_gb: undefined,
   disk_gb: undefined,
@@ -133,11 +151,28 @@ async function loadAsset() {
       hostname: asset.hostname || '',
       asset_type: asset.asset_type,
       os_info: asset.os_info || '',
+      // P0 hardware identity
+      serial_number: asset.serial_number || '',
+      vendor: asset.vendor || '',
+      hardware_model: asset.hardware_model || '',
+      asset_tag: asset.asset_tag || '',
       location: asset.location,
+      // P0 structured location
+      datacenter: asset.datacenter || '',
+      rack: asset.rack || '',
+      rack_u_start: asset.rack_u_start ?? undefined,
+      rack_u_height: asset.rack_u_height ?? undefined,
       owner: asset.owner,
       business_system: asset.business_system,
       importance: asset.importance,
       network_zone: asset.network_zone,
+      // P0 out-of-band / cloud identity
+      mgmt_ip: asset.mgmt_ip || '',
+      cloud_instance_id: asset.cloud_instance_id || '',
+      cloud_region: asset.cloud_region || '',
+      cloud_zone: asset.cloud_zone || '',
+      cloud_spec: asset.cloud_spec || '',
+      hypervisor: asset.hypervisor || '',
       cpu: asset.cpu || '',
       memory_gb: asset.memory_gb ?? undefined,
       disk_gb: asset.disk_gb ?? undefined,
@@ -277,6 +312,9 @@ onMounted(async () => {
                 <el-radio-button value="virtual">{{ t('asset.form.types.virtual') }}</el-radio-button>
                 <el-radio-button value="cloud_server">{{ t('asset.form.types.cloudServer') }}</el-radio-button>
                 <el-radio-button value="network_device">{{ t('asset.form.types.networkDevice') }}</el-radio-button>
+                <el-radio-button value="storage">{{ t('asset.form.types.storage') }}</el-radio-button>
+                <el-radio-button value="security_device">{{ t('asset.form.types.securityDevice') }}</el-radio-button>
+                <el-radio-button value="load_balancer">{{ t('asset.form.types.loadBalancer') }}</el-radio-button>
                 <el-radio-button value="other">{{ t('asset.form.types.other') }}</el-radio-button>
               </el-radio-group>
             </el-form-item>
@@ -324,6 +362,61 @@ onMounted(async () => {
                 style="width: 360px"
               />
             </el-form-item>
+
+            <el-form-item :label="t('asset.form.fields.mgmtIp')">
+              <el-input
+                v-model="form.mgmt_ip"
+                :placeholder="t('asset.form.fields.mgmtIpPlaceholder')"
+                style="width: 360px"
+                class="mono-input"
+              />
+            </el-form-item>
+
+            <!-- Cloud identity (cloud servers only) -->
+            <template v-if="isCloudServer">
+              <el-form-item :label="t('asset.form.fields.cloudInstanceId')">
+                <el-input
+                  v-model="form.cloud_instance_id"
+                  :placeholder="t('asset.form.fields.cloudInstanceIdPlaceholder')"
+                  style="width: 360px"
+                  class="mono-input"
+                />
+              </el-form-item>
+              <el-form-item :label="t('asset.form.fields.cloudRegion')">
+                <el-input
+                  v-model="form.cloud_region"
+                  placeholder="cn-hangzhou"
+                  style="width: 200px"
+                  class="mono-input"
+                />
+                <el-input
+                  v-model="form.cloud_zone"
+                  :placeholder="t('asset.form.fields.cloudZone')"
+                  style="width: 150px; margin-left: 10px"
+                  class="mono-input"
+                />
+              </el-form-item>
+              <el-form-item :label="t('asset.form.fields.cloudSpec')">
+                <el-input
+                  v-model="form.cloud_spec"
+                  placeholder="ecs.g7.large"
+                  style="width: 360px"
+                  class="mono-input"
+                />
+              </el-form-item>
+            </template>
+
+            <!-- Virtualization platform (virtual machines only) -->
+            <el-form-item
+              v-if="form.asset_type === 'virtual'"
+              :label="t('asset.form.fields.hypervisor')"
+            >
+              <el-input
+                v-model="form.hypervisor"
+                :placeholder="t('asset.form.fields.hypervisorPlaceholder')"
+                style="width: 360px"
+              />
+            </el-form-item>
           </div>
         </div>
 
@@ -337,6 +430,36 @@ onMounted(async () => {
           <div class="sec-body">
             <el-form-item :label="t('asset.form.fields.location')" prop="location">
               <PresetSelect category="location" v-model="form.location" style="width: 360px" />
+            </el-form-item>
+
+            <!-- Structured rack location (optional detail) -->
+            <el-form-item :label="t('asset.form.fields.rackLocation')">
+              <el-input
+                v-model="form.datacenter"
+                :placeholder="t('asset.form.fields.datacenter')"
+                style="width: 150px"
+              />
+              <el-input
+                v-model="form.rack"
+                :placeholder="t('asset.form.fields.rack')"
+                style="width: 110px; margin-left: 10px"
+              />
+              <el-input-number
+                v-model="form.rack_u_start"
+                :min="1"
+                :max="100"
+                :placeholder="t('asset.form.fields.uStart')"
+                controls-position="right"
+                style="width: 120px; margin-left: 10px"
+              />
+              <el-input-number
+                v-model="form.rack_u_height"
+                :min="1"
+                :max="10"
+                :placeholder="t('asset.form.fields.uHeight')"
+                controls-position="right"
+                style="width: 110px; margin-left: 10px"
+              />
             </el-form-item>
 
             <el-form-item :label="t('asset.form.fields.owner')" prop="owner">
@@ -369,6 +492,37 @@ onMounted(async () => {
             <el-tag size="small" effect="plain">{{ t('asset.form.sections.optional') }}</el-tag>
           </div>
           <div class="sec-body">
+            <el-form-item :label="t('asset.form.fields.serialNumber')">
+              <el-input
+                v-model="form.serial_number"
+                :placeholder="t('asset.form.fields.serialNumberPlaceholder')"
+                style="width: 360px"
+                class="mono-input"
+              />
+            </el-form-item>
+
+            <el-form-item :label="t('asset.form.fields.vendor')">
+              <el-input
+                v-model="form.vendor"
+                :placeholder="t('asset.form.fields.vendorPlaceholder')"
+                style="width: 200px"
+              />
+              <el-input
+                v-model="form.hardware_model"
+                :placeholder="t('asset.form.fields.hardwareModelPlaceholder')"
+                style="width: 200px; margin-left: 10px"
+              />
+            </el-form-item>
+
+            <el-form-item :label="t('asset.form.fields.assetTag')">
+              <el-input
+                v-model="form.asset_tag"
+                :placeholder="t('asset.form.fields.assetTagPlaceholder')"
+                style="width: 360px"
+                class="mono-input"
+              />
+            </el-form-item>
+
             <el-form-item :label="t('asset.form.fields.cpu')">
               <el-input v-model="form.cpu" :placeholder="t('asset.form.fields.cpuPlaceholder')" style="width: 360px" />
             </el-form-item>
@@ -410,6 +564,22 @@ onMounted(async () => {
                 style="width: 100%; max-width: 720px"
               />
             </el-form-item>
+          </div>
+        </div>
+
+        <!-- Section: network interfaces / uplinks -->
+        <div class="sec-card">
+          <div class="sec-head">
+            <span class="sec-num">04</span>
+            <span class="sec-title">{{ t('asset.form.sections.interfaces') }}</span>
+            <el-tag size="small" effect="plain">{{ t('asset.form.sections.optional') }}</el-tag>
+          </div>
+          <div class="sec-body">
+            <NetworkInterfaceTable v-if="isEdit" :asset-id="assetId" />
+            <div v-else class="iface-hint">
+              <el-icon><InfoFilled /></el-icon>
+              <span>{{ t('asset.form.interfaceCreateHint') }}</span>
+            </div>
           </div>
         </div>
 
@@ -583,5 +753,18 @@ onMounted(async () => {
   margin-left: var(--space-3);
   font-size: 12px;
   color: var(--neutral-400);
+}
+
+/* Create-mode interface hint */
+.iface-hint {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: var(--space-3) var(--space-4);
+  background: var(--surface-sunken);
+  border: 1px solid var(--neutral-200);
+  border-radius: var(--radius-md);
+  color: var(--neutral-500);
+  font-size: 13px;
 }
 </style>

@@ -7,6 +7,7 @@ export default {
   scanBatches: '扫描批次',
   scanConfirm: '批次确认',
   topology: '拓扑图',
+  facilityRacks: '机房机柜图',
   reports: '安全报表',
   audit: '审计日志',
   users: '用户管理',

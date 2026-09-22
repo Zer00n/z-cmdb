@@ -1,7 +1,8 @@
 # Import all SQLAlchemy models in one place to ensure the mapper registry is complete.
 # This prevents relationship string references (e.g. "AssetApp") from failing at init time.
 from app.models.user import User
-from app.models.asset import Asset, AssetPort
+from app.models.asset import Asset, AssetPort, NetworkInterface
+from app.models.rack import Rack
 from app.models.asset_app import AssetApp
 from app.models.audit import AuditLog
 from app.models.config import SystemConfig
@@ -24,6 +25,8 @@ __all__ = [
     "User",
     "Asset",
     "AssetPort",
+    "NetworkInterface",
+    "Rack",
     "AssetApp",
     "AuditLog",
     "SystemConfig",

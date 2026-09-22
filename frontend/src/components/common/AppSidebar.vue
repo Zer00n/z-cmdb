@@ -68,6 +68,7 @@ const navGroups = computed<NavGroup[]>(() => [
     title: t('layout.sidebar.topology'),
     items: [
       { title: t('layout.sidebar.topology'), route: '/topology', icon: 'Share' },
+      { title: t('layout.sidebar.facilityRacks'), route: '/facility/racks', icon: 'Grid' },
     ],
   },
   {

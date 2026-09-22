@@ -18,7 +18,7 @@ def get_by_id(db: Session, asset_id: int, load_ports: bool = False) -> Asset:
     if load_ports:
         stmt = (
             select(Asset)
-            .options(selectinload(Asset.ports))
+            .options(selectinload(Asset.ports), selectinload(Asset.interfaces))
             .where(Asset.id == asset_id)
         )
         asset = db.scalar(stmt)

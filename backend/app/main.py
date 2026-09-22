@@ -37,6 +37,8 @@ from app.routers.projects import router as projects_router
 from app.routers.units import router as units_router
 from app.routers.billing_policy import router as billing_policy_router
 from app.routers.relations import router as relations_router
+from app.routers.network_interfaces import router as network_interfaces_router
+from app.routers.facility import router as facility_router
 
 # Initialize logging (must be done before other module imports)
 setup_logging()
@@ -153,6 +155,8 @@ app.include_router(projects_router)
 app.include_router(units_router)
 app.include_router(billing_policy_router)
 app.include_router(relations_router)
+app.include_router(network_interfaces_router)
+app.include_router(facility_router)
 
 
 # ── Static hosting + SPA fallback (production single-port) ──────

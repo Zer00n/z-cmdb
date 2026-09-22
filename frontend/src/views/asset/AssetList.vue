@@ -277,6 +277,9 @@ onMounted(async () => {
         <el-option :label="t('constants.assetTypes.virtual')" value="virtual" />
         <el-option :label="t('constants.assetTypes.cloud_server')" value="cloud_server" />
         <el-option :label="t('constants.assetTypes.network_device')" value="network_device" />
+        <el-option :label="t('constants.assetTypes.storage')" value="storage" />
+        <el-option :label="t('constants.assetTypes.security_device')" value="security_device" />
+        <el-option :label="t('constants.assetTypes.load_balancer')" value="load_balancer" />
         <el-option :label="t('constants.assetTypes.other')" value="other" />
       </el-select>
 

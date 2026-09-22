@@ -12,6 +12,7 @@ export default {
   loading: 'Loading...',
   noData: 'No Data',
   success: 'Success',
+  confirmDelete: 'Confirm deletion? This cannot be undone.',
   error: 'Error',
   warning: 'Warning',
   actions: 'Actions',

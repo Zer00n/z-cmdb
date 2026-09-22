@@ -12,6 +12,7 @@ export default {
   loading: '加载中...',
   noData: '暂无数据',
   success: '成功',
+  confirmDelete: '确认删除？删除后不可恢复',
   error: '错误',
   warning: '警告',
   actions: '操作',

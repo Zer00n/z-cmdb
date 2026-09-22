@@ -18,6 +18,9 @@ export default {
     virtual: '虚拟机',
     cloud_server: '云服务器',
     network_device: '网络设备',
+    storage: '存储设备',
+    security_device: '安全设备',
+    load_balancer: '负载均衡',
     other: '其他',
   },
   importance: {

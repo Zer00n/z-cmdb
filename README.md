@@ -38,11 +38,30 @@ Z-CMDB supports three deployment methods: **Windows double-click launcher** (zer
 
 ## ⚠️ Upgrade Notice
 
-> ### V0.7 — Security Hardening
+> ### V0.7 — Hardware Identity, Rack Layout & Security Hardening
 >
-> V0.7 is a security release fixing **2 high-severity and 5 medium-severity vulnerabilities** identified by a full security audit of V0.6.5. Business workflows and API contracts are unchanged.
+> Alongside security hardening, V0.7 adds **unique hardware identity** and a **datacenter rack view**:
 >
-> After unlocking in the browser, independent field-key generation, automatic re-encryption of stored LLM keys and the new alembic migration all run automatically — no manual steps. Back up `cmdb.db` + `keystore.json` before upgrading. See the [V0.7 section](#v07--security-hardening) for details.
+> - **Unique hardware identity**: serial number (SN), vendor, model, asset tag / barcode
+> - **Structured rack location**: datacenter / rack / start U / U height (the free-text location is kept as a display fallback)
+> - **Multi-NIC / multi-IP**: a dedicated interface inventory with name, MAC, multiple IPs, mask, VLAN, gateway, bond topology and a primary flag
+> - **Out-of-band management**: IPMI / iDRAC / iLO address
+> - **Cloud & virtualization identity**: cloud instance ID, region / availability zone, instance type; the hypervisor a VM belongs to
+> - **Asset types extended**: new storage, security device and load balancer types
+> - **Rack layout** (sidebar "Topology" group → "Rack Layout"): datacenter → rack → **bottom-up 42U** rack elevation, devices placed precisely by U position; click a device to see its ports and the same-datacenter upstream device (switch / storage / security / load balancer) and port, with warnings for out-of-range, overlapping and unlocated devices
+>
+> **Database migration (important)**: this release adds two migrations — `h5c0d4e6f2a9` (hardware fields + interface table) and `i6d1e5f7a3b0` (rack entities + port-level cabling). **Back up `cmdb.db` and `keystore.json` before upgrading.**
+>
+> ```bash
+> # Bare metal: from backend/ with the virtual environment active
+> # Windows:  .venv\Scripts\activate
+> # Linux:    source .venv/bin/activate
+> cd backend && alembic upgrade head
+> ```
+>
+> For encrypted databases (V0.6.5+), simply **restart and unlock in the browser** — migrations run automatically as part of the unlock flow; existing assets' `(datacenter, rack)` pairs are de-duplicated and backfilled as rack entities. Docker users take no manual action — migrations run automatically once the container starts and is unlocked.
+>
+> For the security hardening content (**2 high, 5 medium** fixes), see the [V0.7 Security Hardening section](#v07--security-hardening).
 >
 > ---
 >
@@ -481,7 +500,8 @@ Scrolling broadcast of dangerous port details (IP / Port / Service / Zone / Leve
 
 ![Asset List](img/001.png)
 
-- Supports five asset types: Physical Server, Virtual Machine, **Cloud Server**, Network Device, Other
+- Supports 8 asset types: Physical Server, Virtual Machine, **Cloud Server**, Network Device, **Storage, Security Device, Load Balancer**, Other
+- Records unique hardware identity: **serial number (SN), vendor, model, asset tag**, plus the out-of-band (IPMI/iDRAC/iLO) address
 - When Cloud Server is selected, network zone auto-switches to cloud provider (Alibaba Cloud / Tencent Cloud / Huawei Cloud / AWS / Azure / GCP)
 - Multi-dimension filtering: Network Zone, Asset Type, Importance, Status
 - Full-text search: IP, Hostname, Asset Number, Business System, **Application Name** (e.g., nginx, mysql)
@@ -492,12 +512,13 @@ Scrolling broadcast of dangerous port details (IP / Port / Service / Zone / Leve
 
 ![Asset Detail](img/003.png)
 
-Three tabs for one-stop viewing:
+Multiple tabs for one-stop viewing:
 
 | Tab | Content |
 |-----|---------|
-| Basic Info | Asset Number, IP/MAC/Hostname, OS, Ownership, Hardware, Procurement & Warranty |
+| Basic Info | Asset Number, IP/MAC/Hostname, OS, hardware identity & ownership, hardware specs, procurement & warranty |
 | Ports | Open ports discovered by scan, including service name, version, status |
+| Network Interfaces | Multi-NIC/multi-IP, VLAN, bond; register same-datacenter upstream device and switch port |
 | Applications | Manually registered or scan-extracted application list, including version, port, install path |
 
 **Port-Application bidirectional sync**: When manually adding an application with ports, it auto-writes to the ports table; when confirming nmap scan import, ports with `service_name` automatically generate application records.
@@ -522,6 +543,13 @@ Three tabs for one-stop viewing:
 - Asset data is **auto-anonymized** before being sent to the LLM (IP → placeholder, business system → code name)
 - Core assets can be configured to force local model usage; sensitive data stays on-premises
 - After generation, manual adjustments can be made in the embedded drawio editor, with version management and rollback support
+
+### Rack Layout
+
+- Aggregates racks by datacenter so managers instantly see **which datacenters exist, how many racks each has, and U utilization**
+- Racks are drawn as a **42U elevation (U1 at the bottom, bottom-up)**; servers are placed precisely by their registered U position and color-coded by device type
+- Clicking a device shows its ports and the **same-datacenter upstream device (switch / storage / security / load balancer) and port** in the side panel, while connected devices are highlighted
+- Data-quality warnings: out-of-range U, overlapping U and unlocated devices, with quick data-entry support
 
 ### Security Reports
 

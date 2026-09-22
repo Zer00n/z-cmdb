@@ -2,13 +2,16 @@
  * Asset-related TypeScript type definitions
  */
 
-export type AssetType = 'physical' | 'virtual' | 'network_device' | 'other' | 'cloud_server'
+export type AssetType =
+  | 'physical' | 'virtual' | 'network_device' | 'other' | 'cloud_server'
+  | 'storage' | 'security_device' | 'load_balancer'
 export type Importance = 'core' | 'important' | 'normal'
 export type NetworkZone =
   | 'dmz' | 'intranet' | 'office' | 'management' | 'other'
   | 'aliyun' | 'tencent' | 'huawei' | 'aws' | 'azure' | 'gcp' | 'other_cloud'
 export type AssetStatus = 'online' | 'offline' | 'decommissioned'
 export type AssetSource = 'scan' | 'manual' | 'excel'
+export type NicRole = 'data' | 'mgmt' | 'other'
 
 export interface AssetPort {
   id: number
@@ -20,6 +23,41 @@ export interface AssetPort {
   last_seen_at: string | null
 }
 
+/** P0 network interface / address record */
+export interface NetworkInterface {
+  id: number
+  asset_id: number
+  name: string | null
+  mac_address: string | null
+  ip_address: string | null
+  cidr_prefix: number | null
+  vlan_id: number | null
+  gateway: string | null
+  role: NicRole
+  bond_master: string | null
+  is_primary: boolean
+  status: 'active' | 'disconnected'
+  connected_asset_id: number | null
+  connected_port: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface NetworkInterfacePayload {
+  name?: string | null
+  mac_address?: string | null
+  ip_address?: string | null
+  cidr_prefix?: number | null
+  vlan_id?: number | null
+  gateway?: string | null
+  role?: NicRole
+  bond_master?: string | null
+  is_primary?: boolean
+  status?: 'active' | 'disconnected'
+  connected_asset_id?: number | null
+  connected_port?: string | null
+}
+
 export interface Asset {
   id: number
   asset_no: string
@@ -28,11 +66,29 @@ export interface Asset {
   hostname: string | null
   asset_type: AssetType
   os_info: string | null
+  // P0 hardware identity
+  serial_number: string | null
+  vendor: string | null
+  hardware_model: string | null
+  asset_tag: string | null
   location: string
+  // P0 structured location
+  datacenter: string | null
+  rack: string | null
+  rack_u_start: number | null
+  rack_u_height: number | null
+  rack_id: number | null
   owner: string
   business_system: string
   importance: Importance
   network_zone: NetworkZone
+  // P0 out-of-band / cloud identity
+  mgmt_ip: string | null
+  cloud_instance_id: string | null
+  cloud_region: string | null
+  cloud_zone: string | null
+  cloud_spec: string | null
+  hypervisor: string | null
   cpu: string | null
   memory_gb: number | null
   disk_gb: number | null
@@ -47,6 +103,7 @@ export interface Asset {
   created_at: string
   updated_at: string
   ports: AssetPort[]
+  interfaces: NetworkInterface[]
   // V0.4 cost fields
   purchase_price?: number | null
   depreciation_months?: number | null
@@ -68,6 +125,7 @@ export interface AssetListItem {
   hostname: string | null
   asset_type: AssetType
   os_info: string | null
+  datacenter?: string | null
   location: string
   owner: string
   business_system: string
@@ -96,11 +154,28 @@ export interface AssetCreateRequest {
   hostname?: string | null
   asset_type: AssetType
   os_info?: string | null
+  // P0 hardware identity
+  serial_number?: string | null
+  vendor?: string | null
+  hardware_model?: string | null
+  asset_tag?: string | null
   location: string
+  // P0 structured location
+  datacenter?: string | null
+  rack?: string | null
+  rack_u_start?: number | null
+  rack_u_height?: number | null
   owner: string
   business_system: string
   importance: Importance
   network_zone: NetworkZone
+  // P0 out-of-band / cloud identity
+  mgmt_ip?: string | null
+  cloud_instance_id?: string | null
+  cloud_region?: string | null
+  cloud_zone?: string | null
+  cloud_spec?: string | null
+  hypervisor?: string | null
   cpu?: string | null
   memory_gb?: number | null
   disk_gb?: number | null
@@ -126,11 +201,28 @@ export interface AssetUpdateRequest {
   hostname?: string | null
   asset_type?: AssetType
   os_info?: string | null
+  // P0 hardware identity
+  serial_number?: string | null
+  vendor?: string | null
+  hardware_model?: string | null
+  asset_tag?: string | null
   location?: string
+  // P0 structured location
+  datacenter?: string | null
+  rack?: string | null
+  rack_u_start?: number | null
+  rack_u_height?: number | null
   owner?: string
   business_system?: string
   importance?: Importance
   network_zone?: NetworkZone
+  // P0 out-of-band / cloud identity
+  mgmt_ip?: string | null
+  cloud_instance_id?: string | null
+  cloud_region?: string | null
+  cloud_zone?: string | null
+  cloud_spec?: string | null
+  hypervisor?: string | null
   cpu?: string | null
   memory_gb?: number | null
   disk_gb?: number | null

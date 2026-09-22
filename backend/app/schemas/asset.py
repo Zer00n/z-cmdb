@@ -21,9 +21,47 @@ class AssetPortRead(BaseModel):
     last_seen_at: datetime | None
 
 
+# ── Network Interface Schemas (P0) ───────────────────────────────
+
+class NetworkInterfaceBase(BaseModel):
+    """Shared network interface fields (all optional on the wire)."""
+    name: str | None = Field(None, max_length=64)
+    mac_address: str | None = Field(None, max_length=32)
+    ip_address: str | None = Field(None, max_length=45)
+    cidr_prefix: int | None = Field(None, ge=0, le=128)
+    vlan_id: int | None = Field(None, ge=1, le=4094)
+    gateway: str | None = Field(None, max_length=45)
+    role: str | None = Field(None, pattern="^(data|mgmt|other)$")
+    bond_master: str | None = Field(None, max_length=64)
+    is_primary: bool | None = None
+    status: str | None = Field(None, pattern="^(active|disconnected)$")
+    # Port-level upstream connection
+    connected_asset_id: int | None = None
+    connected_port: str | None = Field(None, max_length=64)
+
+
+class NetworkInterfaceCreate(NetworkInterfaceBase):
+    """Create a network interface record."""
+
+
+class NetworkInterfaceRead(NetworkInterfaceBase):
+    model_config = {"from_attributes": True}
+
+    id: int
+    asset_id: int
+    role: str = "data"
+    is_primary: bool = False
+    status: str = "active"
+    created_at: datetime
+    updated_at: datetime
+
+
 # ── Asset request Schemas ────────────────────────────────────────
 
-AssetType = Literal["physical", "virtual", "network_device", "other", "cloud_server"]
+AssetType = Literal[
+    "physical", "virtual", "network_device", "other", "cloud_server",
+    "storage", "security_device", "load_balancer",
+]
 Importance = Literal["core", "important", "normal"]
 NetworkZone = Literal[
     "dmz", "intranet", "office", "management", "other",
@@ -41,11 +79,28 @@ class AssetCreate(BaseModel):
     hostname: str | None = Field(None, max_length=255)
     asset_type: AssetType
     os_info: str | None = Field(None, max_length=255)
+    # P0 hardware identity
+    serial_number: str | None = Field(None, max_length=128)
+    vendor: str | None = Field(None, max_length=128)
+    hardware_model: str | None = Field(None, max_length=128)
+    asset_tag: str | None = Field(None, max_length=64)
     location: str = Field(..., max_length=255)
+    # P0 structured location
+    datacenter: str | None = Field(None, max_length=128)
+    rack: str | None = Field(None, max_length=64)
+    rack_u_start: int | None = Field(None, ge=0, le=100)
+    rack_u_height: int | None = Field(None, ge=1, le=10)
     owner: str = Field(..., max_length=100)
     business_system: str = Field(..., max_length=100)
     importance: Importance
     network_zone: NetworkZone
+    # P0 out-of-band / cloud identity
+    mgmt_ip: str | None = Field(None, max_length=45)
+    cloud_instance_id: str | None = Field(None, max_length=128)
+    cloud_region: str | None = Field(None, max_length=64)
+    cloud_zone: str | None = Field(None, max_length=64)
+    cloud_spec: str | None = Field(None, max_length=128)
+    hypervisor: str | None = Field(None, max_length=128)
     cpu: str | None = Field(None, max_length=100)
     memory_gb: int | None = Field(None, ge=0)
     disk_gb: int | None = Field(None, ge=0)
@@ -82,11 +137,28 @@ class AssetUpdate(BaseModel):
     hostname: str | None = Field(None, max_length=255)
     asset_type: AssetType | None = None
     os_info: str | None = Field(None, max_length=255)
+    # P0 hardware identity
+    serial_number: str | None = Field(None, max_length=128)
+    vendor: str | None = Field(None, max_length=128)
+    hardware_model: str | None = Field(None, max_length=128)
+    asset_tag: str | None = Field(None, max_length=64)
     location: str | None = Field(None, max_length=255)
+    # P0 structured location
+    datacenter: str | None = Field(None, max_length=128)
+    rack: str | None = Field(None, max_length=64)
+    rack_u_start: int | None = Field(None, ge=0, le=100)
+    rack_u_height: int | None = Field(None, ge=1, le=10)
     owner: str | None = Field(None, max_length=100)
     business_system: str | None = Field(None, max_length=100)
     importance: Importance | None = None
     network_zone: NetworkZone | None = None
+    # P0 out-of-band / cloud identity
+    mgmt_ip: str | None = Field(None, max_length=45)
+    cloud_instance_id: str | None = Field(None, max_length=128)
+    cloud_region: str | None = Field(None, max_length=64)
+    cloud_zone: str | None = Field(None, max_length=64)
+    cloud_spec: str | None = Field(None, max_length=128)
+    hypervisor: str | None = Field(None, max_length=128)
     cpu: str | None = Field(None, max_length=100)
     memory_gb: int | None = Field(None, ge=0)
     disk_gb: int | None = Field(None, ge=0)
@@ -131,11 +203,29 @@ class AssetRead(BaseModel):
     hostname: str | None
     asset_type: str
     os_info: str | None
+    # P0 hardware identity
+    serial_number: str | None = None
+    vendor: str | None = None
+    hardware_model: str | None = None
+    asset_tag: str | None = None
     location: str
+    # P0 structured location
+    datacenter: str | None = None
+    rack: str | None = None
+    rack_u_start: int | None = None
+    rack_u_height: int | None = None
+    rack_id: int | None = None
     owner: str
     business_system: str
     importance: str
     network_zone: str
+    # P0 out-of-band / cloud identity
+    mgmt_ip: str | None = None
+    cloud_instance_id: str | None = None
+    cloud_region: str | None = None
+    cloud_zone: str | None = None
+    cloud_spec: str | None = None
+    hypervisor: str | None = None
     cpu: str | None
     memory_gb: int | None
     disk_gb: int | None
@@ -150,6 +240,7 @@ class AssetRead(BaseModel):
     created_at: datetime
     updated_at: datetime
     ports: list[AssetPortRead] = []
+    interfaces: list[NetworkInterfaceRead] = []
     # V0.4 cost fields
     purchase_price: float | None = None
     depreciation_months: int | None = None
@@ -174,6 +265,8 @@ class AssetListItem(BaseModel):
     hostname: str | None
     asset_type: str
     os_info: str | None
+    # Datacenter lets the UI filter peer devices in the same datacenter
+    datacenter: str | None = None
     location: str
     owner: str
     business_system: str

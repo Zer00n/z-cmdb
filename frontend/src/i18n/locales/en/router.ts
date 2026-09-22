@@ -7,6 +7,7 @@ export default {
   scanBatches: 'Scan Batches',
   scanConfirm: 'Batch Confirm',
   topology: 'Topology',
+  facilityRacks: 'Rack Layout',
   reports: 'Security Reports',
   audit: 'Audit Log',
   users: 'User Management',

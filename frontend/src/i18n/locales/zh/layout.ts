@@ -18,6 +18,7 @@ export default {
     scanImport: '扫描导入',
     scanBatches: '扫描批次',
     topology: '拓扑图',
+    facilityRacks: '机房机柜图',
     securityReports: '安全报表',
     reports: '报表',
     audit: '审计',

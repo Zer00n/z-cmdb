@@ -23,7 +23,8 @@ from app.core.database import Base  # noqa: F401 — importing Base activates mo
 
 # Import all models so that Base.metadata contains all tables (required for autogenerate)
 from app.models.user import User  # noqa: F401
-from app.models.asset import Asset, AssetPort  # noqa: F401
+from app.models.asset import Asset, AssetPort, NetworkInterface  # noqa: F401
+from app.models.rack import Rack  # noqa: F401
 from app.models.scan import ScanBatch, ScanSnapshotItem  # noqa: F401
 from app.models.audit import AuditLog  # noqa: F401
 from app.models.config import SystemConfig  # noqa: F401

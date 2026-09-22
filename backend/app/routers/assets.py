@@ -28,7 +28,7 @@ router = APIRouter(prefix="/api/assets", tags=["assets"])
 @router.get("", response_model=AssetListResponse)
 def list_assets(
     page: Annotated[int, Query(ge=1)] = 1,
-    page_size: Annotated[int, Query(ge=1, le=200)] = 20,
+    page_size: Annotated[int, Query(ge=1, le=100000)] = 20,
     search: str | None = None,
     asset_type: str | None = None,
     network_zone: str | None = None,

@@ -18,6 +18,7 @@ export default {
     scanImport: 'Scan Import',
     scanBatches: 'Scan Batches',
     topology: 'Topology',
+    facilityRacks: 'Rack Layout',
     securityReports: 'Security Reports',
     reports: 'Reports',
     audit: 'Audit',

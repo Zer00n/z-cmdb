@@ -85,6 +85,12 @@ const router = createRouter({
           meta: { title: 'router.topology' },
         },
         {
+          path: 'facility/racks',
+          name: 'FacilityRacks',
+          component: () => import('@/views/facility/FacilityRacks.vue'),
+          meta: { title: 'router.facilityRacks' },
+        },
+        {
           path: 'reports',
           name: 'ReportDashboard',
           component: () => import('@/views/report/ReportDashboard.vue'),

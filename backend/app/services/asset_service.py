@@ -33,19 +33,37 @@ def list_assets(db: Session, params: AssetQueryParams) -> AssetListResponse:
 
 
 def create_asset(db: Session, data: AssetCreate) -> Asset:
+    from app.services.facility_service import resolve_rack_id
+
+    rack_id = resolve_rack_id(db, data.datacenter, data.rack)
     asset = asset_repo.create_asset(
         db,
+        rack_id=rack_id,
         asset_no=data.asset_no,
         ip_address=data.ip_address,
         mac_address=data.mac_address,
         hostname=data.hostname,
         asset_type=data.asset_type,
         os_info=data.os_info,
+        serial_number=data.serial_number,
+        vendor=data.vendor,
+        hardware_model=data.hardware_model,
+        asset_tag=data.asset_tag,
         location=data.location,
+        datacenter=data.datacenter,
+        rack=data.rack,
+        rack_u_start=data.rack_u_start,
+        rack_u_height=data.rack_u_height,
         owner=data.owner,
         business_system=data.business_system,
         importance=data.importance,
         network_zone=data.network_zone,
+        mgmt_ip=data.mgmt_ip,
+        cloud_instance_id=data.cloud_instance_id,
+        cloud_region=data.cloud_region,
+        cloud_zone=data.cloud_zone,
+        cloud_spec=data.cloud_spec,
+        hypervisor=data.hypervisor,
         cpu=data.cpu,
         memory_gb=data.memory_gb,
         disk_gb=data.disk_gb,
@@ -60,8 +78,17 @@ def create_asset(db: Session, data: AssetCreate) -> Asset:
 
 
 def update_asset(db: Session, asset_id: int, data: AssetUpdate) -> Asset:
+    from app.services.facility_service import resolve_rack_id
+
     asset = asset_repo.get_by_id(db, asset_id)
     update_data = data.model_dump(exclude_none=True)
+
+    # Re-resolve rack entity when rack-location text changes (merge old/new values)
+    if "datacenter" in update_data or "rack" in update_data:
+        merged_dc = update_data.get("datacenter", asset.datacenter)
+        merged_rack = update_data.get("rack", asset.rack)
+        update_data["rack_id"] = resolve_rack_id(db, merged_dc, merged_rack)
+
     asset_repo.update_asset(db, asset, **update_data)
     db.commit()
     return asset_repo.get_by_id(db, asset_id, load_ports=True)

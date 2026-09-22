@@ -10,6 +10,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { fetchAsset, decommissionAsset, updateAsset } from '@/api/asset'
 import type { Asset } from '@/types/asset'
 import AppServiceTable from '@/components/asset/AppServiceTable.vue'
+import NetworkInterfaceTable from '@/components/asset/NetworkInterfaceTable.vue'
 import AssetCostPanel from '@/views/cost/AssetCostPanel.vue'
 import { useTranslatedLabels } from '@/composables/useTranslatedLabels'
 import { useFeatureStore } from '@/stores/feature'
@@ -27,6 +28,28 @@ const activeTab = ref('basic')
 const appCount = ref(0)
 
 const assetId = computed(() => Number(route.params.id))
+
+/** Structured rack position, e.g. DC-East / R-12 / U20-21 */
+const rackPosition = computed(() => {
+  if (!asset.value) return '-'
+  const { datacenter, rack, rack_u_start, rack_u_height } = asset.value
+  if (!datacenter && !rack && rack_u_start == null) return '-'
+  const parts: string[] = []
+  if (datacenter) parts.push(datacenter)
+  if (rack) parts.push(rack)
+  if (rack_u_start != null) {
+    const end = rack_u_height ? rack_u_start + rack_u_height - 1 : rack_u_start
+    parts.push(`U${rack_u_start}${end !== rack_u_start ? `-${end}` : ''}`)
+  }
+  return parts.join(' / ')
+})
+
+/** Cloud region + availability zone, e.g. cn-hangzhou / cn-hangzhou-h */
+const cloudRegionLabel = computed(() => {
+  if (!asset.value) return '-'
+  const { cloud_region, cloud_zone } = asset.value
+  return [cloud_region, cloud_zone].filter(Boolean).join(' / ') || '-'
+})
 
 async function loadAsset() {
   loading.value = true
@@ -181,6 +204,27 @@ onMounted(loadAsset)
               <div class="field"><span class="lbl">{{ t('asset.detail.fields.disk') }}</span><span class="val">{{ asset.disk_gb ? asset.disk_gb + ' GB' : '-' }}</span></div>
               <div class="field"><span class="lbl">{{ t('asset.detail.fields.purchaseDate') }}</span><span class="val">{{ asset.purchase_date || '-' }}</span></div>
               <div class="field"><span class="lbl">{{ t('asset.detail.fields.warrantyExpiry') }}</span><span class="val">{{ asset.warranty_expiry || '-' }}</span></div>
+              <div class="field"><span class="lbl">{{ t('asset.detail.fields.serialNumber') }}</span><span class="val ui-mono">{{ asset.serial_number || '-' }}</span></div>
+              <div class="field"><span class="lbl">{{ t('asset.detail.fields.vendor') }}</span><span class="val">{{ asset.vendor || '-' }} {{ asset.hardware_model ? '/ ' + asset.hardware_model : '' }}</span></div>
+              <div class="field"><span class="lbl">{{ t('asset.detail.fields.assetTag') }}</span><span class="val ui-mono">{{ asset.asset_tag || '-' }}</span></div>
+              <div class="field"><span class="lbl">{{ t('asset.detail.fields.rackU') }}</span><span class="val">{{ rackPosition }}</span></div>
+              <div class="field"><span class="lbl">{{ t('asset.detail.fields.mgmtIp') }}</span><span class="val ui-mono">{{ asset.mgmt_ip || '-' }}</span></div>
+              <div v-if="asset.asset_type === 'cloud_server'" class="field">
+                <span class="lbl">{{ t('asset.detail.fields.cloudInstanceId') }}</span>
+                <span class="val ui-mono">{{ asset.cloud_instance_id || '-' }}</span>
+              </div>
+              <div v-if="asset.asset_type === 'cloud_server'" class="field">
+                <span class="lbl">{{ t('asset.detail.fields.cloudRegion') }}</span>
+                <span class="val">{{ cloudRegionLabel }}</span>
+              </div>
+              <div v-if="asset.asset_type === 'cloud_server'" class="field">
+                <span class="lbl">{{ t('asset.detail.fields.cloudSpec') }}</span>
+                <span class="val">{{ asset.cloud_spec || '-' }}</span>
+              </div>
+              <div v-if="asset.asset_type === 'virtual'" class="field">
+                <span class="lbl">{{ t('asset.detail.fields.hypervisor') }}</span>
+                <span class="val">{{ asset.hypervisor || '-' }}</span>
+              </div>
               <div class="field"><span class="lbl">{{ t('asset.detail.fields.createdAt') }}</span><span class="val ui-mono">{{ formatTime(asset.created_at) }}</span></div>
             </div>
             <div v-if="asset.remark" class="remark-block">
@@ -217,6 +261,13 @@ onMounted(loadAsset)
                 </template>
               </el-table-column>
             </el-table>
+          </el-tab-pane>
+
+          <el-tab-pane
+            :label="`${t('asset.detail.tabs.interfaces')} (${asset.interfaces.length})`"
+            name="interfaces"
+          >
+            <NetworkInterfaceTable :asset-id="assetId" />
           </el-tab-pane>
 
           <el-tab-pane :label="`${t('asset.detail.tabs.apps')} (${appCount})`" name="apps">

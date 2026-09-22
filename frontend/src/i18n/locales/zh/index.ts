@@ -6,6 +6,7 @@ import dashboard from './dashboard'
 import asset from './asset'
 import scan from './scan'
 import topology from './topology'
+import facility from './facility'
 import report from './report'
 import audit from './audit'
 import user from './user'
@@ -27,6 +28,7 @@ export default {
   asset,
   scan,
   topology,
+  facility,
   report,
   audit,
   user,

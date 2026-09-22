@@ -18,6 +18,9 @@ export default {
     virtual: 'Virtual Machine',
     cloud_server: 'Cloud Server',
     network_device: 'Network Device',
+    storage: 'Storage',
+    security_device: 'Security Device',
+    load_balancer: 'Load Balancer',
     other: 'Other',
   },
   importance: {

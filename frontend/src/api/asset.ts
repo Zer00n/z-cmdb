@@ -8,6 +8,8 @@ import type {
   AssetListResponse,
   AssetQueryParams,
   AssetUpdateRequest,
+  NetworkInterface,
+  NetworkInterfacePayload,
 } from '@/types/asset'
 
 /** Asset list (supports filtering/search/pagination) */
@@ -61,4 +63,41 @@ export function bulkUpdateAssets(payload: {
   updates: Record<string, string>
 }): Promise<{ message: string; count: number }> {
   return request.patch('/api/assets/bulk', payload)
+}
+
+// ── Network interfaces (P0) ─────────────────────────────────────
+
+/** List network interfaces for an asset */
+export function fetchInterfaces(assetId: number): Promise<NetworkInterface[]> {
+  return request.get(`/api/assets/${assetId}/interfaces`)
+}
+
+/** Create a network interface */
+export function createInterface(
+  assetId: number,
+  data: NetworkInterfacePayload,
+): Promise<NetworkInterface> {
+  return request.post(`/api/assets/${assetId}/interfaces`, data)
+}
+
+/** Update a network interface */
+export function updateInterface(
+  assetId: number,
+  interfaceId: number,
+  data: NetworkInterfacePayload,
+): Promise<NetworkInterface> {
+  return request.patch(
+    `/api/assets/${assetId}/interfaces/${interfaceId}`,
+    data,
+  )
+}
+
+/** Delete a network interface */
+export function deleteInterface(
+  assetId: number,
+  interfaceId: number,
+): Promise<void> {
+  return request.delete(
+    `/api/assets/${assetId}/interfaces/${interfaceId}`,
+  )
 }

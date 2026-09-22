@@ -4,7 +4,7 @@ Asset SQLAlchemy model
 from datetime import datetime
 
 from sqlalchemy import (
-    CheckConstraint, DateTime, Float, ForeignKey, Index,
+    Boolean, CheckConstraint, DateTime, Float, ForeignKey, Index,
     Integer, String, Text, UniqueConstraint,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -29,14 +29,40 @@ class Asset(Base):
     asset_type: Mapped[str] = mapped_column(String(32), nullable=False)
     os_info: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
+    # ── P0: hardware identity (unique physical / cloud identity) ──
+    serial_number: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    vendor: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    hardware_model: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    asset_tag: Mapped[str | None] = mapped_column(String(64), nullable=True)
+
     # Location and ownership
     location: Mapped[str] = mapped_column(String(255), nullable=False)
+    # ── P0: structured rack location (free-text location is kept as the fallback/display) ──
+    datacenter: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    rack: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    rack_u_start: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    rack_u_height: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # Resolved rack entity (auto-merged from datacenter + rack text on save)
+    rack_id: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("racks.id", ondelete="SET NULL"), nullable=True
+    )
+
     owner: Mapped[str] = mapped_column(String(100), nullable=False)
     business_system: Mapped[str] = mapped_column(String(100), nullable=False)
 
     # Importance and network zone
     importance: Mapped[str] = mapped_column(String(20), nullable=False)
-    network_zone: Mapped[str] = mapped_column(String(20), nullable=False)
+    network_zone: Mapped[str] = mapped_column(String(32), nullable=False)
+
+    # ── P0: out-of-band management (IPMI / iDRAC / iLO / BMC) ──
+    mgmt_ip: Mapped[str | None] = mapped_column(String(45), nullable=True)
+
+    # ── P0: cloud / virtualization identity ──
+    cloud_instance_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    cloud_region: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    cloud_zone: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    cloud_spec: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    hypervisor: Mapped[str | None] = mapped_column(String(128), nullable=True)
 
     # Hardware info (optional)
     cpu: Mapped[str | None] = mapped_column(String(100), nullable=True)
@@ -91,9 +117,18 @@ class Asset(Base):
         "AssetApp", back_populates="asset", cascade="all, delete-orphan"
     )
 
+    # P0: network interfaces (multi-NIC / multi-IP)
+    interfaces: Mapped[list["NetworkInterface"]] = relationship(
+        "NetworkInterface",
+        back_populates="asset",
+        cascade="all, delete-orphan",
+        foreign_keys="NetworkInterface.asset_id",
+    )
+
     __table_args__ = (
         CheckConstraint(
-            "asset_type IN ('physical', 'virtual', 'network_device', 'other', 'cloud_server')",
+            "asset_type IN ('physical', 'virtual', 'network_device', 'other', "
+            "'cloud_server', 'storage', 'security_device', 'load_balancer')",
             name="ck_assets_type",
         ),
         CheckConstraint(
@@ -117,6 +152,8 @@ class Asset(Base):
         Index("idx_assets_mac", "mac_address"),
         Index("idx_assets_zone", "network_zone"),
         Index("idx_assets_status", "status"),
+        Index("idx_assets_serial", "serial_number"),
+        Index("idx_assets_cloud_instance", "cloud_instance_id"),
     )
 
     def __repr__(self) -> str:
@@ -148,3 +185,69 @@ class AssetPort(Base):
 
     def __repr__(self) -> str:
         return f"<AssetPort asset_id={self.asset_id} {self.port_number}/{self.protocol}>"
+
+
+class NetworkInterface(Base):
+    """
+    P0: network interface / address record.
+
+    One row per (interface, address). Multi-NIC hosts have multiple rows;
+    an interface with several IP addresses also has multiple rows (same
+    name/mac, different ip_address). Bond slaves point at their master via
+    bond_master. The legacy Asset.ip_address / mac_address columns stay the
+    primary/management identity; this table is the detailed inventory.
+    """
+    __tablename__ = "network_interfaces"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    asset_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("assets.id", ondelete="CASCADE"), nullable=False
+    )
+
+    # Interface identity
+    name: Mapped[str | None] = mapped_column(String(64), nullable=True)   # eth0 / ens192 / bond0
+    mac_address: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    ip_address: Mapped[str | None] = mapped_column(String(45), nullable=True)
+    cidr_prefix: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    vlan_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    gateway: Mapped[str | None] = mapped_column(String(45), nullable=True)
+
+    # Role and bond topology
+    role: Mapped[str] = mapped_column(String(16), nullable=False, default="data")
+    bond_master: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    is_primary: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="active")
+
+    # P0/facility: port-level upstream connection (switch device + switch port)
+    connected_asset_id: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("assets.id", ondelete="SET NULL"), nullable=True
+    )
+    connected_port: Mapped[str | None] = mapped_column(String(64), nullable=True)
+
+    # Timestamps
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, default=utc_now
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, default=utc_now, onupdate=utc_now
+    )
+
+    # Associated asset
+    asset: Mapped["Asset"] = relationship(
+        "Asset", back_populates="interfaces", foreign_keys=[asset_id]
+    )
+
+    __table_args__ = (
+        CheckConstraint("role IN ('data', 'mgmt', 'other')", name="ck_nic_role"),
+        CheckConstraint(
+            "status IN ('active', 'disconnected')", name="ck_nic_status"
+        ),
+        Index("idx_nic_asset", "asset_id"),
+        Index("idx_nic_ip", "ip_address"),
+        Index("idx_nic_mac", "mac_address"),
+        Index("idx_nic_connected", "connected_asset_id"),
+    )
+
+    def __repr__(self) -> str:
+        return (f"<NetworkInterface asset_id={self.asset_id} name={self.name} "
+                f"ip={self.ip_address}>")
