@@ -26,7 +26,7 @@ if %errorlevel%==0 (
 
 :: Generate .env on first run (idempotent)
 if not exist ".env" (
-    "%PY%" -c "import secrets;open('.env','w').write('APP_ENV=production\nDATABASE_URL=sqlite:///./data/cmdb.db\nJWT_SECRET='+secrets.token_urlsafe(48)+'\nCORS_ORIGINS=[\"http://%HOST%:%PORT%\"]\n')"
+    "%PY%" -c "import secrets;open('.env','w').write('APP_ENV=production\nDATABASE_URL=sqlite:///./data/cmdb.db\nJWT_SECRET='+secrets.token_urlsafe(48)+'\nCORS_ORIGINS=[\"http://%HOST%:%PORT%\"]\n#LLM_MASTER_KEY=\nLLM_ALLOW_PRIVATE_BASE_URL=false\n')"
     echo [INFO] Generated .env with random JWT_SECRET
 )
 
@@ -53,9 +53,10 @@ if not exist "data\keystore.json" (
     echo    - 或设置 CMDB_UNLOCK_PASSWORD 环境变量自动解锁
     echo.
     echo  !! 重要：请确认已备份以下文件 !!
-    echo    data\cmdb.db       （加密数据库）
-    echo    data\keystore.json （密钥信封，丢失=数据不可读）
-    echo    .env               （JWT 密钥配置）
+    echo    data\cmdb.db        （加密数据库）
+    echo    data\keystore.json  （密钥信封，丢失=数据不可读）
+    echo    data\llm_master.key （字段加密主密钥，丢失=已存 LLM 密钥不可解）
+    echo    .env                （JWT 密钥配置）
 )
 echo.
 echo ============================================================

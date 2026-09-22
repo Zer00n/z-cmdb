@@ -17,6 +17,7 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.deps import AdminUser, AnyUser
+from app.core.exceptions import FileTooLargeError
 from app.schemas.scan import (
     ScanBatchListResponse,
     ScanBatchRead,
@@ -24,10 +25,32 @@ from app.schemas.scan import (
     ScanDiffResponse,
 )
 from app.services import scan_service
+from app.services.config_service import get_upload_max_size_mb
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/scans", tags=["scans"])
+
+
+async def _read_upload_limited(file: UploadFile, db: Session) -> bytes:
+    """有界分块读取：在端点缓冲阶段执行 DB 配置上限（纵深防御；ASGI 中间件
+    已在更外层按进程硬上限拦截），读完即关闭文件，避免无界整读拖垮工作进程。"""
+    max_bytes = get_upload_max_size_mb(db) * 1024 * 1024
+    chunks, total = [], 0
+    try:
+        while True:
+            chunk = await file.read(1024 * 1024)
+            if not chunk:
+                break
+            total += len(chunk)
+            if total > max_bytes:
+                raise FileTooLargeError(
+                    f"Upload exceeds the configured {max_bytes // (1024 * 1024)}MB limit"
+                )
+            chunks.append(chunk)
+        return b"".join(chunks)
+    finally:
+        await file.close()
 
 
 @router.post("/upload", response_model=ScanBatchRead, status_code=201)
@@ -37,7 +60,7 @@ async def upload_scan(
     db: Session = Depends(get_db),
 ) -> ScanBatchRead:
     """Upload nmap XML file, parse it, and create a scan batch"""
-    content = await file.read()
+    content = await _read_upload_limited(file, db)
     batch = scan_service.upload_and_parse(
         db=db,
         file_content=content,
@@ -56,7 +79,7 @@ async def upload_excel(
     db: Session = Depends(get_db),
 ) -> ScanBatchRead:
     """Upload Excel file for asset import"""
-    content = await file.read()
+    content = await _read_upload_limited(file, db)
     batch = scan_service.upload_and_parse_excel(
         db=db,
         file_content=content,
@@ -81,23 +104,6 @@ async def download_excel_template() -> Response:
 
 
 # ── Batch CRUD ───────────────────────────────────────────────────
-
-
-@router.post("/upload", response_model=ScanBatchRead, status_code=201)
-async def upload_scan(
-    file: UploadFile = File(...),
-    current_user: AdminUser = None,
-    db: Session = Depends(get_db),
-) -> ScanBatchRead:
-    """Upload nmap XML file, parse it, and create a scan batch"""
-    content = await file.read()
-    batch = scan_service.upload_and_parse(
-        db=db,
-        file_content=content,
-        filename=file.filename or "unknown.xml",
-        user_id=current_user.id,  # type: ignore[union-attr]
-    )
-    return batch  # type: ignore[return-value]
 
 
 @router.get("", response_model=ScanBatchListResponse)

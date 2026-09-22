@@ -38,6 +38,14 @@ Z-CMDB supports three deployment methods: **Windows double-click launcher** (zer
 
 ## ⚠️ Upgrade Notice
 
+> ### V0.7 — Security Hardening
+>
+> V0.7 is a security release fixing **2 high-severity and 5 medium-severity vulnerabilities** identified by a full security audit of V0.6.5. Business workflows and API contracts are unchanged.
+>
+> After unlocking in the browser, independent field-key generation, automatic re-encryption of stored LLM keys and the new alembic migration all run automatically — no manual steps. Back up `cmdb.db` + `keystore.json` before upgrading. See the [V0.7 section](#v07--security-hardening) for details.
+>
+> ---
+>
 > ### V0.6.5 — Database Encryption Upgrade
 >
 > V0.6.5 introduces static encryption. **Existing plaintext databases must be migrated** before starting the new version:
@@ -140,6 +148,46 @@ PYTHONPATH=. python tools/encrypt_existing_db.py \
 ```
 
 The migration encrypts all tables (including views/indexes), verifies row counts, updates the admin password hash, and securely overwrites the plaintext original.
+
+---
+
+## V0.7 — Security Hardening
+
+V0.7 is a security release. Following a full security audit of the V0.6.5 codebase, it fixes **2 high-severity and 5 medium-severity vulnerabilities**, without changing any business workflow or API contract. Backend verification: **46 automated tests, all passing**.
+
+### Fixed Vulnerabilities
+
+| Severity | Vulnerability | Fix |
+|---|---|---|
+| **High** | `GET /api/hosts/search` was reachable unauthenticated — exposing the asset ledger and allowing anonymous HostResource auto-creation | Enforced authentication on the route; escaped LIKE wildcard characters (`%`/`_`) so they match literally |
+| **High** | Auto-generated initial super-admin password was written in cleartext to `data/INITIAL_ADMIN_PASSWORD.txt` and stdout, so a data-directory backup could decrypt the encrypted database | The generated password is delivered only once via the setup HTTPS response; CLI/script reset flows print it to the invoking terminal only — no file is ever created |
+| **Medium** | Fernet field master key was derived from `JWT_SECRET` — no key separation, and rotating JWT_SECRET silently invalidated stored ciphertext | Independent `LLM_MASTER_KEY` / 0600 `data/llm_master.key`; ciphertext is version-tagged; existing ciphertext is automatically re-encrypted on first unlock |
+| **Medium** | Unvalidated `llm_base_url` enabled SSRF and stored-credential exfiltration | URL validation both when the config is written and immediately before dispatch; loopback/private/link-local addresses are blocked by default; approved internal hosts are allowed via `LLM_ALLOW_PRIVATE_BASE_URL` |
+| **Medium** | The upload size cap was enforced only after the full multipart body had been buffered into shared worker memory (OOM risk) | Added an ASGI body-size-limit middleware (Content-Length pre-check plus cumulative counting for chunked requests); endpoints now read uploads in bounded chunks |
+| **Medium** | The auditor role could create, update and delete consuming units, placements and unit relations | All six write routes now require AdminUser; the project UI is fully read-only for auditors |
+| **Medium** | Uploaded raw nmap/Excel files and JSON sidecars were stored indefinitely in cleartext outside the encrypted database | Raw files are no longer persisted; Excel extra fields are stored in the database (new migration); historical files are purged via `scripts/cleanup_uploads.py` |
+
+### Key Details
+
+- **Field-encryption key separation**: a 0600 key file `data/llm_master.key` is generated automatically during setup. When an existing system is upgraded, the file is generated lazily on first unlock and all legacy (JWT-derived-key) ciphertext is re-encrypted automatically — no manual action. In production the service fails closed if no independent key (environment variable or key file) is available.
+- **SSRF protection**: the built-in local Ollama auto-route (core assets) is an internal trusted path and remains fully functional; public cloud LLM endpoints work unchanged. To use an approved RFC1918 internal LLM host, set `LLM_ALLOW_PRIVATE_BASE_URL=true` in the deployment environment (loopback addresses stay blocked).
+- **Alembic migration**: `g4b9c3d2e1f8` adds a nullable `extra_fields_json` column to `scan_batches` and runs automatically after unlock.
+- **Backups** must now include `data/llm_master.key` alongside `cmdb.db` and `keystore.json`.
+
+### Upgrade Steps
+
+```bash
+# 1. Back up the data directory (cmdb.db + keystore.json)
+# 2. Pull V0.7, restart, and unlock in the browser —
+#    key-file generation, ciphertext re-encryption and the alembic migration run automatically
+
+# 3. After verifying, purge historical plaintext upload files:
+python scripts/cleanup_uploads.py            # preview
+python scripts/cleanup_uploads.py --yes      # delete
+
+# 4. If an approved internal (RFC1918) LLM host is used:
+#    set LLM_ALLOW_PRIVATE_BASE_URL=true in the deployment environment, then restart
+```
 
 ---
 
@@ -553,12 +601,10 @@ docker compose -f docker/docker-compose.yml up --build -d
 # 4. Access
 # http://localhost:8080
 
-# 5. Get initial password (auto-generated on first start)
-# Method 1: View container logs
-docker compose -f docker/docker-compose.yml logs backend | grep "密码"
-# Method 2: Read password file
-cat data/INITIAL_ADMIN_PASSWORD.txt
-# Default account: admin, use the password obtained above to log in
+# 5. Complete first-time Vault Setup in the browser
+# Set admin username + password (leave the password field blank to have one
+# generated and shown once on the result page), then log in
+# Default account: admin (no password file is created)
 
 # (Optional) Preset initial password, consistent for both Docker and Windows modes:
 # Create a .env file in the repository root, write:
@@ -613,7 +659,7 @@ pnpm dev
 ```
 
 Access http://localhost:5173
-Initial password is in `backend/data/INITIAL_ADMIN_PASSWORD.txt` (auto-generated on first start).
+Complete Vault Setup on first visit (the initial password is shown once on the setup result page, never written to a file).
 
 ---
 
@@ -684,7 +730,7 @@ After scanning, upload the `.xml` file to the "Scan Batches" page on the platfor
 **Docker environment:**
 
 ```bash
-# Reset to random password (new password printed to terminal and written to data/INITIAL_ADMIN_PASSWORD.txt)
+# Reset to random password (new password printed to the terminal only, never written to a file)
 docker compose -f docker/docker-compose.yml exec backend python -m app.cli reset-admin
 
 # Reset to a specific password

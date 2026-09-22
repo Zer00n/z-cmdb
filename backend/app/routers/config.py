@@ -10,8 +10,10 @@ from fastapi import APIRouter, Depends, Request
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.core.database import get_db
 from app.core.deps import AnyUser, SuperAdminUser
+from app.core.exceptions import ValidationError
 from app.models.config import SystemConfig
 from app.services import audit_service
 
@@ -111,6 +113,21 @@ def update_config(
             # Only allow modifying existing configuration items
             continue
         str_value = str(value) if value is not None else ""
+        # SSRF 防护：llm_base_url 必须指向安全的外部 http(s) 端点（安全审计 V4）
+        if key == "llm_base_url":
+            from app.core.url_safety import assert_external_url
+            assert_external_url(str_value)
+        # 进程硬上限约束：DB 配置只能调小，避免"中间件先拒、服务层后查"错位
+        if key == "upload_max_size_mb":
+            try:
+                new_mb = int(str_value)
+            except ValueError as exc:
+                raise ValidationError("upload_max_size_mb must be an integer") from exc
+            if new_mb > settings.UPLOAD_MAX_SIZE_MB:
+                raise ValidationError(
+                    f"upload_max_size_mb cannot exceed process limit "
+                    f"({settings.UPLOAD_MAX_SIZE_MB}MB, set via UPLOAD_MAX_SIZE_MB)"
+                )
         # Sensitive fields: skip masked values (to avoid storing **** as the real value)
         if "api_key" in key:
             if "****" in str_value:

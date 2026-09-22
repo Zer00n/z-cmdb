@@ -44,7 +44,6 @@ def _reset_admin(password: str | None = None) -> None:
     from app.repositories import user_repo
     from app.services.auth_service import (
         _check_password_policy,
-        _persist_initial_password,
         generate_initial_password,
     )
 
@@ -73,7 +72,8 @@ def _reset_admin(password: str | None = None) -> None:
         user_repo.update_password(db, user, new_hash)
         db.commit()
 
-    _persist_initial_password(new_password)
+        print(f"\n  新口令：{new_password}（仅显示一次，不会写入文件）\n")
+
     print("  Password reset successful. Please log in with the new password.")
     print("=" * 50)
 

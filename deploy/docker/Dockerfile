@@ -1,7 +1,7 @@
 # ============================================================
 # Z-CMDB Application Image (COPY code only, instant rebuild)
 # ============================================================
-FROM z-cmdb-base:0.6
+FROM z-cmdb-base:0.7
 
 WORKDIR /app/backend
 COPY backend/ /app/backend/

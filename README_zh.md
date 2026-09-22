@@ -38,6 +38,14 @@ Z-CMDB 支持三种部署方式：**Windows 双击启动**（零安装、嵌入�
 
 ## ⚠️ 升级须知
 
+> ### V0.7 — 安全加固
+>
+> V0.7 是安全加固版本，修复对 V0.6.5 全面安全审计后发现的 **2 个高危和 5 个中危漏洞**，业务流程与 API 契约保持不变。
+>
+> 在浏览器解锁后，独立字段密钥生成、已存 LLM 密钥自动重加密以及新的 alembic 迁移都会自动完成，无需手工操作。升级前请备份 `cmdb.db` 与 `keystore.json`。详见 [V0.7 章节](#v07--安全加固)。
+>
+> ---
+>
 > ### V0.6.5 — 数据库加密升级
 >
 > V0.6.5 引入静态加密。**现有明文库必须先迁移**，再启动新版本：
@@ -140,6 +148,46 @@ PYTHONPATH=. python tools/encrypt_existing_db.py \
 ```
 
 迁移工具会加密所有表（含视图/索引）、校验行数一致、更新管理员口令哈希，并安全覆盖明文原件。
+
+---
+
+## V0.7 — 安全加固
+
+V0.7 是安全加固版本。对 V0.6.5 代码完成全面安全审计后，修复了 **2 个高危和 5 个中危漏洞**，不改变任何业务流程与 API 契约。后端验证：**46 项自动化测试全部通过**。
+
+### 修复的漏洞
+
+| 严重级别 | 漏洞 | 修复方式 |
+|---|---|---|
+| **高危** | `GET /api/hosts/search` 可未认证访问——暴露资产台账，并允许匿名自动创建 HostResource | 路由强制认证；转义 LIKE 通配符（`%`/`_`），使其仅按字面量匹配 |
+| **高危** | 自动生成的初始超管口令被明文写入 `data/INITIAL_ADMIN_PASSWORD.txt` 和 stdout，数据目录备份即可解密加密数据库 | 生成的口令仅经 setup HTTPS 响应一次性交付；CLI/脚本重置流程仅打印到调用终端——不再创建任何文件 |
+| **中危** | Fernet 字段主密钥派生自 `JWT_SECRET`——无密钥分离，且轮换 JWT_SECRET 会静默使密文失效 | 独立 `LLM_MASTER_KEY` / 0600 `data/llm_master.key`；密文带版本标记；首次解锁时自动重加密存量密文 |
+| **中危** | `llm_base_url` 未校验，可实现 SSRF 与存储凭据外发 | 配置写入时与实际分派前双重 URL 校验；默认阻断回环/私网/链路本地地址；经 `LLM_ALLOW_PRIVATE_BASE_URL` 放行已审批的内部主机 |
+| **中危** | 上传大小上限在完整 multipart 请求体缓冲进共享工作进程内存之后才执行（OOM 风险） | 新增 ASGI 请求体大小限制中间件（Content-Length 预检 + 分块请求累计计数）；端点改为有界分块读取 |
+| **中危** | 审计员角色可增删改消费单元、部署记录与单元关系 | 六条写路由全部要求 AdminUser；项目页面对审计员完全只读 |
+| **中危** | 上传的原始 nmap/Excel 文件及 JSON 边车在加密数据库之外被无限期明文保存 | 不再持久化原始文件；Excel 补充字段存入数据库（新增迁移）；历史文件经 `scripts/cleanup_uploads.py` 清理 |
+
+### 关键说明
+
+- **字段加密密钥分离**：setup 时自动生成 0600 密钥文件 `data/llm_master.key`。存量系统升级后首次解锁时惰性生成该文件，并自动重加密全部历史（JWT 派生密钥）密文——无需手工操作。生产环境若无独立密钥（环境变量或密钥文件），服务失效关闭（fail-closed）。
+- **SSRF 防护**：核心资产走本机 Ollama 的内置自动路由属于内部可信路径，功能完全保留；公网云端 LLM 端点使用方式不变。如需使用已审批的 RFC1918 内网 LLM 主机，在部署环境设置 `LLM_ALLOW_PRIVATE_BASE_URL=true`（回环地址仍拒绝）。
+- **Alembic 迁移**：`g4b9c3d2e1f8` 为 `scan_batches` 增加可空列 `extra_fields_json`，解锁后自动执行。
+- **备份**现在需在 `cmdb.db` 与 `keystore.json` 之外同时包含 `data/llm_master.key`。
+
+### 升级步骤
+
+```bash
+# 1. 备份数据目录（cmdb.db + keystore.json）
+# 2. 拉取 V0.7，重启并在浏览器解锁——
+#    密钥文件生成、密文重加密与 alembic 迁移全部自动执行
+
+# 3. 验证通过后，清理历史明文上传文件：
+python scripts/cleanup_uploads.py            # 预览清单
+python scripts/cleanup_uploads.py --yes      # 执行删除
+
+# 4. 如使用已审批的内网（RFC1918）LLM 主机：
+#    在部署环境设置 LLM_ALLOW_PRIVATE_BASE_URL=true，然后重启
+```
 
 ---
 
@@ -554,12 +602,9 @@ docker compose -f docker/docker-compose.yml up --build -d
 # 4. 访问
 # http://localhost:8080
 
-# 5. 获取初始密码（首次启动自动生成）
-# 方式一：查看容器日志
-docker compose -f docker/docker-compose.yml logs backend | grep "密码"
-# 方式二：读取密码文件
-cat data/INITIAL_ADMIN_PASSWORD.txt
-# 默认账号：admin，用上面获取的密码登录
+# 5. 在浏览器完成首次 Vault Setup
+# 设置管理员用户名与口令（口令留空则系统自动生成，并在结果页仅显示一次），随后登录
+# 默认账号：admin（不会生成口令文件）
 
 # （可选）预设初始密码，Docker 与 Windows 两模式一致：
 # 在仓库根目录创建 .env 文件，写入：
@@ -613,8 +658,8 @@ cd frontend
 pnpm dev
 ```
 
-访问 http://localhost:5173  
-初始密码见 `backend/data/INITIAL_ADMIN_PASSWORD.txt`（首次启动自动生成）。
+访问 http://localhost:5173
+首次访问先完成 Vault Setup（初始口令在 setup 结果页仅显示一次，不会写入文件）。
 
 ---
 
@@ -685,7 +730,7 @@ nmap -sV -O -p 22,80,443,3306,6379,8080 -oX scan_web.xml 192.168.1.0/24
 **Docker 环境：**
 
 ```bash
-# 重置为随机密码（新密码打印到终端并写入 data/INITIAL_ADMIN_PASSWORD.txt）
+# 重置为随机密码（新口令仅打印到终端，不会写入文件）
 docker compose -f docker/docker-compose.yml exec backend python -m app.cli reset-admin
 
 # 重置为指定密码

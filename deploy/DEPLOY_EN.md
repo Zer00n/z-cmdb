@@ -42,7 +42,7 @@ Copy the `dist\Z-CMDB\` folder to the target machine and double-click `start.bat
 
 1. Double-click `start.bat`
 2. Browser opens automatically at `http://127.0.0.1:8000`
-3. Log in with default account `admin` — initial password is in `data\INITIAL_ADMIN_PASSWORD.txt` (auto-generated on first start; deleted automatically after password change)
+3. Complete Vault Setup in the browser first (set the admin account and password; if the password field is left blank, one is generated and shown ONCE on the result page), then log in — no password file is created
 
 **Change port**: `start.bat 9000` (pass port as argument)
 
@@ -120,7 +120,7 @@ The script automatically:
 
 **Re-run**: Will not reinstall dependencies, overwrite `.env`, or lose data.
 
-**First login**: Username `admin`, initial password in `data/INITIAL_ADMIN_PASSWORD.txt` (auto-generated on first start; deleted automatically after password change).
+**First login**: Complete Vault Setup in the browser first (username + password; leave the password blank to have one generated and shown once on the result page), then log in. The initial password is never written to a file.
 
 ### systemd Service (optional)
 
@@ -169,14 +169,14 @@ export JWT_SECRET=$(python3 -c "import secrets;print(secrets.token_urlsafe(48))"
 ```
 
 The script automatically:
-1. Builds base image `z-cmdb-base:0.6` (heavy deps, rebuild rarely)
-2. Builds app image `z-cmdb-app:0.6` (COPY only, instant rebuild)
+1. Builds base image `z-cmdb-base:0.7` (heavy deps, rebuild rarely)
+2. Builds app image `z-cmdb-app:0.7` (COPY only, instant rebuild)
 3. Creates `./data` directory
 4. Starts the container
 
 Access at `http://localhost:8000`.
 
-**First login**: Username `admin`, initial password in host `./data/INITIAL_ADMIN_PASSWORD.txt` (auto-generated on first start; deleted automatically after password change).
+**First login**: Complete Vault Setup in the browser; the initial password is shown once on the setup result page (generated automatically if the field is left blank) and is never written to a host file.
 
 ### Offline Distribution
 
@@ -216,17 +216,21 @@ All environments share these `.env` settings:
 | `APP_ENV` | Runtime environment | `production` |
 | `DATABASE_URL` | Database connection | `sqlite:///./data/cmdb.db` |
 | `JWT_SECRET` | JWT signing key (≥32 chars) | Auto-generated |
+| `LLM_MASTER_KEY` | Independent field-encryption key | Auto-generated as 0600 `data/llm_master.key` |
+| `LLM_ALLOW_PRIVATE_BASE_URL` | Allow approved internal (RFC1918) LLM hosts; loopback always blocked | `false` |
 | `CORS_ORIGINS` | Allowed frontend origins | Auto-generated per deployment |
 | `PORT` | Service port | `8000` |
 
-**Production secret validation**: If `APP_ENV=production` and `JWT_SECRET` is default or <32 chars, the service refuses to start.
+**Backup**: back up `cmdb.db` + `keystore.json` + `llm_master.key` (include `-wal`/`-shm`). Missing keystore with no recovery code means the data is unrecoverable.
+
+**Production secret validation**: If `APP_ENV=production` and `JWT_SECRET` is default or <32 chars, the service refuses to start. If no independent field-encryption key (env or key file) is available, field crypto fails closed.
 
 ---
 
 ## FAQ
 
 **Q: Forgot admin password?**
-A: Delete `data/cmdb.db` (all data will be lost). Restart to generate a new `data/INITIAL_ADMIN_PASSWORD.txt`. Default account `admin`; the file is deleted automatically after password change.
+A: Use the recovery code to unlock, then log in with any admin account and change the password. If the recovery code is also lost, restore from a backup (`cmdb.db` + `keystore.json`). The initial admin password is delivered once in the setup HTTPS response — it is never written to a file.
 
 **Q: Port already in use?**
 A: Windows: `start.bat 9000`; Linux: `PORT=9000 ./start.sh`. Note: after first run, `CORS_ORIGINS` in `.env` is locked to the original port. To change the port, also delete `.env` to regenerate it.
@@ -236,4 +240,4 @@ A: Yes. Database is bind-mounted to host `./data`. Container deletion does not a
 
 ---
 
-*Z-CMDB v0.6.5 | 2026-06-28*
+*Z-CMDB v0.7 | 2026-09-22*

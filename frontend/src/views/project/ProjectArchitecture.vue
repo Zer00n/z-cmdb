@@ -17,6 +17,7 @@ import '@vue-flow/controls/dist/style.css'
 import HostGroupNode from '@/components/topology/HostGroupNode.vue'
 import UnitNode from '@/components/topology/UnitNode.vue'
 import { computeTopologyLayout } from '@/utils/topologyLayout'
+import { useAuthStore } from '@/stores/auth'
 
 import {
   fetchProject, fetchProjectTopology, fetchProjectUnits, fetchProjectBill,
@@ -36,6 +37,9 @@ import type {
 const { t } = useI18n()
 const route = useRoute()
 const projectId = computed(() => route.params.id as string)
+const authStore = useAuthStore()
+// 单元/部署/关系写操作仅 admin / super_admin 可用（安全审计 V6）；auditor 只读
+const isAdmin = computed(() => authStore.isAdmin)
 
 const loading = ref(true)
 const project = ref<Project | null>(null)
@@ -222,6 +226,7 @@ async function reloadTopology() {
 }
 
 async function handlePatchUnit(unitId: string, field: string, value: any) {
+  if (!isAdmin.value) return
   try {
     const patch: ConsumingUnitPatch = { [field]: value }
     await patchUnit(unitId, patch)
@@ -235,7 +240,7 @@ async function handlePatchUnit(unitId: string, field: string, value: any) {
 const origProjectFields = ref<Record<string, string>>({})
 
 async function handleProjectFieldBlur(field: string) {
-  if (!project.value) return
+  if (!isAdmin.value || !project.value) return
   const newVal = ((project.value as any)[field] || '').trim()
   const oldVal = origProjectFields.value[field] ?? ''
   if (newVal === oldVal) return
@@ -251,7 +256,7 @@ async function handleProjectFieldBlur(field: string) {
 }
 
 async function handleToggleBilling(val: boolean) {
-  if (!project.value) return
+  if (!isAdmin.value || !project.value) return
   try {
     await updateProject(projectId.value, { billing_enabled: val ? 1 : 0 })
     project.value.billing_enabled = val ? 1 : 0
@@ -267,6 +272,7 @@ async function handleToggleBilling(val: boolean) {
 }
 
 async function handleDeleteUnit(unitId: string, unitName: string) {
+  if (!isAdmin.value) return
   try {
     await deleteUnit(unitId)
     ElMessage.success(t('project.architecture.deleted'))
@@ -286,7 +292,7 @@ function openDepsDialog(unit: ConsumingUnit) {
 }
 
 async function handleAddDep() {
-  if (!depsDialogUnit.value || !depsForm.value.target_unit_id) return
+  if (!isAdmin.value || !depsDialogUnit.value || !depsForm.value.target_unit_id) return
   depsSaving.value = true
   try {
     await createRelation({
@@ -305,6 +311,7 @@ async function handleAddDep() {
 }
 
 async function handleDeleteDep(depId: string) {
+  if (!isAdmin.value) return
   try {
     await deleteRelation(depId)
     ElMessage.success(t('project.architecture.depDeleted'))
@@ -341,6 +348,7 @@ async function onHostSearch(query: string) {
 }
 
 async function handleAddUnit() {
+  if (!isAdmin.value) return
   addUnitSaving.value = true
   try {
     const unitData: ConsumingUnitCreate = {
@@ -392,7 +400,7 @@ onMounted(async () => {
     <div v-if="project" class="v06-proj-header">
       <span class="v06-proj-name">{{ project.name }}</span>
       <span class="v06-proj-sep"></span>
-      <div class="v06-proj-field"><div class="lbl">{{ t('project.list.colOwner') }}</div><div class="val"><input class="v06-proj-input" :value="project.owner || ''" @input="project.owner = ($event.target as HTMLInputElement).value || null" @blur="handleProjectFieldBlur('owner')" @keyup.enter="($event.target as HTMLInputElement).blur()" /></div></div>
+      <div class="v06-proj-field"><div class="lbl">{{ t('project.list.colOwner') }}</div><div class="val"><input class="v06-proj-input" :disabled="!isAdmin" :value="project.owner || ''" @input="project.owner = ($event.target as HTMLInputElement).value || null" @blur="handleProjectFieldBlur('owner')" @keyup.enter="($event.target as HTMLInputElement).blur()" /></div></div>
       <span class="v06-proj-sep"></span>
       <div class="v06-proj-field"><div class="lbl">{{ t('project.list.colBusinessUnit') }}</div><div class="val">{{ project.business_unit || '-' }}</div></div>
       <span class="v06-proj-sep"></span>
@@ -401,6 +409,7 @@ onMounted(async () => {
           <el-select
             :model-value="project.department || ''"
             clearable filterable size="small"
+            :disabled="!isAdmin"
             :placeholder="t('project.list.selectDepartment')"
             @update:model-value="(val: string) => { project!.department = val || null; handleProjectFieldBlur('department') }"
           >
@@ -417,6 +426,7 @@ onMounted(async () => {
             :model-value="!!project.billing_enabled"
             :active-text="t('project.billing.enabled')"
             :inactive-text="t('project.billing.disabled')"
+            :disabled="!isAdmin"
             @change="handleToggleBilling"
           />
         </div>
@@ -468,38 +478,42 @@ onMounted(async () => {
       <div class="v06-card v06-comp-card">
         <div class="v06-card-head">
           <h3>{{ t('project.architecture.componentTable.title') }}</h3>
-          <el-button size="small" type="primary" @click="openAddUnitDialog">
+          <el-button v-if="isAdmin" size="small" type="primary" @click="openAddUnitDialog">
             {{ t('project.architecture.componentTable.addUnit') }}
           </el-button>
         </div>
         <el-table :data="units" :header-cell-style="{ fontWeight: 600, fontSize: '13px' }">
           <el-table-column :label="t('project.architecture.componentTable.editable')" :label-class-name="'v06-col-group-edit'" min-width="150">
             <template #default="{ row }">
-              <el-input v-model="row.name" size="small" @blur="handlePatchUnit(row.id, 'name', row.name)" @keyup.enter="($event.target as HTMLInputElement).blur()" />
+              <el-input v-if="isAdmin" v-model="row.name" size="small" @blur="handlePatchUnit(row.id, 'name', row.name)" @keyup.enter="($event.target as HTMLInputElement).blur()" />
+              <span v-else class="v06-read-cell">{{ row.name }}</span>
             </template>
           </el-table-column>
           <el-table-column :label="t('project.architecture.componentTable.colType')" :label-class-name="'v06-col-group-edit'" width="140">
             <template #default="{ row }">
-              <el-select :model-value="row.type" size="small" @change="handlePatchUnit(row.id, 'type', $event)">
+              <el-select v-if="isAdmin" :model-value="row.type" size="small" @change="handlePatchUnit(row.id, 'type', $event)">
                 <el-option :label="t('project.architecture.typeK8s')" value="k8s_workload" />
                 <el-option :label="t('project.architecture.typeDocker')" value="docker" />
                 <el-option :label="t('project.architecture.typeVmApp')" value="vm_app" />
                 <el-option :label="t('project.architecture.typeHostProcess')" value="host_process" />
               </el-select>
+              <span v-else class="v06-read-cell">{{ row.type }}</span>
             </template>
           </el-table-column>
           <el-table-column :label="t('project.architecture.componentTable.colOwner')" :label-class-name="'v06-col-group-edit'" width="120">
             <template #default="{ row }">
-              <el-input v-model="row.owner" size="small" @blur="handlePatchUnit(row.id, 'owner', row.owner || null)" @keyup.enter="($event.target as HTMLInputElement).blur()" />
+              <el-input v-if="isAdmin" v-model="row.owner" size="small" @blur="handlePatchUnit(row.id, 'owner', row.owner || null)" @keyup.enter="($event.target as HTMLInputElement).blur()" />
+              <span v-else class="v06-read-cell">{{ row.owner || '-' }}</span>
             </template>
           </el-table-column>
           <el-table-column :label="t('project.architecture.componentTable.colEnv')" :label-class-name="'v06-col-group-edit'" width="120">
             <template #default="{ row }">
-              <el-select :model-value="row.environment" size="small" @change="handlePatchUnit(row.id, 'environment', $event)">
+              <el-select v-if="isAdmin" :model-value="row.environment" size="small" @change="handlePatchUnit(row.id, 'environment', $event)">
                 <el-option :label="t('project.architecture.envProd')" value="prod" />
                 <el-option :label="t('project.architecture.envStaging')" value="staging" />
                 <el-option :label="t('project.architecture.envDev')" value="dev" />
               </el-select>
+              <span v-else class="v06-read-cell">{{ row.environment || '-' }}</span>
             </template>
           </el-table-column>
           <!-- Read-only columns -->
@@ -527,7 +541,7 @@ onMounted(async () => {
           </el-table-column>
           <el-table-column :label="t('project.architecture.componentTable.colActions')" width="160" align="center" fixed="right">
             <template #default="{ row }">
-              <div class="v06-action-btns">
+              <div v-if="isAdmin" class="v06-action-btns">
                 <el-button type="primary" link size="small" @click="openDepsDialog(row)">
                   {{ t('project.architecture.manageDeps') }}
                 </el-button>
@@ -542,6 +556,7 @@ onMounted(async () => {
                   </template>
                 </el-popconfirm>
               </div>
+              <span v-else class="v06-read-cell">-</span>
             </template>
           </el-table-column>
         </el-table>

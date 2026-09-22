@@ -3,7 +3,7 @@ Scan batch + snapshot item SQLAlchemy model
 """
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import JSON, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base, utc_now
@@ -14,6 +14,8 @@ class ScanBatch(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     batch_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    # Excel 导入的补充字段（ip -> 补充字段）；替代历史明文 JSON 边车文件
+    extra_fields_json: Mapped[dict | None] = mapped_column(JSON, nullable=True, default=None)
     uploaded_by: Mapped[int | None] = mapped_column(
         Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )

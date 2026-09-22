@@ -49,6 +49,10 @@ APP_ENV=production
 DATABASE_URL=sqlite:///./data/cmdb.db
 JWT_SECRET=$SECRET
 CORS_ORIGINS=["http://localhost:$PORT"]
+# 字段加密独立主密钥（可选；未设置时 setup/unlock 自动生成 data/llm_master.key）
+#LLM_MASTER_KEY=
+# 内网自建 LLM 主机（RFC1918）需显式放行（回环仍拒绝）
+LLM_ALLOW_PRIVATE_BASE_URL=false
 EOF
     echo "[INFO] Generated .env with random JWT_SECRET"
 fi
@@ -77,9 +81,10 @@ else
     echo "   - 或: CMDB_UNLOCK_PASSWORD=<口令> systemctl restart z-cmdb"
     echo ""
     echo " !! 重要：请确认已备份以下文件 !!"
-    echo "   data/cmdb.db       （加密数据库）"
-    echo "   data/keystore.json （密钥信封，丢失=数据不可读）"
-    echo "   .env               （JWT 密钥配置）"
+    echo "   data/cmdb.db         （加密数据库）"
+    echo "   data/keystore.json   （密钥信封，丢失=数据不可读）"
+    echo "   data/llm_master.key  （字段加密主密钥，丢失=已存 LLM 密钥不可解）"
+    echo "   .env                 （JWT 密钥配置）"
 fi
 if [ -n "${CMDB_UNLOCK_PASSWORD:-}" ]; then
     echo ""

@@ -148,30 +148,6 @@ def _check_password_policy(password: str) -> bool:
     return has_upper and has_lower and has_digit and has_symbol
 
 
-def _persist_initial_password(password: str) -> None:
-    """
-    Write the initial password to INITIAL_ADMIN_PASSWORD.txt in the data directory.
-    Permissions 600 (owner read/write only); also prints to stdout.
-    """
-    from app.core.config import settings
-
-    pw_file = settings.db_path.parent / "INITIAL_ADMIN_PASSWORD.txt"
-    pw_file.parent.mkdir(parents=True, exist_ok=True)
-    pw_file.write_text(password, encoding="utf-8")
-    # chmod is not supported on Windows; set permissions only on POSIX systems
-    try:
-        pw_file.chmod(0o600)
-    except OSError:
-        pass
-
-    print(f"\n{'='*60}")
-    print(f"  Initial admin password saved to: {pw_file}")
-    print(f"  Username: admin")
-    print(f"  Password: {password}")
-    print(f"  Please change your password immediately after logging in!")
-    print(f"{'='*60}\n")
-
-
 def _purge_initial_password_file() -> None:
     """删除初始明文密码文件（改密后调用，幂等）。"""
     from app.core.config import settings
@@ -187,10 +163,10 @@ def _purge_initial_password_file() -> None:
 
 def ensure_initial_admin(db: Session) -> None:
     """
-    On first startup, if the users table is empty, automatically create a super_admin account.
-    Prefers the environment variable CMDB_INITIAL_ADMIN_PASSWORD (must meet password policy);
-    otherwise generates a random password. The effective password is written to
-    data/INITIAL_ADMIN_PASSWORD.txt.
+    On first startup, if the users table is empty, create a super_admin account.
+    Prefers INITIAL_ADMIN_PASSWORD environment variable (must meet password policy);
+    otherwise generates a random password which is printed ONCE to the invoking
+    terminal — never written to a file.
     """
     from app.core.config import settings
 
@@ -206,12 +182,14 @@ def ensure_initial_admin(db: Session) -> None:
             logger.info("using INITIAL_ADMIN_PASSWORD from environment")
         else:
             logger.warning(
-                "CMDB_INITIAL_ADMIN_PASSWORD does not meet password policy (>=8 chars, "
+                "INITIAL_ADMIN_PASSWORD does not meet password policy (>=8 chars, "
                 "upper/lower/digit/symbol), falling back to random generation"
             )
 
+    generated = False
     if not initial_password:
         initial_password = generate_initial_password()
+        generated = True
 
     password_hash = hash_password(initial_password)
 
@@ -224,4 +202,10 @@ def ensure_initial_admin(db: Session) -> None:
     )
     db.commit()
 
-    _persist_initial_password(initial_password)
+    if generated:
+        # CLI / 本地脚本路径：口令仅输出到调用终端一次，绝不写入数据目录文件
+        print(f"\n{'='*60}")
+        print(f"  初始管理员账号：admin")
+        print(f"  初始口令：{initial_password}（仅显示一次，不会保存到文件）")
+        print(f"  请立即登录并修改口令")
+        print(f"{'='*60}\n")

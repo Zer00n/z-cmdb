@@ -1,4 +1,4 @@
-# Z-CMDB v0.6.5 部署说明
+# Z-CMDB v0.7 部署说明
 
 > 本文档面向运维和最终用户，覆盖三种部署方式：Windows 双击启动、Linux 裸机、Linux Docker。
 
@@ -42,7 +42,7 @@ deploy\windows\build_bundle.bat
 
 1. 双击 `start.bat`
 2. 浏览器自动打开 `http://127.0.0.1:8000`
-3. 使用默认账号 `admin` 登录，初始密码见 `data\INITIAL_ADMIN_PASSWORD.txt`（首次启动自动生成，登录后修改密码该文件会自动删除）
+3. 首次使用先在浏览器完成 Vault Setup（设置管理员账号与口令；口令留空则系统自动生成，并在结果页**仅显示一次**），然后用该账号登录（不存在口令文件）
 
 **端口修改**：`start.bat 9000`（传入端口号作为参数）
 
@@ -121,7 +121,7 @@ chmod +x start.sh
 
 **二次执行**：不会重装依赖、不会覆盖 `.env`、不会丢失数据。
 
-**首次登录**：用户名 `admin`，初始密码见 `data/INITIAL_ADMIN_PASSWORD.txt`（首次启动自动生成，登录后修改密码该文件会自动删除）。
+**首次登录**：先在浏览器完成 Vault Setup 初始化（用户名 + 口令；口令留空则随机生成并在结果页一次性展示），然后用该账号登录；初始口令不会写入任何文件。
 
 ### systemd 服务（可选）
 
@@ -172,13 +172,13 @@ export JWT_SECRET=$(python3 -c "import secrets;print(secrets.token_urlsafe(48))"
 脚本会自动：
 0. 检测并构建前端（如 `frontend/dist/` 不存在）
 1. 构建基础镜像 `z-cmdb-base:0.6`（含依赖，偶尔重建）
-2. 构建应用镜像 `z-cmdb-app:0.6`（仅 COPY 代码，秒级）
+2. 构建应用镜像 `z-cmdb-app:0.7`（仅 COPY 代码，秒级）
 3. 创建 `./data` 目录
 4. 启动容器
 
 访问 `http://localhost:8000`。
 
-**首次登录**：用户名 `admin`，初始密码见宿主 `./data/INITIAL_ADMIN_PASSWORD.txt`（首次启动自动生成，登录后修改密码该文件会自动删除）。
+**首次登录**：先在浏览器完成 Vault Setup；初始口令在 setup 结果页一次性展示（留空则随机生成），不会写入宿主文件。
 
 ### 离线分发
 
@@ -283,11 +283,13 @@ docker compose up -d --build
 
 ### 备份要求
 
-备份对象：**加密库 `cmdb.db` + keystore.json**（缺一不可）
+备份对象：**加密库 `cmdb.db` + keystore.json + llm_master.key**（前两者缺一不可）
 
 - keystore 含密文，可安全备份到云盘/异地，单独泄露无害
 - keystore 丢失且无恢复码 = 数据永久不可读
+- `llm_master.key` 是字段加密（已存 LLM API 密钥）的独立主密钥，丢失 = 已存 LLM 密钥不可解；如改用环境变量 `LLM_MASTER_KEY` 则备份该密钥值
 - `-wal` / `-shm` 侧文件也应一起备份（WAL 模式下有未合并数据）
+- 历史遗留的明文初始口令文件 `data/INITIAL_ADMIN_PASSWORD.txt` 应确认口令已保存后删除（改密会自动清除）
 
 ### 存量明文库迁移（一次性工具）
 
@@ -314,6 +316,12 @@ PYTHONPATH=. python tools/encrypt_existing_db.py \
 - 安全覆盖明文原件（随机覆写，SSD 不保证真擦除，但文件已被密文替代）
 - `--keep-plain` 调试用：保留明文原件（安全删除生效前，仅限受控环境）
 
+### v0.6.6 安全升级说明
+
+- **内网自建 LLM 主机**（如部署在 RFC1918 地址的 Ollama/vLLM）：出于 SSRF 防护，默认拒绝请求内网地址。确认主机可信后，在部署环境设置 `LLM_ALLOW_PRIVATE_BASE_URL=true`（回环地址仍拒绝），重启即可。
+- **历史上传文件清理**：v0.6.6 起上传的扫描原始文件不再落盘。升级后可执行 `python scripts/cleanup_uploads.py` 预览、加 `--yes` 清理 `backend/uploads/` 下的历史明文文件（数据已在加密库内）。
+- 字段加密主密钥已独立于 JWT_SECRET：升级后首次解锁会自动生成 0600 文件 `data/llm_master.key` 并把历史密文自动重加密，无需手工操作；轮换 JWT_SECRET 不再影响已存 LLM 密钥。
+
 ---
 
 ## 常见问题
@@ -329,4 +337,4 @@ A: 是的，数据库通过 bind mount 落在宿主 `./data`，容器删除也�
 
 ---
 
-*Z-CMDB v0.6.5 | 2026-06-28*
+*Z-CMDB v0.7 | 2026-09-22*

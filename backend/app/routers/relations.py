@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.core.deps import AnyUser
+from app.core.deps import AdminUser
 from app.schemas.consuming_unit import RelationCreate, RelationRead
 from app.services import relation_service
 
@@ -15,7 +15,7 @@ router = APIRouter(prefix="/api/relations", tags=["relations"])
 @router.post("", response_model=RelationRead, status_code=201)
 def create_relation(
     db: Annotated[Session, Depends(get_db)],
-    _user: AnyUser,
+    _user: AdminUser,
     data: RelationCreate,
 ):
     """Create a dependency edge between two consuming units."""
@@ -30,7 +30,7 @@ def create_relation(
 @router.delete("/{relation_id}", status_code=204)
 def delete_relation(
     db: Annotated[Session, Depends(get_db)],
-    _user: AnyUser,
+    _user: AdminUser,
     relation_id: str,
 ):
     """Delete a dependency edge."""

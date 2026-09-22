@@ -3,7 +3,7 @@
  * Project List page — /projects
  * 2026 UI Redesign: uses .ui-* utility classes, matches design/Project List.html
  */
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
@@ -11,9 +11,13 @@ import { fetchProjectList, createProject, updateProject, deleteProject } from '@
 import { fetchDepartments } from '@/api/cost'
 import type { Department } from '@/api/cost'
 import type { ProjectListItem, ProjectCreateRequest } from '@/types/project'
+import { useAuthStore } from '@/stores/auth'
 
 const { t } = useI18n()
 const router = useRouter()
+const authStore = useAuthStore()
+// 项目写操作仅 admin / super_admin 可用（与后端 projects 路由 AdminUser 一致）
+const isAdmin = computed(() => authStore.isAdmin)
 
 // ── Debounced search ──────────────────────────────────────
 let searchTimer: ReturnType<typeof setTimeout> | null = null
@@ -101,6 +105,7 @@ function getAvatarColor(name: string) {
 }
 
 async function handleCreate() {
+  if (!isAdmin.value) return
   if (!createForm.value.name.trim()) {
     ElMessage.warning(t('project.list.createNameRequired'))
     return
@@ -120,6 +125,7 @@ async function handleCreate() {
 }
 
 async function handleOwnerBlur(row: ProjectListItem) {
+  if (!isAdmin.value) return
   const newVal = (row.owner || '').trim()
   const oldVal = origOwnerMap.value[row.id] ?? ''
   if (newVal === oldVal) return
@@ -144,7 +150,7 @@ function openDeleteDialog(row: ProjectListItem) {
 }
 
 async function handleDelete() {
-  if (!deleteTarget.value) return
+  if (!isAdmin.value || !deleteTarget.value) return
   if (deleteConfirmName.value.trim() !== deleteTarget.value.name) {
     ElMessage.warning(t('project.list.deleteNameMismatch'))
     return
@@ -182,7 +188,7 @@ onMounted(async () => {
       </div>
       <div class="ui-page-actions">
         <el-button @click="loadData">{{ t('project.list.exportCsv') }}</el-button>
-        <el-button type="primary" @click="showCreateDialog = true">
+        <el-button v-if="isAdmin" type="primary" @click="showCreateDialog = true">
           {{ t('project.list.create') }}
         </el-button>
       </div>
@@ -226,6 +232,7 @@ onMounted(async () => {
         <el-table-column :label="t('project.list.colOwner')" width="120">
           <template #default="{ row }">
             <input
+              v-if="isAdmin"
               class="v06-inline-input"
               :value="row.owner || ''"
               @mousedown.stop
@@ -233,6 +240,7 @@ onMounted(async () => {
               @blur="handleOwnerBlur(row)"
               @keyup.enter="($event.target as HTMLInputElement).blur()"
             />
+            <span v-else style="font-size: 13px; color: var(--neutral-600)">{{ row.owner || '-' }}</span>
           </template>
         </el-table-column>
         <el-table-column :label="t('project.list.colBusinessUnit')" width="130">
@@ -276,8 +284,10 @@ onMounted(async () => {
         <el-table-column :label="t('project.list.colActions')" width="130" align="center">
           <template #default="{ row }">
             <el-link type="primary" :underline="false" @click.stop="goToDetail(row.id)">{{ t('project.list.details') }}</el-link>
-            <span class="v06-action-sep">|</span>
-            <el-link type="danger" :underline="false" @click.stop="openDeleteDialog(row)">{{ t('project.list.delete') }}</el-link>
+            <template v-if="isAdmin">
+              <span class="v06-action-sep">|</span>
+              <el-link type="danger" :underline="false" @click.stop="openDeleteDialog(row)">{{ t('project.list.delete') }}</el-link>
+            </template>
           </template>
         </el-table-column>
       </el-table>

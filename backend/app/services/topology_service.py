@@ -154,6 +154,8 @@ def generate_topology(
         system_prompt=system_prompt,
         user=user,
         purpose="topology_generation",
+        # 本地自动路由使用服务内部硬编码地址，豁免 SSRF 目标校验
+        trusted_base_url=should_route_local,
     )
 
     # Clean up LLM response: remove markdown code block wrappers

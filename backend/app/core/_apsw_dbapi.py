@@ -213,12 +213,19 @@ class Cursor:
     ) -> "Cursor":
         if self._closed:
             raise _translate(apsw.CursorClosedError("cursor closed"))
+        params = list(seq_of_parameters)
+        # apsw changes() 只反映最后一条语句；executemany 的总行数需用
+        # totalchanges() 前后差值，否则批量 UPDATE 会少计行数（触发 StaleDataError）
+        before = self.connection._apsw.totalchanges()
         try:
-            self._cur.executemany(operation, list(seq_of_parameters))
+            self._cur.executemany(operation, params)
         except apsw.Error as exc:
             raise _translate(exc) from exc
         self._refresh_desc(operation)
-        self.rowcount = self.connection._apsw.changes() if self._desc is None else -1
+        if self._desc is None:
+            self.rowcount = self.connection._apsw.totalchanges() - before
+        else:
+            self.rowcount = -1
         return self
 
     # ── fetching ──

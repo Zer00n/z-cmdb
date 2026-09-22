@@ -57,12 +57,9 @@ def upload_and_parse(
     _raw_name = Path(filename).name  # 去除任何路径前缀
     _safe_batch_name = re.sub(r'[<>"\'&\x00-\x1f]', "", _raw_name)[:200] or "scan.xml"
 
-    # Save file (UUID naming to prevent guessing)
-    upload_dir = Path(__file__).parent.parent.parent / "uploads"
-    upload_dir.mkdir(parents=True, exist_ok=True)
-    safe_name = f"{uuid.uuid4().hex}.xml"
-    file_path = upload_dir / safe_name
-    file_path.write_bytes(file_content)
+    # 原始字节不再落盘：解析产物（快照行）是唯一数据源，原始文件上传后无读取方。
+    # file_path 仅保留逻辑路径用于追溯（安全审计 V7）。
+    logical_path = f"uploads/{uuid.uuid4().hex}.xml"
 
     # Create batch record
     batch = ScanBatch(
@@ -71,7 +68,7 @@ def upload_and_parse(
         uploaded_at=datetime.now(timezone.utc),
         scan_started_at=None,  # TODO: extract from parsed data
         scan_finished_at=None,
-        file_path=str(file_path),
+        file_path=logical_path,
         file_size_bytes=len(file_content),
         total_hosts=len(parsed.hosts),
         status="pending",
@@ -174,12 +171,8 @@ def upload_and_parse_excel(
     _raw_name = Path(filename).name
     _safe_batch_name = re.sub(r'[<>"\'&\x00-\x1f]', "", _raw_name)[:200] or "import.xlsx"
 
-    # Save file
-    upload_dir = Path(__file__).parent.parent.parent / "uploads"
-    upload_dir.mkdir(parents=True, exist_ok=True)
-    safe_name = f"{uuid.uuid4().hex}.xlsx"
-    file_path = upload_dir / safe_name
-    file_path.write_bytes(file_content)
+    # 原始 Excel 不再落盘；补充字段随批次入库（安全审计 V7）
+    logical_path = f"uploads/{uuid.uuid4().hex}.xlsx"
 
     # Create batch record
     batch = ScanBatch(
@@ -188,11 +181,12 @@ def upload_and_parse_excel(
         uploaded_at=datetime.now(timezone.utc),
         scan_started_at=None,
         scan_finished_at=None,
-        file_path=str(file_path),
+        file_path=logical_path,
         file_size_bytes=len(file_content),
         total_hosts=len(parse_result.hosts),
         status="pending",
         source="excel",
+        extra_fields_json=parse_result.extra_fields,
     )
     db.add(batch)
     db.flush()
@@ -243,14 +237,6 @@ def upload_and_parse_excel(
         },
     )
 
-    # Store extra_fields for later use during confirmation
-    # We store them in a sidecar file alongside the uploaded Excel
-    import json
-    meta_path = upload_dir / f"{uuid.UUID(safe_name.replace('.xlsx', '')).hex}.json"
-    # Actually, use the same UUID as the file
-    meta_path = file_path.with_suffix(".json")
-    meta_path.write_text(json.dumps(parse_result.extra_fields, ensure_ascii=False), encoding="utf-8")
-
     return batch
 
 
@@ -293,16 +279,8 @@ def get_batch_diff(db: Session, batch_id: int):
 
     batch = get_batch(db, batch_id)
 
-    # Load extra_fields sidecar for Excel batches
-    extra_fields_map: dict[str, dict] = {}
-    if batch.source == "excel" and batch.file_path:
-        import json
-        meta_path = Path(batch.file_path).with_suffix(".json")
-        if meta_path.exists():
-            try:
-                extra_fields_map = json.loads(meta_path.read_text(encoding="utf-8"))
-            except Exception:
-                pass
+    # extra_fields 随批次存库（Excel 批次）；历史批次无此值时为空
+    extra_fields_map: dict[str, dict] = batch.extra_fields_json or {}
 
     # Get all snapshot items
     items = list(db.scalars(

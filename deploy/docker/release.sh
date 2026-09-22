@@ -5,7 +5,7 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
-APP_VERSION="${APP_VERSION:-0.6}"
+APP_VERSION="${APP_VERSION:-0.7}"
 BASE_IMAGE="z-cmdb-base:${APP_VERSION}"
 APP_IMAGE="z-cmdb-app:${APP_VERSION}"
 
@@ -64,9 +64,10 @@ echo " 升级部署：容器重启后需解锁，用管理员口令或："
 echo "   CMDB_UNLOCK_PASSWORD=<口令> docker compose up -d"
 echo ""
 echo " !! 请确认已备份以下文件（bind mount 在宿主机 ./data/）!!"
-echo "   ./data/cmdb.db       （加密数据库）"
-echo "   ./data/keystore.json （密钥信封，丢失 = 数据不可读）"
-echo "   ./data/.env          （JWT 密钥配置）"
+echo "   ./data/cmdb.db        （加密数据库）"
+echo "   ./data/keystore.json  （密钥信封，丢失 = 数据不可读）"
+echo "   ./data/llm_master.key  （字段加密主密钥，丢失 = 已存 LLM 密钥不可解）"
+echo "   ./data/.env            （JWT 密钥配置）"
 echo ""
 echo " 恢复码是所有口令丢失时的唯一出路，请妥善离线保管。"
 echo "============================================================"

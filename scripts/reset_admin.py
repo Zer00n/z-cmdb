@@ -16,10 +16,7 @@ def main():
     from app.core.database import SessionLocal
     from app.core.security import hash_password
     from app.repositories import user_repo
-    from app.services.auth_service import (
-        _persist_initial_password,
-        generate_initial_password,
-    )
+    from app.services.auth_service import generate_initial_password
 
     print("=" * 50)
     print("  Z-CMDB Lite 管理员密码重置")
@@ -36,7 +33,7 @@ def main():
         user_repo.update_password(db, user, new_hash)
         db.commit()
 
-    _persist_initial_password(new_password)
+    print(f"\n  新口令：{new_password}（仅显示一次，不会写入文件）")
     print("  密码重置成功，请使用新密码登录。")
     print("=" * 50)
 

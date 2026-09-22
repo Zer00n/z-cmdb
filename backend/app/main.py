@@ -10,6 +10,7 @@ from fastapi.responses import JSONResponse
 from app.core.config import settings
 from app.core.exceptions import CMDBException
 from app.core.logging import setup_logging
+from app.middleware.body_size_limit import BodySizeLimitMiddleware
 from app.middleware.lock_gate import LockGateMiddleware
 from app.routers.health import router as health_router
 from app.routers.unlock import router as unlock_router
@@ -54,6 +55,10 @@ app = FastAPI(
 # 中间件执行顺序（外→内）：security_headers → CORS → lock_gate → 路由
 # lock_gate 必须在 CORS 内层，使其 423 响应也能带上 CORS 头（跨域可读）。
 app.add_middleware(LockGateMiddleware)
+app.add_middleware(
+    BodySizeLimitMiddleware,
+    max_bytes_provider=lambda: settings.upload_max_bytes,
+)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.CORS_ORIGINS,
@@ -267,6 +272,7 @@ def _print_vault_banner(key_service) -> None:
         print(f"\n  [!] 请确认已备份以下文件：")
         print(f"    - {_db}       （加密数据库）")
         print(f"    - {_ks} （密钥信封，丢失=数据不可读）")
+        print(f"    - {_ks.parent / 'llm_master.key'} （字段加密主密钥，丢失=已存 LLM 密钥不可解）")
         print(f"    - .env               （JWT 密钥配置）")
 
 

@@ -78,18 +78,30 @@ def generate_initial_password() -> str:
             return pwd
 
 
-def _persist_initial_password(password: str, username: str) -> None:
-    """系统随机生成口令时，一次性落盘 + 控制台提示（改密后由 auth 清除）。"""
-    pw_file = settings.db_path.parent / "INITIAL_ADMIN_PASSWORD.txt"
-    pw_file.parent.mkdir(parents=True, exist_ok=True)
-    pw_file.write_text(password, encoding="utf-8")
+def field_master_key_path() -> Path:
+    """字段加密独立主密钥文件（与加密库同目录 data/）。"""
+    return settings.db_path.parent / "llm_master.key"
+
+
+def ensure_field_master_key() -> Path | None:
+    """确保字段加密存在独立主密钥：优先 LLM_MASTER_KEY 环境变量，其次在数据
+    目录维护 0600 密钥文件（setup 生成 / unlock 惰性补建）。
+    使用环境变量时返回 None。"""
+    import os
+
+    if os.environ.get("LLM_MASTER_KEY"):
+        return None
+    key_file = field_master_key_path()
+    if key_file.exists():
+        return key_file
+    key_file.parent.mkdir(parents=True, exist_ok=True)
+    key_file.write_text(secrets.token_urlsafe(48), encoding="utf-8")
     try:
-        pw_file.chmod(0o600)
+        key_file.chmod(0o600)
     except OSError:
         pass
-    print(f"\n{'='*60}\n  Initial admin password saved to: {pw_file}\n"
-          f"  Username: {username}\n  Password: {password}\n"
-          f"  Change it immediately after first login!\n{'='*60}\n")
+    logger.info("generated independent field-encryption key file: %s", key_file)
+    return key_file
 
 
 def needs_setup() -> bool:
@@ -205,6 +217,9 @@ def setup(admin_username: str = "admin", admin_password: str | None = None) -> S
         admin_password = generate_initial_password()
         generated_pw = admin_password
 
+    # 字段加密独立主密钥（无环境变量时在数据目录生成 0600 文件）
+    ensure_field_master_key()
+
     # 1) 生成密钥材料
     dek = crypto.new_dek()
     dek_hex = dek.hex()
@@ -231,6 +246,9 @@ def setup(admin_username: str = "admin", admin_password: str | None = None) -> S
                 full_name="System Administrator",
             )
             db.commit()
+            # 字段密文迁移（全新库无数据，no-op）
+            from app.services.field_encryption_migration import migrate_legacy_field_ciphertext
+            migrate_legacy_field_ciphertext(db)
     except Exception:
         # 回滚：删除 keystore，回到 needs_setup 干净态
         _safe_remove(keystore_path())
@@ -241,10 +259,6 @@ def setup(admin_username: str = "admin", admin_password: str | None = None) -> S
     # 4) 切 UNLOCKED，清防爆破计数
     keyvault.unlock_with_dek(dek_hex)
     _reset_attempts()
-
-    # 系统随机生成的口令需告知用户（一次性，与恢复码同批）
-    if generated_pw:
-        _persist_initial_password(generated_pw, admin_username)
 
     logger.info("vault setup completed (admin=%s)", admin_username)
     return SetupResult(
@@ -307,6 +321,11 @@ def unlock(
         database.init_engine(dek_hex)
         if not keyvault.has_migrated():
             run_migrations()
+        # 独立字段主密钥（存量系统升级：惰性补建 0600 文件）+ 历史密文重加密
+        ensure_field_master_key()
+        from app.services.field_encryption_migration import migrate_legacy_field_ciphertext
+        with database.SessionLocal() as db:  # type: ignore[misc]
+            migrate_legacy_field_ciphertext(db)
     except Exception:
         logger.error("engine init / migration failed after successful DEK unwrap", exc_info=True)
         database.shutdown_engine()

@@ -1,12 +1,12 @@
 """V0.6 unit router — /api/units + /api/hosts"""
 from datetime import datetime, timezone
-from typing import Annotated, Any
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.core.deps import AnyUser, get_optional_user
+from app.core.deps import AdminUser, AnyUser
 from app.core.exceptions import NotFoundError, ValidationError
 from app.models.host_resource import HostResource
 from app.repositories import host_repo, placement_repo, unit_repo
@@ -21,13 +21,18 @@ from app.services import unit_service
 
 router = APIRouter(tags=["units"])
 
+
+def _escape_like(value: str) -> str:
+    """转义 LIKE 元字符，使 q 仅按字面量匹配（防 %/_ 全量枚举）。"""
+    return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
 # ── Consuming Unit endpoints ────────────────────────────────────────
 
 
 @router.post("/api/units", response_model=ConsumingUnitRead, status_code=201)
 def create_unit(
     db: Annotated[Session, Depends(get_db)],
-    _user: AnyUser,
+    _user: AdminUser,
     data: ConsumingUnitCreate,
 ):
     """Create a new consuming unit within a project."""
@@ -44,7 +49,7 @@ def create_unit(
 @router.patch("/api/units/{unit_id}", response_model=ConsumingUnitRead)
 def patch_unit(
     db: Annotated[Session, Depends(get_db)],
-    _user: AnyUser,
+    _user: AdminUser,
     unit_id: str,
     data: ConsumingUnitPatch,
 ):
@@ -56,7 +61,7 @@ def patch_unit(
 @router.delete("/api/units/{unit_id}")
 def delete_unit(
     db: Annotated[Session, Depends(get_db)],
-    _user: AnyUser,
+    _user: AdminUser,
     unit_id: str,
 ):
     """Delete a consuming unit (cascades to placements & relations)."""
@@ -81,7 +86,7 @@ def delete_unit(
 @router.post("/api/units/{unit_id}/placements", response_model=PlacementRead, status_code=201)
 def create_placement(
     db: Annotated[Session, Depends(get_db)],
-    _user: AnyUser,
+    _user: AdminUser,
     unit_id: str,
     data: PlacementCreate,
 ):
@@ -115,7 +120,7 @@ def create_placement(
 @router.get("/api/hosts/search")
 def search_hosts(
     db: Annotated[Session, Depends(get_db)],
-    _user: Annotated[Any, Depends(get_optional_user)],
+    _user: AnyUser,
     q: str = Query(..., min_length=1, description="IP address or hostname keyword"),
 ):
     """Search hosts by IP (from asset table) or host_resource name.
@@ -134,7 +139,9 @@ def search_hosts(
     # 1. Search by asset.ip_address → find or auto-create matching host_resource
     assets = list(
         db.scalars(
-            select(Asset).where(Asset.ip_address.like(f"%{q}%")).limit(20)
+            select(Asset).where(
+                Asset.ip_address.like(f"%{_escape_like(q)}%", escape="\\")
+            ).limit(20)
         ).all()
     )
     seen_host_ids: set[str] = set()
@@ -185,7 +192,9 @@ def search_hosts(
     # 2. Supplement: search host_resource by name (includes IP if set)
     hosts = list(
         db.scalars(
-            select(HR).where(HR.name.like(f"%{q}%")).order_by(HR.name).limit(20)
+            select(HR).where(
+                HR.name.like(f"%{_escape_like(q)}%", escape="\\")
+            ).order_by(HR.name).limit(20)
         ).all()
     )
     for h in hosts:

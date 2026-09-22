@@ -18,10 +18,25 @@ logger = logging.getLogger(__name__)
 class LLMProvider:
     """LLM provider base class"""
 
-    def __init__(self, api_key: str = "", base_url: str = "", model: str = ""):
+    def __init__(
+        self,
+        api_key: str = "",
+        base_url: str = "",
+        model: str = "",
+        trusted_base_url: bool = False,
+    ):
         self.api_key = api_key
         self.base_url = base_url
         self.model = model
+        # True 仅用于服务内部硬编码的本地 Ollama 自动路由，豁免 SSRF 目标校验
+        self.trusted_base_url = trusted_base_url
+
+    def _assert_configured_url_safe(self) -> None:
+        """分派前再次校验（纵深防御）；内部可信本地路径豁免。"""
+        if self.trusted_base_url:
+            return
+        from app.core.url_safety import assert_external_url
+        assert_external_url(self.base_url)
 
     def call(self, prompt: str, system_prompt: str = "") -> str:
         """Call the LLM and return a text response"""
@@ -46,6 +61,7 @@ class OpenAIProvider(LLMProvider):
         body = {"model": self.model, "messages": messages, "temperature": 0.3, "max_tokens": 8192}
         url = f"{self.base_url.rstrip('/')}/chat/completions"
 
+        self._assert_configured_url_safe()
         last_exc: Exception | None = None
         for attempt in range(3):
             try:
@@ -155,6 +171,7 @@ class OllamaProvider(LLMProvider):
                 "system": system_prompt,
                 "stream": False,
             }
+            self._assert_configured_url_safe()
             resp = httpx.post(url, json=body, timeout=300)
             resp.raise_for_status()
             data = resp.json()
@@ -163,13 +180,25 @@ class OllamaProvider(LLMProvider):
             raise LLMCallError(f"Ollama call failed: {exc}") from exc
 
 
-def get_provider(provider_name: str, api_key: str, base_url: str, model: str) -> LLMProvider:
+def get_provider(
+    provider_name: str,
+    api_key: str,
+    base_url: str,
+    model: str,
+    trusted_base_url: bool = False,
+) -> LLMProvider:
     """Get an LLM provider instance based on configuration"""
     name = provider_name.lower()
     if name == "ollama":
-        return OllamaProvider(api_key=api_key, base_url=base_url, model=model)
+        return OllamaProvider(
+            api_key=api_key, base_url=base_url, model=model,
+            trusted_base_url=trusted_base_url,
+        )
     # Custom mode (openrouter/deepseek or any name): use OpenAI-compatible interface
-    return OpenAIProvider(api_key=api_key, base_url=base_url, model=model)
+    return OpenAIProvider(
+        api_key=api_key, base_url=base_url, model=model,
+        trusted_base_url=trusted_base_url,
+    )
 
 
 def call_llm(
@@ -182,13 +211,17 @@ def call_llm(
     system_prompt: str = "",
     user: User | None = None,
     purpose: str = "topology_generation",
+    trusted_base_url: bool = False,
 ) -> str:
     """
     Unified LLM call entry point; automatically logs to llm_call_logs.
     """
     from app.models.audit import AuditLog  # Avoid circular import
 
-    provider = get_provider(provider_name, api_key, base_url, model)
+    provider = get_provider(
+        provider_name, api_key, base_url, model,
+        trusted_base_url=trusted_base_url,
+    )
 
     logger.info(
         "LLM call starting",

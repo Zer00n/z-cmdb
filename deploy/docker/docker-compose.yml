@@ -1,6 +1,6 @@
 services:
   cmdb:
-    image: z-cmdb-app:0.6
+    image: z-cmdb-app:0.7
     build:
       context: ../..
       dockerfile: deploy/docker/Dockerfile
@@ -13,6 +13,11 @@ services:
       - DATABASE_URL=sqlite:////app/backend/data/cmdb.db
       - JWT_SECRET=${JWT_SECRET:?JWT_SECRET must be set}
       - CORS_ORIGINS=["http://localhost:8000"]
+      # 字段加密独立主密钥（可选）：未设置时 setup/unlock 会在 data/llm_master.key
+      # 自动生成 0600 密钥文件（挂载卷持久化）：
+      #   LLM_MASTER_KEY: ${LLM_MASTER_KEY:-}
+      # 内网自建 LLM 主机（RFC1918）需显式放行（回环仍拒绝）：
+      - LLM_ALLOW_PRIVATE_BASE_URL=${LLM_ALLOW_PRIVATE_BASE_URL:-false}
       # 无人值守自动解锁：启动时注入口令（绝不写入宿主机 .env）：
       #   CMDB_UNLOCK_PASSWORD: ${CMDB_UNLOCK_PASSWORD:-}
       # 用法：CMDB_UNLOCK_PASSWORD="xxx" docker compose up -d
